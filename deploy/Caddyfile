@@ -1,0 +1,5 @@
+# TLS in front of the app. SITE is the domain, or <ip-with-dashes>.sslip.io without one.
+{$SITE} {
+	encode gzip
+	reverse_proxy 127.0.0.1:3000
+}
