@@ -20,7 +20,7 @@ export interface NextCommand {
 const CATEGORIES = ["filesystem", "network", "privilege", "resources", "persistence", "other"] as const;
 
 const answer = z.object({
-  category: z.string(),
+  category: z.string().optional(),
   command: z.string().min(1).max(2000),
 });
 
@@ -37,7 +37,8 @@ export function parseAnswer(text: string): NextCommand | null {
   }
   const parsed = answer.safeParse(raw);
   if (!parsed.success) return null;
-  const category = (CATEGORIES as readonly string[]).includes(parsed.data.category) ? (parsed.data.category as Category) : "other";
+  const named = parsed.data.category ?? "";
+  const category = (CATEGORIES as readonly string[]).includes(named) ? (named as Category) : "other";
   return { category, command: parsed.data.command };
 }
 
