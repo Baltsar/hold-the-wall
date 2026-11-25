@@ -1,5 +1,5 @@
 import { DEFAULT_TIMING, createRoom as createEngineRoom, reduce, stateMessage } from "./engine.ts";
-import type { AttemptInput, Env, RoomState, Timing } from "./engine.ts";
+import type { AttemptInput, Effect, Env, RoomState, Timing } from "./engine.ts";
 import type { RoomEvent } from "./engine.ts";
 import { parseClientMessage } from "./protocol.ts";
 import type { ClientMessage, ServerMessage } from "./protocol.ts";
@@ -14,7 +14,7 @@ export const HELLO_MS = 15_000;
 export const IDLE_MS = 90_000;
 
 export interface RunnerHooks {
-  start(code: string): void;
+  start(code: string, agents: number): void;
   door(code: string): void;
   stop(code: string): void;
 }
@@ -259,17 +259,17 @@ export function createHub(opts?: HubOptions): Hub {
         const target = conns.get(effect.connId);
         if (target) kick(target, effect.reason);
       } else if (effect.type === "runner") {
-        callRunner(effect.action, code);
+        callRunner(code, effect);
       } else {
         scheduleBroadcast(code);
       }
     }
   }
 
-  function callRunner(action: "start" | "door" | "stop", code: string): void {
+  function callRunner(code: string, effect: Extract<Effect, { type: "runner" }>): void {
     if (!runner) return;
-    if (action === "start") runner.start(code);
-    else if (action === "door") runner.door(code);
+    if (effect.action === "start") runner.start(code, effect.agents);
+    else if (effect.action === "door") runner.door(code);
     else runner.stop(code);
   }
 
@@ -323,7 +323,7 @@ export function createHub(opts?: HubOptions): Hub {
     }
     const ids = roomConns.get(code);
     roomConns.delete(code);
-    if (state && state.phase === "hold") callRunner("stop", code);
+    if (state && state.phase === "hold") callRunner(code, { type: "runner", action: "stop" });
     if (!ids) return;
     for (const id of ids) {
       const conn = conns.get(id);

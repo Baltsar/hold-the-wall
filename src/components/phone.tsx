@@ -8,7 +8,7 @@ const SEND_GAP_MS = 100;
 
 export function Phone({ code }: { code: string }) {
   const room = useRoom(code, "audience");
-  const { state, offer, send, link } = room;
+  const { state, offer, send, link, probe } = room;
   const [down, setDown] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const lastSent = useRef<{ on: boolean; at: number } | null>(null);
@@ -88,6 +88,24 @@ export function Phone({ code }: { code: string }) {
     };
   }, [phase, set]);
 
+  // An agent landed on this piece: a flash for a moment, and a buzz where the phone can.
+  const [flash, setFlash] = useState<{ outcome: string; until: number } | null>(null);
+  useEffect(() => {
+    if (!probe) return;
+    const until = probe.at + 1600;
+    const show = setTimeout(() => setFlash({ outcome: probe.outcome, until }), 0);
+    try {
+      navigator.vibrate?.(probe.outcome === "held" ? 60 : [80, 60, 160]);
+    } catch {
+      // Not every phone can buzz; the flash is enough.
+    }
+    const hide = setTimeout(() => setFlash(null), 1600);
+    return () => {
+      clearTimeout(show);
+      clearTimeout(hide);
+    };
+  }, [probe]);
+
   useEffect(() => {
     if (!offer) return;
     const t = setInterval(() => setNow(Date.now()), 250);
@@ -110,8 +128,12 @@ export function Phone({ code }: { code: string }) {
   if (phase !== "hold") return <main className="phone"><p className="msg">Look up.</p></main>;
 
   const left = offer ? Math.max(0, Math.ceil((offer.endsAt - now) / 1000)) : 0;
+  const hit = flash ? (flash.outcome === "held" ? "It hit you. You held." : flash.outcome === "door" ? "It went through your door." : "It went through you.") : null;
   return (
-    <main className="phone" onContextMenu={(e) => e.preventDefault()}>
+    <main className={`phone${flash ? ` hit-${flash.outcome}` : ""}`} onContextMenu={(e) => e.preventDefault()}>
+      <div className="hit-line" aria-live="assertive">
+        {hit}
+      </div>
       <button
         className={`hold${down ? " down" : ""}`}
         aria-pressed={down}

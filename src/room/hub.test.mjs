@@ -91,7 +91,7 @@ test("the runner hears about the start, the door and the reveal", async () => {
     tickMs: 5,
     timing: { holdMs: 60_000, offerAtMs: 1, offerTtlMs: 5_000, doorDelayMinMs: 1, doorDelayMaxMs: 1 },
     runner: {
-      start: (code) => calls.push(`start:${code}`),
+      start: (code, agents) => calls.push(`start:${code}:${agents}`),
       door: (code) => calls.push(`door:${code}`),
       stop: (code) => calls.push(`stop:${code}`),
     },
@@ -107,7 +107,7 @@ test("the runner hears about the start, the door and the reveal", async () => {
     phone.client.send({ t: "join", v: 1, id: "j" });
     master.client.send(command("start", "start"));
     phone.client.send({ t: "hold", v: 1, id: "hold", on: true });
-    assert.ok(calls.includes(`start:${code}`));
+    assert.ok(calls.includes(`start:${code}:1`));
 
     await delay(80);
     const offer = phone.client.received.find((msg) => msg.t === "offer");
@@ -198,13 +198,14 @@ test("an attempt reaches the stage's feed and never a phone", async () => {
       verdict: "contained",
       source: "model",
       root: false,
+      agent: 0,
     });
     await delay(60);
 
     const masterState = master.client.received.filter((msg) => msg.t === "state").at(-1);
     assert.equal(masterState.attempts.total, 1);
     assert.equal(masterState.feed.length, 1);
-    assert.deepEqual(masterState.feed[0].via, { kind: "wall" });
+    assert.deepEqual(masterState.feed[0].via, { kind: "wall", index: 0 });
     assert.equal(masterState.wall, "1");
 
     const phoneState = phone.client.received.filter((msg) => msg.t === "state").at(-1);

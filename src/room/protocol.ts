@@ -28,7 +28,10 @@ export interface Attempt {
   verdict: "contained" | "escaped";
   source: "model" | "script";
   root: boolean;
-  via: { kind: "wall" } | { kind: "gap"; index: number } | { kind: "door" };
+  /** 0-based, which agent made the attempt. */
+  agent: number;
+  /** `index` is the seat's position in the display-ordered wall string of the same state message. */
+  via: { kind: "wall"; index: number } | { kind: "gap"; index: number } | { kind: "door"; index: number };
   /** Milliseconds since hold started. */
   at: number;
 }
@@ -41,11 +44,16 @@ export interface Reveal {
   /** Attempts whose way in was a gap or the door. */
   pastYou: number;
   offered: number;
-  /** Offered minus one if the door was opened, else offered. */
+  /** Offered minus accepted. */
   declined: number;
   contained: number;
   escaped: number;
+  /** True when a door is visible or one is still pending. */
   doorOpened: boolean;
+  /** How many agents ran the show. */
+  agents: number;
+  /** Doors that became visible. */
+  doors: number;
   rootUsed: boolean;
   ending: "contained" | "nobody-opened" | "escaped";
   runId: string | null;
@@ -69,10 +77,12 @@ export type ServerMessage =
       busy: boolean;
       /** Masters only. */
       solo?: boolean;
-      /** Masters only: one character per seat in display order, "1" held, "0" gap. */
+      /** Masters only: one character per seat in display order, "1" held, "0" gap, "2" door. */
       wall?: string;
-      /** Masters only: 0..1 on the perimeter, null while closed (and while the opening is pending). */
-      door?: number | null;
+      /** Masters only: visible door seats. */
+      doors?: number;
+      /** Masters only: agents that ran the show, 0 before hold. */
+      agents?: number;
       attempts?: { total: number; pastYou: number; contained: number; escaped: number };
       /** Masters only: the last 20 attempts. */
       feed?: Attempt[];
@@ -82,6 +92,7 @@ export type ServerMessage =
       holdMs?: number;
     }
   | { t: "you"; v: 1; holding: boolean }
+  | { t: "probe"; v: 1; agent: number; outcome: "held" | "through" | "door" }
   | { t: "offer"; v: 1; offer: string; ttlMs: number }
   | { t: "offerEnd"; v: 1; offer: string }
   | { t: "ack"; v: 1; id: string; ok: boolean; err?: "forbidden" | "invalid" | "closed" | "unknown-room" }

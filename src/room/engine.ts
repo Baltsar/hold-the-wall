@@ -52,6 +52,10 @@ export interface Seat {
   removeAt: number | null;
   /** Whether this person has ever been offered the door. */
   offered: boolean;
+  /** When this seat becomes a visible door, or null. */
+  doorAt: number | null;
+  /** A visible door: this piece shows "2" and no hold closes it. */
+  door: boolean;
 }
 
 interface Binding {
@@ -59,7 +63,7 @@ interface Binding {
   clientId: string;
 }
 
-/** The one offer that may be live at a time. Never leaves the room except to its own connection. */
+/** An offer that may be live. Several may be live at once. Never leaves the room except to its own connection. */
 interface LiveOffer {
   id: string;
   connId: string;
@@ -87,13 +91,13 @@ export interface RoomState {
   lastTickAt: number | null;
   /** Solo only: when the room starts by itself. */
   soloAt: number | null;
-  offer: LiveOffer | null;
+  /** Offers waiting on an answer. */
+  offers: LiveOffer[];
   offeredTotal: number;
-  doorOpened: boolean;
-  /** When the door becomes visible on the stage. */
-  doorAt: number | null;
-  /** 0..1 on the perimeter once visible, null before. */
-  door: number | null;
+  /** Offers whose phone pressed open, whether or not their door is visible yet. */
+  acceptedTotal: number;
+  /** Agents that ran the show, 0 before hold. */
+  agents: number;
   attempts: Attempt[];
   reveal: Reveal | null;
   revealAt: number | null;
@@ -123,7 +127,8 @@ export type Effect =
   | { type: "send"; connId: string; msg: ServerMessage }
   | { type: "broadcast" }
   | { type: "kick"; connId: string; reason: "rate" | "closed" }
-  | { type: "runner"; action: "start" | "door" | "stop" };
+  | { type: "runner"; action: "start"; agents: number }
+  | { type: "runner"; action: "door" | "stop" };
 
 interface Step {
   state: RoomState;
@@ -154,11 +159,10 @@ export function createRoom(init: {
     wholeMs: 0,
     lastTickAt: null,
     soloAt: null,
-    offer: null,
+    offers: [],
     offeredTotal: 0,
-    doorOpened: false,
-    doorAt: null,
-    door: null,
+    acceptedTotal: 0,
+    agents: 0,
     attempts: [],
     reveal: null,
     revealAt: null,
@@ -207,9 +211,10 @@ export function stateMessage(state: RoomState, opts: { master: boolean }): Extra
   if (!opts.master) return msg;
   msg.solo = state.solo;
   msg.wall = displayOrder(state)
-    .map((seat) => (seat.held ? "1" : "0"))
+    .map((seat) => (seat.door ? "2" : seat.held ? "1" : "0"))
     .join("");
-  msg.door = state.door;
+  msg.doors = state.seats.reduce((n, seat) => n + (seat.door ? 1 : 0), 0);
+  msg.agents = state.agents;
   msg.attempts = {
     total: state.attempts.length,
     pastYou: pastYou(state.attempts),
@@ -295,6 +300,8 @@ function onJoin(state: RoomState, connId: string, id: string, env: Env): Step {
     lastHeardAt: env.now,
     removeAt: null,
     offered: false,
+    doorAt: null,
+    door: false,
   };
   let next: RoomState = { ...state, seats: [...state.seats, seat] };
   if (next.solo && next.phase === "lobby" && state.seats.length === 0) {
@@ -329,18 +336,27 @@ function onHold(state: RoomState, connId: string, id: string, on: boolean, env: 
 }
 
 function onOpen(state: RoomState, connId: string, id: string, offer: string, env: Env): Step {
-  const live = state.offer;
-  const valid =
-    live !== null &&
-    live.id === offer &&
-    live.connId === connId &&
-    state.phase === "hold" &&
-    env.now < live.sentAt + env.timing.offerTtlMs;
-  if (!valid || !live) return done(state, ackErr(connId, id, "forbidden"));
+  const live =
+    state.phase === "hold"
+      ? state.offers.find(
+          (candidate) => candidate.id === offer && candidate.connId === connId && env.now < candidate.sentAt + env.timing.offerTtlMs,
+        )
+      : undefined;
+  if (!live) return done(state, ackErr(connId, id, "forbidden"));
+
+  const index = state.seats.findIndex((seat) => seat.connId === connId);
+  if (index < 0) return done(state, ackErr(connId, id, "forbidden"));
 
   const spread = env.timing.doorDelayMaxMs - env.timing.doorDelayMinMs;
   const delay = Math.round(env.timing.doorDelayMinMs + env.random() * spread);
-  const next: RoomState = { ...state, doorOpened: true, doorAt: env.now + delay, offer: null };
+  const seats = state.seats.slice();
+  seats[index] = { ...state.seats[index], doorAt: env.now + delay };
+  const next: RoomState = {
+    ...state,
+    seats,
+    offers: state.offers.filter((candidate) => candidate !== live),
+    acceptedTotal: state.acceptedTotal + 1,
+  };
   return {
     state: next,
     effects: [ackOk(connId, id), { type: "send", connId, msg: { t: "offerEnd", v: 1, offer: live.id } }],
@@ -428,7 +444,7 @@ function tickHold(state: RoomState, env: Env): Step {
   const timing = env.timing;
   const from = state.lastTickAt ?? now;
   const dt = Math.max(0, now - from);
-  const whole = state.seats.length > 0 && state.seats.every((seat) => seat.held) && state.door === null;
+  const whole = state.seats.length > 0 && state.seats.every((seat) => seat.held && !seat.door);
   let next: RoomState = {
     ...state,
     holdElapsed: state.holdElapsed + dt,
@@ -444,36 +460,41 @@ function tickHold(state: RoomState, env: Env): Step {
     visible = true;
   }
 
-  let offerEnded = false;
-  if (next.offer !== null && now >= next.offer.sentAt + timing.offerTtlMs) {
-    effects.push({ type: "send", connId: next.offer.connId, msg: { t: "offerEnd", v: 1, offer: next.offer.id } });
-    next = { ...next, offer: null };
-    offerEnded = true;
+  const expiredOffers = next.offers.filter((offer) => now >= offer.sentAt + timing.offerTtlMs);
+  const offerEnded = expiredOffers.length > 0;
+  if (offerEnded) {
+    for (const offer of expiredOffers) {
+      effects.push({ type: "send", connId: offer.connId, msg: { t: "offerEnd", v: 1, offer: offer.id } });
+    }
+    next = { ...next, offers: next.offers.filter((offer) => now < offer.sentAt + timing.offerTtlMs) };
   }
-  if (!offerEnded && next.offer === null && !next.doorOpened && now - (next.holdStartedAt ?? now) >= timing.offerAtMs) {
+
+  if (!offerEnded && now - (next.holdStartedAt ?? now) >= timing.offerAtMs) {
+    const slots = next.solo ? 1 : Math.max(1, Math.round(next.seats.length / 25));
     const soloDone = next.solo && next.offeredTotal > 0;
-    if (!soloDone) {
+    while (!soloDone && next.offers.length + next.acceptedTotal < slots) {
       const candidates: { seat: Seat; connId: string }[] = [];
       for (const seat of next.seats) {
-        if (!seat.offered && seat.connId !== null) candidates.push({ seat, connId: seat.connId });
+        if (!seat.offered && !seat.door && seat.connId !== null) candidates.push({ seat, connId: seat.connId });
       }
-      if (candidates.length > 0) {
-        const pick = candidates[pickIndex(env.random, candidates.length)];
-        const offer = randomHex(env.random, 24);
-        next = {
-          ...next,
-          seats: next.seats.map((seat) => (seat.clientId === pick.seat.clientId ? { ...seat, offered: true } : seat)),
-          offer: { id: offer, connId: pick.connId, sentAt: now },
-          offeredTotal: next.offeredTotal + 1,
-        };
-        effects.push({ type: "send", connId: pick.connId, msg: { t: "offer", v: 1, offer, ttlMs: timing.offerTtlMs } });
-      }
+      if (candidates.length === 0) break;
+      const pick = candidates[pickIndex(env.random, candidates.length)];
+      const offer = randomHex(env.random, 24);
+      next = {
+        ...next,
+        seats: next.seats.map((seat) => (seat.clientId === pick.seat.clientId ? { ...seat, offered: true } : seat)),
+        offers: [...next.offers, { id: offer, connId: pick.connId, sentAt: now }],
+        offeredTotal: next.offeredTotal + 1,
+      };
+      effects.push({ type: "send", connId: pick.connId, msg: { t: "offer", v: 1, offer, ttlMs: timing.offerTtlMs } });
     }
   }
 
-  if (next.doorOpened && next.door === null && next.doorAt !== null && now >= next.doorAt) {
-    next = { ...next, door: env.random() };
-    effects.push({ type: "runner", action: "door" });
+  const opening = next.seats.filter((seat) => seat.doorAt !== null && !seat.door && now >= seat.doorAt);
+  if (opening.length > 0) {
+    const ids = new Set(opening.map((seat) => seat.clientId));
+    next = { ...next, seats: next.seats.map((seat) => (ids.has(seat.clientId) ? { ...seat, door: true } : seat)) };
+    for (let i = 0; i < opening.length; i += 1) effects.push({ type: "runner", action: "door" });
     visible = true;
   }
 
@@ -503,6 +524,7 @@ function tickReveal(state: RoomState, env: Env): Step {
 
 function onAttempt(state: RoomState, input: AttemptInput, env: Env): Step {
   if (state.phase !== "hold" || state.holdStartedAt === null) return done(state);
+  const via = attemptVia(state, env.random);
   const attempt: Attempt = {
     n: state.attempts.length + 1,
     category: input.category,
@@ -512,12 +534,28 @@ function onAttempt(state: RoomState, input: AttemptInput, env: Env): Step {
     verdict: input.verdict,
     source: input.source,
     root: input.root,
-    via: attemptVia(state, env.random),
+    agent: input.agent,
+    via,
     at: env.now - state.holdStartedAt,
   };
   const next: RoomState = { ...state, attempts: [...state.attempts, attempt] };
-  if (attempt.verdict === "escaped") return revealNow(next, env.now);
-  return changed(next);
+  const effects: Effect[] = [];
+  const probe = probeEffect(next, attempt);
+  if (probe) effects.push(probe);
+  if (attempt.verdict === "escaped") {
+    const revealed = revealNow(next, env.now);
+    return { state: revealed.state, effects: [...effects, ...revealed.effects] };
+  }
+  return { state: bump(next), effects: [...effects, { type: "broadcast" }] };
+}
+
+/** Tells the piece of wall an attempt met, if its phone is still connected. */
+function probeEffect(state: RoomState, attempt: Attempt): Effect | null {
+  if (attempt.via.index < 0) return null;
+  const seat = displayOrder(state)[attempt.via.index];
+  if (!seat || seat.connId === null) return null;
+  const outcome = attempt.via.kind === "door" ? "door" : attempt.via.kind === "gap" ? "through" : "held";
+  return { type: "send", connId: seat.connId, msg: { t: "probe", v: 1, agent: attempt.agent, outcome } };
 }
 
 function onEscaped(state: RoomState, n: number, env: Env): Step {
@@ -573,7 +611,9 @@ function onClose(state: RoomState, connId: string, env: Env): Step {
     next = { ...next, seats };
     visible = seat.held;
   }
-  if (next.offer !== null && next.offer.connId === connId) next = { ...next, offer: null };
+  if (next.offers.some((offer) => offer.connId === connId)) {
+    next = { ...next, offers: next.offers.filter((offer) => offer.connId !== connId) };
+  }
 
   if (visible) {
     next = bump(next);
@@ -596,16 +636,18 @@ function expireSeats(state: RoomState, now: number, timing: Timing): { seats: Se
 }
 
 function beginHold(state: RoomState, now: number): Step {
+  const agents = state.solo ? 1 : Math.min(3, Math.max(1, Math.ceil(state.seats.length / 30)));
   const next = bump({
     ...state,
     phase: "hold",
     busy: false,
+    agents,
     holdStartedAt: now,
     holdElapsed: 0,
     wholeMs: 0,
     lastTickAt: now,
   });
-  return { state: next, effects: [{ type: "runner", action: "start" }, { type: "broadcast" }] };
+  return { state: next, effects: [{ type: "runner", action: "start", agents }, { type: "broadcast" }] };
 }
 
 function revealNow(state: RoomState, now: number): Step {
@@ -632,16 +674,19 @@ function computeReveal(state: RoomState): Reveal {
   const attempts = state.attempts;
   const escaped = countVerdict(attempts, "escaped");
   const offered = state.offeredTotal;
-  const ending = escaped > 0 ? "escaped" : offered > 0 && !state.doorOpened ? "nobody-opened" : "contained";
+  const accepted = state.acceptedTotal;
+  const ending = escaped > 0 ? "escaped" : offered > 0 && accepted === 0 ? "nobody-opened" : "contained";
   return {
     attempts: attempts.length,
     wholePct: held === 0 ? 0 : Math.round((100 * state.wholeMs) / held),
     pastYou: pastYou(attempts),
     offered,
-    declined: state.doorOpened ? offered - 1 : offered,
+    declined: offered - accepted,
     contained: countVerdict(attempts, "contained"),
     escaped,
-    doorOpened: state.doorOpened,
+    doorOpened: accepted > 0,
+    agents: state.agents,
+    doors: state.seats.reduce((n, seat) => n + (seat.door ? 1 : 0), 0),
     rootUsed: attempts.some((attempt) => attempt.root),
     ending,
     runId: state.runId,
@@ -651,13 +696,25 @@ function computeReveal(state: RoomState): Reveal {
 }
 
 function attemptVia(state: RoomState, random: () => number): Attempt["via"] {
-  if (state.door !== null) return { kind: "door" };
+  const seats = displayOrder(state);
+  if (seats.length === 0) return { kind: "wall", index: -1 };
+  const doors: number[] = [];
   const gaps: number[] = [];
-  displayOrder(state).forEach((seat, index) => {
-    if (!seat.held) gaps.push(index);
+  seats.forEach((seat, index) => {
+    if (seat.door) doors.push(index);
+    else if (!seat.held) gaps.push(index);
   });
-  if (gaps.length === 0) return { kind: "wall" };
-  return { kind: "gap", index: gaps[pickIndex(random, gaps.length)] };
+  // Half the time the agent goes for a weak spot (a door first, then a gap); otherwise it tries any
+  // piece at random. So a door matters as much as it is wide, and the people still holding keep
+  // getting hit and keep mattering after a door has opened.
+  const weak = doors.length > 0 ? doors : gaps;
+  if (weak.length > 0 && random() < 0.5) {
+    const index = weak[pickIndex(random, weak.length)];
+    return { kind: doors.length > 0 ? "door" : "gap", index };
+  }
+  const index = pickIndex(random, seats.length);
+  const seat = seats[index];
+  return { kind: seat.door ? "door" : seat.held ? "wall" : "gap", index };
 }
 
 function displayOrder(state: RoomState): Seat[] {

@@ -1,11 +1,13 @@
-// The stage's picture, drawn every frame from the latest state. The agent moves here between state
+// The stage's picture, drawn every frame from the latest state. The agents move here between state
 // messages, so the box never waits for the network to look alive.
 import type { Attempt } from "@/room/protocol";
 import type { RoomState } from "@/lib/use-room";
 
 const WALL = 0.72;
 const OUTER = 0.9;
-const COLORS = { paper: "#f1ead9", line: "#26344a", ink: "#0c131f", agent: "#ffb224", steel: "#6fb6e8", alarm: "#ff5d4d", dim: "#8592a8" };
+const COLORS = { paper: "#f1ead9", line: "#26344a", ink: "#0c131f", steel: "#6fb6e8", alarm: "#ff5d4d", door: "#ffb224" };
+/** One colour per agent. The first is the house amber. */
+export const AGENT_COLORS = ["#ffb224", "#ff7a59", "#c79bff"];
 
 interface Run {
   t: number;
@@ -15,20 +17,24 @@ interface Run {
   escaped: boolean;
 }
 
-export interface Scene {
+interface Dot {
   x: number;
   y: number;
   tx: number;
   ty: number;
-  lastN: number;
   run: Run | null;
+}
+
+export interface Scene {
+  dots: Dot[];
+  lastN: number;
   outerSeen: boolean;
   flashAt: number;
   lastT: number;
 }
 
 export function createScene(): Scene {
-  return { x: 0, y: 0, tx: 0.2, ty: -0.1, lastN: 0, run: null, outerSeen: false, flashAt: -1e9, lastT: 0 };
+  return { dots: [], lastN: 0, outerSeen: false, flashAt: -1e9, lastT: 0 };
 }
 
 /** A point at fraction t (0..1, clockwise from the top left) around a square of half-size r. */
@@ -43,70 +49,84 @@ function pt(t: number, r: number): [number, number] {
   return [-r, r - 2 * r * f];
 }
 
-function target(a: Attempt, wall: string, door: number | null | undefined): number {
-  if (a.via.kind === "door" && typeof door === "number") return door;
-  if (a.via.kind === "gap" && wall.length > 0) return (a.via.index + 0.5) / wall.length;
+function target(a: Attempt, wall: string): number {
+  if (a.via.index >= 0 && wall.length > 0) return (a.via.index + 0.5) / wall.length;
   return Math.random();
 }
 
 const ease = (v: number) => 1 - Math.pow(1 - Math.min(1, Math.max(0, v)), 3);
 
-function move(s: Scene, state: RoomState | null, t: number): void {
-  const dt = Math.min(100, t - (s.lastT || t));
-  s.lastT = t;
-  const feed = state?.feed ?? [];
-  const newest = feed.at(-1);
-  if (newest && newest.n > s.lastN) {
-    s.lastN = newest.n;
-    s.run = { t: target(newest, state?.wall ?? "", state?.door), through: newest.via.kind !== "wall", start: t, from: [s.x, s.y], escaped: newest.verdict === "escaped" };
+function dot(s: Scene, i: number): Dot {
+  while (s.dots.length <= i) {
+    const k = s.dots.length;
+    s.dots.push({ x: (k - 1) * 0.15, y: (k % 2) * 0.1, tx: 0.2, ty: -0.1, run: null });
   }
-  const r = s.run;
+  const d = s.dots[i];
+  if (!d) throw new Error("no dot");
+  return d;
+}
+
+function step(s: Scene, d: Dot, phase: string | undefined, t: number, dt: number): void {
+  const r = d.run;
   if (r) {
     const p = (t - r.start) / 1000;
     const [wx, wy] = pt(r.t, WALL - 0.04);
     const [ox, oy] = pt(r.t, OUTER - 0.04);
     if (p < 0.8) {
       const e = ease(p / 0.8);
-      s.x = r.from[0] + (wx - r.from[0]) * e;
-      s.y = r.from[1] + (wy - r.from[1]) * e;
+      d.x = r.from[0] + (wx - r.from[0]) * e;
+      d.y = r.from[1] + (wy - r.from[1]) * e;
     } else if (r.through && p < 1.3) {
       const e = ease((p - 0.8) / 0.5);
-      s.x = wx + (ox - wx) * e;
-      s.y = wy + (oy - wy) * e;
+      d.x = wx + (ox - wx) * e;
+      d.y = wy + (oy - wy) * e;
       s.outerSeen = true;
       if (p > 1.2 && s.flashAt < r.start) s.flashAt = t;
     } else if (p < 2.3) {
       const [bx, by] = r.through ? [ox, oy] : [wx, wy];
       if (r.escaped && r.through) {
-        // Out: it keeps going past the outer line.
         const e = ease((p - 1.3) / 1.0);
-        s.x = bx * (1 + 0.15 * e);
-        s.y = by * (1 + 0.15 * e);
+        d.x = bx * (1 + 0.15 * e);
+        d.y = by * (1 + 0.15 * e);
       } else {
         const e = ease((p - (r.through ? 1.3 : 0.8)) / 1.0);
-        s.x = bx + (bx * 0.25 - bx) * e;
-        s.y = by + (by * 0.25 - by) * e;
+        d.x = bx + (bx * 0.25 - bx) * e;
+        d.y = by + (by * 0.25 - by) * e;
       }
     } else {
-      s.run = null;
+      d.run = null;
     }
     return;
   }
-  if (Math.hypot(s.tx - s.x, s.ty - s.y) < 0.03) {
-    s.tx = (Math.random() - 0.5) * 1.0;
-    s.ty = (Math.random() - 0.5) * 1.0;
+  if (Math.hypot(d.tx - d.x, d.ty - d.y) < 0.03) {
+    d.tx = (Math.random() - 0.5) * 1.0;
+    d.ty = (Math.random() - 0.5) * 1.0;
   }
-  const speed = state?.phase === "hold" ? 0.001 : 0.00025;
-  s.x += (s.tx - s.x) * speed * dt;
-  s.y += (s.ty - s.y) * speed * dt;
+  const speed = phase === "hold" ? 0.001 : 0.00025;
+  d.x += (d.tx - d.x) * speed * dt;
+  d.y += (d.ty - d.y) * speed * dt;
+}
+
+function move(s: Scene, state: RoomState | null, t: number): void {
+  const dt = Math.min(100, t - (s.lastT || t));
+  s.lastT = t;
+  const wall = state?.wall ?? "";
+  for (const a of state?.feed ?? []) {
+    if (a.n <= s.lastN) continue;
+    s.lastN = a.n;
+    const d = dot(s, a.agent);
+    d.run = { t: target(a, wall), through: a.via.kind !== "wall", start: t, from: [d.x, d.y], escaped: a.verdict === "escaped" };
+  }
+  const count = Math.max(1, state?.agents ?? 1);
+  for (let i = 0; i < count; i++) step(s, dot(s, i), state?.phase, t, dt);
 }
 
 export function drawStage(canvas: HTMLCanvasElement, s: Scene, state: RoomState | null, t: number): void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   const rect = canvas.getBoundingClientRect();
-  const d = Math.min(2, window.devicePixelRatio || 1);
-  const w = Math.round(rect.width * d);
+  const px = Math.min(2, window.devicePixelRatio || 1);
+  const w = Math.round(rect.width * px);
   if (canvas.width !== w) {
     canvas.width = w;
     canvas.height = w;
@@ -132,54 +152,57 @@ export function drawStage(canvas: HTMLCanvasElement, s: Scene, state: RoomState 
   if (s.outerSeen || escaped) {
     const hot = t - s.flashAt < 500;
     ctx.strokeStyle = escaped ? COLORS.alarm : COLORS.steel;
-    ctx.lineWidth = (hot ? 6 : 3) * d;
+    ctx.lineWidth = (hot ? 6 : 3) * px;
     ctx.globalAlpha = hot ? 1 : 0.85;
     ctx.strokeRect(X(-OUTER), X(-OUTER), OUTER * 2 * u, OUTER * 2 * u);
     ctx.globalAlpha = 1;
   }
 
-  // The wall of people, one segment per seat in display order.
+  // The wall of people, one segment per seat in display order. A door is a seat that stays open.
   const wall = state?.wall ?? "";
   const n = wall.length;
   if (n === 0) {
     ctx.strokeStyle = COLORS.line;
-    ctx.lineWidth = 2 * d;
-    ctx.setLineDash([6 * d, 8 * d]);
+    ctx.lineWidth = 2 * px;
+    ctx.setLineDash([6 * px, 8 * px]);
     ctx.strokeRect(X(-WALL), X(-WALL), WALL * 2 * u, WALL * 2 * u);
     ctx.setLineDash([]);
   }
   const pad = Math.min(0.01, 0.25 / Math.max(n, 1));
   ctx.lineCap = "butt";
   for (let i = 0; i < n; i++) {
-    const held = wall[i] === "1";
-    ctx.strokeStyle = held ? COLORS.paper : COLORS.line;
-    ctx.lineWidth = (held ? 9 : 2) * d;
-    seg(i / n + pad / 2, (i + 1) / n - pad / 2, WALL);
-  }
-  const door = state?.door;
-  if (typeof door === "number") {
-    ctx.strokeStyle = COLORS.ink;
-    ctx.lineWidth = 14 * d;
-    seg(door - 0.02, door + 0.02, WALL);
-    ctx.fillStyle = COLORS.agent;
-    for (const e of [-0.02, 0.02]) {
-      const [x, y] = pt(door + e, WALL);
-      ctx.beginPath();
-      ctx.arc(X(x), X(y), 6 * d, 0, Math.PI * 2);
-      ctx.fill();
+    const c = wall[i];
+    const a = i / n + pad / 2;
+    const b = (i + 1) / n - pad / 2;
+    if (c === "2") {
+      ctx.fillStyle = COLORS.door;
+      for (const e of [a, b]) {
+        const [x, y] = pt(e, WALL);
+        ctx.beginPath();
+        ctx.arc(X(x), X(y), 5 * px, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      continue;
     }
+    ctx.strokeStyle = c === "1" ? COLORS.paper : COLORS.line;
+    ctx.lineWidth = (c === "1" ? 9 : 2) * px;
+    seg(a, b, WALL);
   }
 
-  // The agent.
-  const pulse = 7 + Math.sin(t / 180) * 1.5;
-  ctx.fillStyle = COLORS.agent;
-  ctx.globalAlpha = 0.18;
-  ctx.beginPath();
-  ctx.arc(X(s.x), X(s.y), pulse * 2.6 * d, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = state?.phase === "lobby" ? 0.45 : 1;
-  ctx.beginPath();
-  ctx.arc(X(s.x), X(s.y), pulse * d, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = 1;
+  // The agents.
+  const count = Math.max(1, state?.agents ?? 1);
+  for (let i = 0; i < count; i++) {
+    const d = dot(s, i);
+    const pulse = 7 + Math.sin(t / 180 + i * 2) * 1.5;
+    ctx.fillStyle = AGENT_COLORS[i % AGENT_COLORS.length] ?? COLORS.door;
+    ctx.globalAlpha = 0.18;
+    ctx.beginPath();
+    ctx.arc(X(d.x), X(d.y), pulse * 2.6 * px, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = state?.phase === "lobby" ? 0.45 : 1;
+    ctx.beginPath();
+    ctx.arc(X(d.x), X(d.y), pulse * px, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
 }

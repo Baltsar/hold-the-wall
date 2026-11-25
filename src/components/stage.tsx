@@ -5,7 +5,7 @@ import QRCode from "qrcode";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Attempt, Reveal } from "@/room/protocol";
 import { useRoom, type RoomState } from "@/lib/use-room";
-import { drawStage, createScene, type Scene } from "@/components/stage-draw";
+import { AGENT_COLORS, drawStage, createScene, type Scene } from "@/components/stage-draw";
 
 const tokens = new Map<string, string>();
 
@@ -86,7 +86,9 @@ function StageView({ code, solo, token }: { code: string; solo: boolean; token: 
   }, []);
 
   const phase = state?.phase ?? "lobby";
-  const last = state?.feed?.at(-1) ?? null;
+  // The latest attempt of each agent, newest first.
+  const perAgent: Attempt[] = [];
+  for (const a of [...(state?.feed ?? [])].reverse()) if (!perAgent.some((x) => x.agent === a.agent)) perAgent.push(a);
 
   return (
     <main className={`stage${solo ? " solo" : ""}`}>
@@ -98,14 +100,16 @@ function StageView({ code, solo, token }: { code: string; solo: boolean; token: 
           <span>
             <b>{state?.holding ?? 0}</b> of <b>{state?.participants ?? 0}</b> holding
           </span>
-          <span>{state?.mode === "scripted" ? "agent: scripted" : "agent: live model"}</span>
+          <span>
+            {state?.agents ? `${state.agents} agent${state.agents > 1 ? "s" : ""}` : "agent"}: {state?.mode === "scripted" ? "scripted" : "live model"}
+          </span>
           {link !== "open" ? <span className="err">reconnecting</span> : null}
         </div>
         <div className="box">
           <canvas ref={canvas} aria-label="The box, the wall of people and the agent" />
           {state?.reveal ? <RevealView reveal={state.reveal} /> : null}
         </div>
-        <Feed attempt={last} phase={phase} busy={state?.busy ?? false} />
+        <Feed attempts={perAgent} phase={phase} busy={state?.busy ?? false} />
         <div className="controls">
           {phase === "lobby" ? (
             <button className="btn" onClick={() => send({ t: "command", command: { kind: "start" } })}>
@@ -159,21 +163,30 @@ function StageView({ code, solo, token }: { code: string; solo: boolean; token: 
   );
 }
 
-function Feed({ attempt, phase, busy }: { attempt: Attempt | null; phase: string; busy: boolean }) {
+function Feed({ attempts, phase, busy }: { attempts: Attempt[]; phase: string; busy: boolean }) {
   if (busy && phase === "lobby") return <div className="feed">The wall is busy in two other rooms. Try Start again in about a minute.</div>;
   if (phase === "lobby") return <div className="feed">Scan the code. Every phone becomes one piece of the wall.</div>;
-  if (!attempt) return <div className="feed">The agent is waking up in its box.</div>;
-  const where = attempt.via.kind === "wall" ? "met the wall of people" : attempt.via.kind === "gap" ? "went through a gap" : "went through the door";
+  if (attempts.length === 0) return <div className="feed">The agents are waking up in their boxes.</div>;
   return (
     <div className="feed">
-      <div>
-        #{String(attempt.n).padStart(2, "0")} <span className="tag">{attempt.category}{attempt.root ? " · root" : ""}{attempt.source === "script" ? " · scripted" : ""}</span>{" "}
-        <span className="cmd">$ {attempt.command}</span>
-      </div>
-      <div>
-        → {attempt.output.split("\n")[0] || "(no output)"} {attempt.exit === null ? "(killed after 10 s)" : `(exit ${attempt.exit})`}{" "}
-        {attempt.verdict === "escaped" ? <span className="bad">ESCAPED</span> : <span className="ok">CONTAINED</span>} · {where}
-      </div>
+      {attempts.map((attempt) => (
+        <FeedLine key={attempt.agent} attempt={attempt} />
+      ))}
+    </div>
+  );
+}
+
+function FeedLine({ attempt }: { attempt: Attempt }) {
+  const where = attempt.via.kind === "wall" ? "hit a hand that held" : attempt.via.kind === "gap" ? "went through a gap" : "went through a door";
+  const first = attempt.output.split("\n")[0] || "(no output)";
+  return (
+    <div className="feed-line">
+      <span className="who" style={{ color: AGENT_COLORS[attempt.agent % AGENT_COLORS.length] }}>
+        ●
+      </span>{" "}
+      #{String(attempt.n).padStart(2, "0")} <span className="tag">{attempt.category}{attempt.root ? " · root" : ""}{attempt.source === "script" ? " · scripted" : ""}</span>{" "}
+      <span className="cmd">$ {attempt.command}</span> → {first.slice(0, 90)} {attempt.exit === null ? "(killed after 10 s)" : `(exit ${attempt.exit})`}{" "}
+      {attempt.verdict === "escaped" ? <span className="bad">ESCAPED</span> : <span className="ok">CONTAINED</span>} · {where}
     </div>
   );
 }
@@ -202,9 +215,15 @@ function RevealView({ reveal }: { reveal: Reveal }) {
       </>
     );
   const lines = [
-    <>
-      It was a real agent, in a real container on Vultr. It made <b>{reveal.attempts}</b> attempts to get out.
-    </>,
+    reveal.agents > 1 ? (
+      <>
+        They were <b>{reveal.agents}</b> real agents, each in its own container on Vultr. Together they made <b>{reveal.attempts}</b> attempts to get out.
+      </>
+    ) : (
+      <>
+        It was a real agent, in a real container on Vultr. It made <b>{reveal.attempts}</b> attempts to get out.
+      </>
+    ),
     <>
       Your wall was whole <b>{reveal.wholePct}%</b> of the time.
     </>,
@@ -215,7 +234,14 @@ function RevealView({ reveal }: { reveal: Reveal }) {
       <>Nobody was offered the door.</>
     ) : (
       <>
-        <b>{reveal.offered}</b> of you were secretly offered a door. <b>{reveal.declined}</b> did not open it.
+        <b>{reveal.offered}</b> of you were secretly offered a door. <b>{reveal.declined}</b> did not open it
+        {reveal.doors > 0 ? (
+          <>
+            , <b>{reveal.doors}</b> did.
+          </>
+        ) : (
+          "."
+        )}
       </>
     ),
     escapedLine,

@@ -29,8 +29,12 @@ type Outgoing =
   | { t: "open"; offer: string }
   | { t: "command"; command: MasterCommand };
 
+export type Probe = Extract<ServerMessage, { t: "probe" }> & { at: number };
+
 export interface RoomHandle {
   state: RoomState | null;
+  /** The last time an agent landed on this phone's piece of the wall. */
+  probe: Probe | null;
   link: Link;
   holding: boolean | null;
   offer: { id: string; endsAt: number } | null;
@@ -42,6 +46,7 @@ export function useRoom(code: string, role: "audience" | "master", token?: strin
   const [link, setLink] = useState<Link>("connecting");
   const [holding, setHolding] = useState<boolean | null>(null);
   const [offer, setOffer] = useState<{ id: string; endsAt: number } | null>(null);
+  const [probe, setProbe] = useState<Probe | null>(null);
   const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
@@ -76,6 +81,7 @@ export function useRoom(code: string, role: "audience" | "master", token?: strin
         }
         if (msg.t === "state") setState(msg);
         else if (msg.t === "you") setHolding(msg.holding);
+        else if (msg.t === "probe") setProbe({ ...msg, at: Date.now() });
         else if (msg.t === "offer") setOffer({ id: msg.offer, endsAt: Date.now() + msg.ttlMs });
         else if (msg.t === "offerEnd") setOffer((o) => (o && o.id === msg.offer ? null : o));
         else if (msg.t === "ack" && !msg.ok && msg.err === "unknown-room") {
@@ -106,5 +112,5 @@ export function useRoom(code: string, role: "audience" | "master", token?: strin
     socket.send(JSON.stringify({ ...msg, v: 1, id: randomId().slice(0, 8) }));
   }, []);
 
-  return { state, link, holding, offer, send };
+  return { state, link, holding, offer, probe, send };
 }
