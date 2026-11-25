@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22.18" },
+  "engines": {
+    "node": ">=22.18"
+  },
   "scripts": {
     "dev": "node server.mjs",
     "build": "next build",
@@ -12,7 +14,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test \"src/**/*.test.mjs\"",
     "test:sandbox": "node --test \"src/agent/*.docker.mjs\"",
-    "check": "npm run typecheck && npm run lint && npm test"
+    "check": "npm run typecheck && npm run lint && npm test",
+    "sandbox:image": "docker build -t wall-sandbox:1 -f deploy/sandbox.Dockerfile deploy"
   },
   "dependencies": {
     "next": "16.4.6",
