@@ -8,7 +8,7 @@ IP="$(curl -s https://api.ipify.org)"
 SITE="${SITE:-${IP//./-}.sslip.io}"
 
 apt-get update
-apt-get install -y ca-certificates curl gnupg ufw debian-keyring debian-archive-keyring apt-transport-https
+apt-get install -y ca-certificates curl gnupg ufw rsync debian-keyring debian-archive-keyring apt-transport-https
 
 # Docker
 if ! command -v docker >/dev/null; then curl -fsSL https://get.docker.com | sh; fi
@@ -40,7 +40,8 @@ mkdir -p /var/lib/wall && chown wall:wall /var/lib/wall && chmod 700 /var/lib/wa
 
 # The app
 rsync -a --delete --exclude node_modules --exclude .next --exclude var --exclude .env "$REPO_DIR/" /opt/hold-the-wall/
-[ -f /opt/hold-the-wall/.env ] || cp "$REPO_DIR/.env" /opt/hold-the-wall/.env 2>/dev/null || cp "$REPO_DIR/.env.example" /opt/hold-the-wall/.env
+# The .env sent with this push wins; without one, the VM keeps the one it has.
+if [ -f "$REPO_DIR/.env" ]; then cp "$REPO_DIR/.env" /opt/hold-the-wall/.env; elif [ ! -f /opt/hold-the-wall/.env ]; then cp "$REPO_DIR/.env.example" /opt/hold-the-wall/.env; fi
 grep -q '^PUBLIC_ORIGIN=.\+' /opt/hold-the-wall/.env || sed -i "s|^PUBLIC_ORIGIN=.*|PUBLIC_ORIGIN=https://$SITE|" /opt/hold-the-wall/.env
 if command -v runsc >/dev/null; then sed -i 's|^SANDBOX_RUNTIME=.*|SANDBOX_RUNTIME=runsc|' /opt/hold-the-wall/.env; fi
 chown -R wall:wall /opt/hold-the-wall
@@ -56,7 +57,8 @@ mkdir -p /etc/systemd/system/caddy.service.d
 printf '[Service]\nEnvironment=SITE=%s\n' "$SITE" > /etc/systemd/system/caddy.service.d/site.conf
 cp deploy/Caddyfile /etc/caddy/Caddyfile
 systemctl daemon-reload
-systemctl enable --now hold-the-wall
+systemctl enable hold-the-wall
+systemctl restart hold-the-wall
 systemctl restart caddy
 
 # Only ssh and the web reach this VM; the app (3000) and the beacon (3001) do not.
