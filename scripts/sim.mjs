@@ -1,13 +1,18 @@
 // A rehearsal without people: opens a room, connects N fake phones that hold and let go at random,
 // starts the show, accepts the first offer, and prints what the stage would show. Needs a running server.
 //   node scripts/sim.mjs [phones=40] [origin=http://localhost:3000]
+// With CODE=<room> only the phones join an existing room (its stage is open in a browser), for a look.
 import WebSocket from "ws";
 
 const phones = Number(process.argv[2] ?? 40);
 const origin = process.argv[3] ?? "http://localhost:3000";
 const wsUrl = `${origin.replace(/^http/, "ws")}/ws`;
-const res = await fetch(`${origin}/api/room`, { method: "POST", headers: { "content-type": "application/json", ...(process.env.SHOW_KEY ? { "x-show-key": process.env.SHOW_KEY } : {}) }, body: "{}" });
-const { code, ownerToken } = await res.json();
+let code = process.env.CODE;
+let ownerToken = "";
+if (!code) {
+  const res = await fetch(`${origin}/api/room`, { method: "POST", headers: { "content-type": "application/json", ...(process.env.SHOW_KEY ? { "x-show-key": process.env.SHOW_KEY } : {}) }, body: "{}" });
+  ({ code, ownerToken } = await res.json());
+}
 console.log(`room ${code}, ${phones} phones`);
 
 let kicked = 0;
@@ -41,7 +46,14 @@ function phone(i) {
 }
 const all = Array.from({ length: phones }, (_, i) => phone(i));
 
-const stage = new WebSocket(wsUrl);
+if (process.env.CODE) {
+  setTimeout(() => {
+    for (const ws of all) ws.close();
+    process.exit(0);
+  }, Number(process.env.SECONDS ?? 120) * 1000);
+}
+const stage = process.env.CODE ? null : new WebSocket(wsUrl);
+if (stage) {
 let lastN = 0;
 stage.on("open", () => {
   stage.send(JSON.stringify({ t: "hello", v: 1, id: id(), room: code, clientId: "sim-stage", role: "master", token: ownerToken }));
@@ -67,3 +79,4 @@ stage.on("message", (raw) => {
     stage.close();
   }
 });
+}

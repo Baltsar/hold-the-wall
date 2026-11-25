@@ -34,7 +34,7 @@ function ownerToken(code: string): string | undefined {
 
 const noSubscribe = () => () => undefined;
 
-export function Stage({ code, solo }: { code: string; solo: boolean }) {
+export function Stage({ code, solo, film }: { code: string; solo: boolean; film: boolean }) {
   // null on the server, where there is no tab to read the token from; "" in a tab without one.
   const token = useSyncExternalStore(noSubscribe, () => ownerToken(code) ?? "", () => null);
   if (token === null) return null;
@@ -49,10 +49,10 @@ export function Stage({ code, solo }: { code: string; solo: boolean }) {
       </main>
     );
   }
-  return <StageView code={code} solo={solo} token={token} />;
+  return <StageView code={code} solo={solo} film={film} token={token} />;
 }
 
-function StageView({ code, solo, token }: { code: string; solo: boolean; token: string }) {
+function StageView({ code, solo, film, token }: { code: string; solo: boolean; film: boolean; token: string }) {
   const { state, send, link } = useRoom(code, "master", token);
   const canvas = useRef<HTMLCanvasElement | null>(null);
   const scene = useRef<Scene>(createScene());
@@ -66,7 +66,7 @@ function StageView({ code, solo, token }: { code: string; solo: boolean; token: 
 
   useEffect(() => {
     const url = `${location.origin}/join/${code}`;
-    QRCode.toDataURL(url, { margin: 0, width: 520, color: { dark: "#0c131f", light: "#f1ead9" } })
+    QRCode.toDataURL(url, { margin: 0, width: 520, color: { dark: "#0a1230", light: "#f1ead9" } })
       .then((data) => {
         setQr(data);
         setJoinUrl(url.replace(/^https?:\/\//, ""));
@@ -85,13 +85,23 @@ function StageView({ code, solo, token }: { code: string; solo: boolean; token: 
     return () => cancelAnimationFrame(frame);
   }, []);
 
+  // Keys for running the show without visible buttons (film mode): S start, R reveal, E end.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const kind = e.key === "s" ? "start" : e.key === "r" ? "reveal" : e.key === "e" ? "end" : null;
+      if (kind) send({ t: "command", command: { kind } });
+    };
+    addEventListener("keydown", onKey);
+    return () => removeEventListener("keydown", onKey);
+  }, [send]);
+
   const phase = state?.phase ?? "lobby";
   // The latest attempt of each agent, newest first.
   const perAgent: Attempt[] = [];
   for (const a of [...(state?.feed ?? [])].reverse()) if (!perAgent.some((x) => x.agent === a.agent)) perAgent.push(a);
 
   return (
-    <main className={`stage${solo ? " solo" : ""}`}>
+    <main className={`stage${solo ? " solo" : ""}${film ? " film" : ""}`}>
       <section className="stage-main">
         <div className="chrome">
           <span>
@@ -100,11 +110,22 @@ function StageView({ code, solo, token }: { code: string; solo: boolean; token: 
           <span>
             <b>{state?.holding ?? 0}</b> of <b>{state?.participants ?? 0}</b> holding
           </span>
-          <span>
-            {state?.agents ? `${state.agents} agent${state.agents > 1 ? "s" : ""}` : "agent"}: {state?.mode === "scripted" ? "scripted" : "live model"}
-          </span>
+          {state?.agents ? (
+            <span>
+              {state.agents} agent{state.agents > 1 ? "s" : ""}: {state.mode === "scripted" ? "scripted" : "live model"}
+            </span>
+          ) : (
+            <span>agents wake at the start</span>
+          )}
           {link !== "open" ? <span className="err">reconnecting</span> : null}
         </div>
+        {phase === "lobby" ? (
+          <div className="lobby-call">
+            {state?.participants ? `${state.participants} piece${state.participants > 1 ? "s" : ""} of wall. Scan to join.` : "Scan the code. Become the wall."}
+          </div>
+        ) : (
+          <Hud state={state} />
+        )}
         <div className="box">
           <canvas ref={canvas} aria-label="The box, the wall of people and the agent" />
           {state?.reveal ? <RevealView reveal={state.reveal} /> : null}
@@ -153,6 +174,9 @@ function StageView({ code, solo, token }: { code: string; solo: boolean; token: 
             <div className="join-url">{joinUrl}</div>
           </>
         )}
+        <div className="vultr">
+          Runs on Vultr{state?.agents ? ` · ${state.agents} sandbox${state.agents > 1 ? "es" : ""}` : ""}
+        </div>
         {state?.reveal?.runId ? (
           <a href={`/report/${state.reveal.runId}`} target="_blank" rel="noreferrer">
             The full report
@@ -160,6 +184,34 @@ function StageView({ code, solo, token }: { code: string; solo: boolean; token: 
         ) : null}
       </aside>
     </main>
+  );
+}
+
+function Hud({ state }: { state: RoomState | null }) {
+  const [now, setNow] = useState(() => Date.now());
+  const running = state?.phase === "hold";
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(t);
+  }, [running]);
+  const total = state?.participants ?? 0;
+  const doors = state?.doors ?? 0;
+  const whole = total > 0 ? Math.round((100 * Math.max(0, (state?.holding ?? 0) - doors)) / total) : 0;
+  const left = state?.holdStartedAt && state.holdMs ? Math.max(0, state.holdStartedAt + state.holdMs - now) : 0;
+  const secs = Math.ceil(left / 1000);
+  const clock = running ? `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}` : "0:00";
+  return (
+    <div className="hud">
+      <div className={`clock${running && secs <= 20 ? " low" : ""}`}>{clock}</div>
+      <div className="meter" role="meter" aria-valuenow={whole} aria-valuemin={0} aria-valuemax={100} aria-label="How much of the wall is held">
+        <span style={{ width: `${whole}%` }} />
+      </div>
+      <div className="meter-label">
+        <b>{whole}%</b>
+        wall held{doors > 0 ? ` · ${doors} door${doors > 1 ? "s" : ""} open` : ""}
+      </div>
+    </div>
   );
 }
 

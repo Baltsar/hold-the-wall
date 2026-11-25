@@ -88,12 +88,16 @@ export function Phone({ code }: { code: string }) {
     };
   }, [phase, set]);
 
-  // An agent landed on this piece: a flash for a moment, and a buzz where the phone can.
+  // An agent landed on this piece: a flash for a moment, a buzz where the phone can, and a score.
   const [flash, setFlash] = useState<{ outcome: string; until: number } | null>(null);
+  const [score, setScore] = useState({ held: 0, through: 0 });
   useEffect(() => {
     if (!probe) return;
     const until = probe.at + 1600;
-    const show = setTimeout(() => setFlash({ outcome: probe.outcome, until }), 0);
+    const show = setTimeout(() => {
+      setFlash({ outcome: probe.outcome, until });
+      setScore((sc) => (probe.outcome === "held" ? { ...sc, held: sc.held + 1 } : { ...sc, through: sc.through + 1 }));
+    }, 0);
     try {
       navigator.vibrate?.(probe.outcome === "held" ? 60 : [80, 60, 160]);
     } catch {
@@ -162,9 +166,19 @@ export function Phone({ code }: { code: string }) {
             <span>Nobody will know.</span>
           </>
         ) : (
-          <span>
-            {state.holding} of {state.participants} holding
-          </span>
+          <>
+            <span className="tally">
+              <span>
+                held <b>{score.held}</b>
+              </span>
+              <span>
+                let through <b>{score.through}</b>
+              </span>
+            </span>
+            <span>
+              {state.holding} of {state.participants} holding
+            </span>
+          </>
         )}
       </div>
     </main>

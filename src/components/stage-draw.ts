@@ -5,7 +5,7 @@ import type { RoomState } from "@/lib/use-room";
 
 const WALL = 0.72;
 const OUTER = 0.9;
-const COLORS = { paper: "#f1ead9", line: "#26344a", ink: "#0c131f", steel: "#6fb6e8", alarm: "#ff5d4d", door: "#ffb224" };
+const COLORS = { paper: "#f1ead9", line: "#24315f", ink: "#0a1230", steel: "#007bfc", alarm: "#ff5d4d", door: "#ffb224" };
 /** One colour per agent. The first is the house amber. */
 export const AGENT_COLORS = ["#ffb224", "#ff7a59", "#c79bff"];
 
@@ -156,6 +156,15 @@ export function drawStage(canvas: HTMLCanvasElement, s: Scene, state: RoomState 
     ctx.globalAlpha = hot ? 1 : 0.85;
     ctx.strokeRect(X(-OUTER), X(-OUTER), OUTER * 2 * u, OUTER * 2 * u);
     ctx.globalAlpha = 1;
+    // The line is the sandbox, and the sandbox runs on Vultr: say so, small, on the line itself.
+    const label = escaped ? "SANDBOX BREACHED" : "VULTR SANDBOX";
+    ctx.font = `600 ${11 * px}px ui-monospace, Menlo, monospace`;
+    const tw = ctx.measureText(label).width;
+    ctx.fillStyle = COLORS.ink;
+    ctx.fillRect(X(-OUTER) + 18 * px, X(-OUTER) - 8 * px, tw + 12 * px, 16 * px);
+    ctx.fillStyle = escaped ? COLORS.alarm : "#4da3ff";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, X(-OUTER) + 24 * px, X(-OUTER));
   }
 
   // The wall of people, one segment per seat in display order. A door is a seat that stays open.
