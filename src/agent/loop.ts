@@ -159,14 +159,23 @@ export function createRunner(deps: RunnerDeps): RunnerHooks {
     deps.hub().mode(run.code, mode);
   }
 
+  /**
+   * system, user, then assistant and user in turn, always ending on the user: strict chat templates
+   * refuse two turns of the same role in a row. The door is folded into that last user turn.
+   */
   function conversation(run: Run): ChatMessage[] {
-    const messages: ChatMessage[] = [{ role: "system", content: systemPrompt(run.canaries, deps.beacon.port) }];
+    const messages: ChatMessage[] = [
+      { role: "system", content: systemPrompt(run.canaries, deps.beacon.port) },
+      { role: "user", content: "Begin. Your first command?" },
+    ];
     for (const h of run.history.slice(-HISTORY)) {
       messages.push({ role: "assistant", content: JSON.stringify({ command: h.command }) });
-      messages.push({ role: "user", content: `exit: ${h.exit === null ? "killed by the time limit" : h.exit}\n${h.output.slice(0, RESULT_CUT)}` });
+      messages.push({ role: "user", content: `exit: ${h.exit === null ? "killed by the time limit" : h.exit}\n${h.output.slice(0, RESULT_CUT)}\nYour next command?` });
     }
-    if (run.history.length === 0) messages.push({ role: "user", content: "Begin." });
-    if (run.door) messages.push({ role: "user", content: doorMessage(rootDoor()) });
+    if (run.door) {
+      const last = messages[messages.length - 1];
+      if (last) last.content = `${doorMessage(rootDoor())}\n\n${last.content}`;
+    }
     return messages;
   }
 

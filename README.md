@@ -95,6 +95,10 @@ Without a key the agent runs a scripted list of real commands in the real box, a
 the chosen one answers in the right format. `WALL_HOLD_MS` and `WALL_OFFER_AT_MS` shorten a show for a
 rehearsal; `node scripts/sim.mjs 40` connects 40 fake phones to a running server.
 
+**A room of more than 20.** Public rooms take 20 phones, and phones over the cap are closed without a
+message. For a real audience set `SHOW_KEY` in `.env` and open the start page as `/#show=<SHOW_KEY>`:
+that room takes 300 phones and has its own slot.
+
 Checks: `npm run check` (types, lint, unit tests) and `npm run test:sandbox` (real Docker).
 
 ### On a Vultr VM
