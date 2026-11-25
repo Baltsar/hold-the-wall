@@ -150,7 +150,7 @@ src/app/report/[run]/      the audit report
 deploy/                    Caddyfile, systemd unit, setup script, sandbox Dockerfile
 ```
 
-Copied from `fuckdoitlive` at commit `e59a49a`, MIT, same author. The README says so. Cards, votes,
+Copied from `fuckdoitlive` at `main` (`bc9d8b7`), MIT, same author. Only the transport was copied; the reducer and hub were written new. The README says so. Cards, votes,
 bingo, reactions, levels, lineup, saved shows and the Cloudflare worker are not copied.
 
 ## 7. The room
