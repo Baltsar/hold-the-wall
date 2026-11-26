@@ -52,9 +52,10 @@ export function modelName(): string {
 }
 
 /** One turn. Throws on a failed or slow request, so the loop can fall back to the script. */
-export async function askModel(messages: ChatMessage[]): Promise<string> {
+/** One turn. `model` overrides VULTR_MODEL, for comparing models side by side. */
+export async function askModel(messages: ChatMessage[], modelOverride?: string): Promise<string> {
   const key = process.env.VULTR_INFERENCE_KEY;
-  const model = process.env.VULTR_MODEL;
+  const model = modelOverride ?? process.env.VULTR_MODEL;
   if (!key || !model) throw new Error("VULTR_INFERENCE_KEY and VULTR_MODEL are not set");
   const res = await fetch(`${INFERENCE_URL}/chat/completions`, {
     method: "POST",
