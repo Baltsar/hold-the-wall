@@ -7,6 +7,23 @@ import type { ClientMessage, MasterCommand, ServerMessage } from "@/room/protoco
 import { randomId } from "@/lib/random-id";
 
 export type RoomState = Extract<ServerMessage, { t: "state" }>;
+
+declare global {
+  interface Window {
+    /** Set once the app runs, so the early script in the layout knows it started. */
+    __wallReady?: boolean;
+    /** The early script's reporter: what went wrong on this phone, sent to the server's log. */
+    __wallLog?: (kind: string, detail?: string) => void;
+  }
+}
+
+function report(kind: string, detail: string): void {
+  try {
+    window.__wallLog?.(kind, detail);
+  } catch {
+    // Reporting is best effort.
+  }
+}
 export type Link = "connecting" | "open" | "lost" | "gone";
 
 /** One id per tab, kept across reloads, so a reloaded phone gets its own seat back. */
@@ -54,7 +71,14 @@ export function useRoom(code: string, role: "audience" | "master", token?: strin
     let tries = 0;
     let ping: ReturnType<typeof setInterval> | null = null;
     let retry: ReturnType<typeof setTimeout> | null = null;
+    let gotState = false;
     const id = clientId(role);
+    window.__wallReady = true;
+    // A phone that never hears the room within 8 s is reported, with how far it got.
+    let stage = "connecting";
+    const stuck = setTimeout(() => {
+      if (!gotState) report("stuck", `${role} ${code}: ${stage}`);
+    }, 8000);
 
     const connect = () => {
       const proto = location.protocol === "https:" ? "wss" : "ws";
@@ -62,6 +86,7 @@ export function useRoom(code: string, role: "audience" | "master", token?: strin
       ws.current = socket;
       setLink("connecting");
       socket.onopen = () => {
+        stage = "socket open, waiting for the room";
         tries = 0;
         setLink("open");
         const hello: ClientMessage = { t: "hello", v: 1, id: randomId().slice(0, 8), room: code, clientId: id, role, ...(token ? { token } : {}) };
@@ -79,18 +104,27 @@ export function useRoom(code: string, role: "audience" | "master", token?: strin
         } catch {
           return;
         }
-        if (msg.t === "state") setState(msg);
+        if (msg.t === "state") {
+          gotState = true;
+          setState(msg);
+        }
         else if (msg.t === "you") setHolding(msg.holding);
         else if (msg.t === "probe") setProbe({ ...msg, at: Date.now() });
         else if (msg.t === "offer") setOffer({ id: msg.offer, endsAt: Date.now() + msg.ttlMs });
         else if (msg.t === "offerEnd") setOffer((o) => (o && o.id === msg.offer ? null : o));
         else if (msg.t === "ack" && !msg.ok && msg.err === "unknown-room") {
           stopped = true;
+          report("unknown-room", `${role} ${code}`);
           setLink("gone");
-        }
+        } else if (msg.t === "ack" && !msg.ok) report("refused", `${role} ${code}: ${msg.err ?? "?"}`);
+        else if (msg.t === "kicked") report("kicked", `${role} ${code}: ${msg.reason}`);
       };
-      socket.onclose = () => {
+      socket.onclose = (ev) => {
         if (ping) clearInterval(ping);
+        if (!gotState) {
+          stage = `socket closed (${ev.code}) before the room answered`;
+          if (tries === 0) report("closed-early", `${role} ${code}: ${ev.code} ${ev.reason}`);
+        }
         if (stopped) return;
         setLink("lost");
         tries += 1;
@@ -100,6 +134,7 @@ export function useRoom(code: string, role: "audience" | "master", token?: strin
     connect();
     return () => {
       stopped = true;
+      clearTimeout(stuck);
       if (ping) clearInterval(ping);
       if (retry) clearTimeout(retry);
       ws.current?.close();

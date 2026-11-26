@@ -82,6 +82,17 @@ function readBody(req) {
 
 const RUN_ID = /^[a-z0-9-]{4,40}$/;
 
+/** Phone reports an address may send in a minute, so the log cannot be flooded. */
+const logged = new Map();
+function mayLog(ip) {
+  const now = Date.now();
+  const recent = (logged.get(ip) ?? []).filter((t) => now - t < 60_000);
+  if (recent.length >= 20) return false;
+  recent.push(now);
+  logged.set(ip, recent);
+  return true;
+}
+
 /** Break-the-box runs an address may start in an hour. */
 const BREAKS_PER_HOUR = 60;
 const breaks = new Map();
@@ -128,6 +139,16 @@ const server = createServer(async (req, res) => {
     } catch {
       return json(res, 404, { error: "not found" });
     }
+  }
+  // What went wrong on a phone, from the early script and the app: one line in the log, nothing kept.
+  if (req.method === "POST" && url.pathname === "/api/client-log") {
+    const body = await readBody(req);
+    if (mayLog(clientIp(req))) {
+      const clip = (v, n) => String(v ?? "").replace(/[\u0000-\u001f]/g, " ").slice(0, n);
+      console.log(`> phone: ${clip(body.kind, 30)} | ${clip(body.detail, 300)} | ${clip(body.path, 40)} | ${clip(body.t, 8)} ms | ${clip(body.ua, 200)}`);
+    }
+    res.writeHead(204);
+    return res.end();
   }
   if (req.method === "GET" && url.pathname === "/api/health") {
     return json(res, 200, { ok: true, model: inferenceConfigured() ? modelName() : null, rootDoor: rootDoor(), runtime: process.env.SANDBOX_RUNTIME || "runc", host: process.env.WALL_HOST_LABEL || null });

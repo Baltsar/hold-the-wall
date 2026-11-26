@@ -117,7 +117,7 @@ export function Phone({ code }: { code: string }) {
   }, [offer]);
 
   if (link === "gone") return <Screen title="This room is closed." />;
-  if (!state) return <Screen title="Connecting…" />;
+  if (!state) return <Connecting />;
   if (phase === "lobby") {
     return (
       <Screen title="You are one brick of the wall." brick>
@@ -194,6 +194,20 @@ export function Phone({ code }: { code: string }) {
         )}
       </div>
     </main>
+  );
+}
+
+/** "Connecting…", and after 8 s a plain hint, instead of a screen that just waits. */
+function Connecting() {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setSlow(true), 8000);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <Screen title={slow ? "Still connecting…" : "Connecting…"}>
+      {slow ? "Check that the phone is online, then reload this page. If you scanned an old code, the room may have closed." : null}
+    </Screen>
   );
 }
 
