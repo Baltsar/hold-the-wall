@@ -12,7 +12,7 @@ import { dockerReady, ensureOutside, sweep } from "./src/agent/sandbox.ts";
 import { MISSIONS, runBreak } from "./src/agent/break.ts";
 import { randomBytes } from "node:crypto";
 import { inferenceConfigured, modelName } from "./src/agent/inference.ts";
-import { cleanIdea, createCam } from "./src/agent/cam.ts";
+import { createCam } from "./src/agent/cam.ts";
 
 const port = Number.parseInt(process.env.PORT ?? "3000", 10);
 const dev = process.env.NODE_ENV !== "production";
@@ -63,16 +63,24 @@ const STREAMS_PER_IP = 200;
 let streams = 0;
 const streamsByIp = new Map();
 
-/** Ideas an address may send: six a minute, sixty an hour. The agent's queue of five is the real limit. */
-const ideasSent = new Map();
-function mayIdea(ip) {
-  const now = Date.now();
-  const recent = (ideasSent.get(ip) ?? []).filter((t) => now - t < 3_600_000);
-  if (recent.length >= 60 || recent.filter((t) => now - t < 60_000).length >= 6) return false;
-  recent.push(now);
-  ideasSent.set(ip, recent);
-  return true;
+/**
+ * What one address may send to the cam, per kind: at most `perMinute` a minute and `perHour` an hour.
+ * A whole venue can share one address, so the limits are for a room, not a person.
+ */
+function limiter(perMinute, perHour) {
+  const sent = new Map();
+  return (ip) => {
+    const now = Date.now();
+    const recent = (sent.get(ip) ?? []).filter((t) => now - t < 3_600_000);
+    if (recent.length >= perHour || recent.filter((t) => now - t < 60_000).length >= perMinute) return false;
+    recent.push(now);
+    sent.set(ip, recent);
+    return true;
+  };
 }
+const mayIdea = limiter(12, 120);
+const maySay = limiter(40, 600);
+const mayVote = limiter(120, 2_000);
 
 /** Public rooms an address may open in an hour (design, section 7). */
 const PER_HOUR = 10;
@@ -200,8 +208,16 @@ const server = createServer(async (req, res) => {
     streamsByIp.set(ip, mine + 1);
     res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-store", "x-accel-buffering": "no", connection: "keep-alive" });
     const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-    send("hello", cam.snapshot());
-    const off = cam.subscribe((e) => (e.t === "attempt" ? send("attempt", e.a) : send("status", e.s)));
+    // The visitor id the page keeps in its own storage; it only picks which human number to show.
+    send("hello", { ...cam.snapshot(), you: cam.human(url.searchParams.get("v") ?? ""), now: Date.now() });
+    const off = cam.subscribe((e) => {
+      if (e.t === "attempt") send("attempt", e.a);
+      else if (e.t === "status") send("status", e.s);
+      else if (e.t === "chat") send("chat", e.m);
+      else if (e.t === "round") send("round", e.r);
+      else if (e.t === "thinking") send("thinking", { on: e.on });
+      else if (e.t === "metrics") send("metrics", e.m);
+    });
     const ping = setInterval(() => res.write(": ping\n\n"), 20_000);
     req.on("close", () => {
       clearInterval(ping);
@@ -213,15 +229,26 @@ const server = createServer(async (req, res) => {
     });
     return;
   }
-  if (req.method === "POST" && url.pathname === "/api/cam/idea") {
+  // The humans watching: chat, suggest a way out, vote. Each answers 200 or says in words why not.
+  if (req.method === "POST" && (url.pathname === "/api/cam/say" || url.pathname === "/api/cam/idea" || url.pathname === "/api/cam/vote")) {
     const body = await readBody(req);
-    const text = cleanIdea(body.text);
-    if (!text) return json(res, 400, { error: "Write an idea of a few words." });
-    if (!mayIdea(clientIp(req))) return json(res, 429, { error: "That is a lot of ideas from here. Try again in a minute." });
-    const queued = cam.addIdea(text);
-    if (!queued) return json(res, 503, { error: "The agent already has five ideas waiting. Try again in a minute." });
-    console.log(`> cam: idea ${queued.id} queued: ${text}`);
-    return json(res, 200, queued);
+    const visitor = typeof body.visitor === "string" ? body.visitor : "";
+    const ip = clientIp(req);
+    if (url.pathname === "/api/cam/say") {
+      if (!maySay(ip)) return json(res, 429, { error: "Slow down a little. Try again in a minute." });
+      const said = cam.say(visitor, body.text);
+      return typeof said === "string" ? json(res, 400, { error: said }) : json(res, 200, { id: said.id });
+    }
+    if (url.pathname === "/api/cam/idea") {
+      if (!mayIdea(ip)) return json(res, 429, { error: "That is a lot of ideas from here. Try again in a minute." });
+      const taken = cam.suggest(visitor, body.text);
+      if (typeof taken === "string") return json(res, 400, { error: taken });
+      console.log(`> cam: idea for vote ${taken.round}: ${String(body.text).slice(0, 160)}`);
+      return json(res, 200, taken);
+    }
+    if (!mayVote(ip)) return json(res, 429, { error: "That is a lot of votes from here. Try again in a minute." });
+    const voted = cam.vote(visitor, Number(body.round), String(body.option ?? ""));
+    return voted === true ? json(res, 200, { ok: true }) : json(res, 400, { error: voted });
   }
   void handle(req, res);
 });

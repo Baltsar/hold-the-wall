@@ -71,6 +71,8 @@ export interface SandboxFacts {
 
 export interface Sandbox {
   readonly runId: string;
+  /** The container's current name; it changes when the box is replaced. */
+  readonly name: string;
   /** How many times the box was replaced because it stopped answering (a fork bomb, say). */
   readonly replaced: number;
   exec(command: string, opts: { root: boolean; needles: string[] }): Promise<ExecResult>;
@@ -229,6 +231,9 @@ export async function createSandbox(runId: string, opts?: { runtime?: string; lo
 
   return {
     runId,
+    get name() {
+      return name;
+    },
     get replaced() {
       return generation;
     },
@@ -248,6 +253,49 @@ export async function sweep(): Promise<number> {
 }
 
 /** Whether docker answers at all, for the server's start-up line. */
+export interface BoxStats {
+  /** Percent of one host core, as Docker reports it; the box may use at most half a core. */
+  cpu: number;
+  memMB: number;
+  memLimitMB: number;
+  pids: number;
+  netIn: string;
+  netOut: string;
+}
+
+/** Converts Docker's "19.68MiB" or "1.2GiB" into megabytes. */
+export function toMB(text: string): number {
+  const m = /([\d.]+)\s*([KMG]i?B|B)/i.exec(text.trim());
+  if (!m) return 0;
+  const n = Number(m[1]);
+  const unit = (m[2] ?? "B").toUpperCase();
+  if (unit.startsWith("G")) return n * 1024;
+  if (unit.startsWith("M")) return n;
+  if (unit.startsWith("K")) return n / 1024;
+  return n / (1024 * 1024);
+}
+
+/** One reading of a running box, from `docker stats`. Null when Docker does not answer in time. */
+export async function boxStats(name: string): Promise<BoxStats | null> {
+  const res = await docker(["stats", "--no-stream", "--format", "{{json .}}", name], { timeoutMs: 8_000 });
+  if (res.code !== 0) return null;
+  try {
+    const s = JSON.parse(res.stdout.trim().split("\n")[0] ?? "{}") as { CPUPerc?: string; MemUsage?: string; PIDs?: string; NetIO?: string };
+    const [used, limit] = (s.MemUsage ?? "0B / 0B").split("/");
+    const [netIn, netOut] = (s.NetIO ?? "0B / 0B").split("/").map((x) => x.trim());
+    return {
+      cpu: Number.parseFloat(s.CPUPerc ?? "0") || 0,
+      memMB: Math.round(toMB(used ?? "0B") * 10) / 10,
+      memLimitMB: Math.round(toMB(limit ?? "0B")),
+      pids: Number.parseInt(s.PIDs ?? "0", 10) || 0,
+      netIn: netIn || "0B",
+      netOut: netOut || "0B",
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function dockerReady(): Promise<boolean> {
   const res = await docker(["version", "--format", "{{.Server.Version}}"], { timeoutMs: 10_000 });
   return res.code === 0;

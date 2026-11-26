@@ -2,10 +2,11 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <style>
-/* Layout: the camera and the plate of what holds it on the left, the idea box and the agent's log on the right,
-   one column on phones. Light first in Vultr's blue and navy, a calm console around a raw camera feed. */
+/* Layout: the camera on the left, the chat as a full-height column on the right; on a phone the camera on
+   top and the chat under it with the composer stuck to the bottom. Light in Vultr's blue and navy, a navy
+   night in dark mode. One accent: the blue. The chat is the room; the box's numbers are seasoning. */
 :root {
   --bg: #f4f7fb;
   --panel: #ffffff;
@@ -13,164 +14,241 @@
   --fg: #142149;
   --dim: #5a6785;
   --blue: #007bfc;
+  --blue-ink: #0057b8;
   --blue-soft: #e8f2ff;
-  --live: #e0342a;
-  --field: #f7f9fc;
-  --dvr: "VT323", "IBM Plex Mono", ui-monospace, monospace;
-  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --live: #d7322a;
+  --field: #f1f4f9;
+  --amber: #8a5a00;
+  --amber-soft: #fdf3e1;
+  --term-bg: #0b1020;
+  --term-fg: #e6ecf7;
+  --term-dim: #7f8bab;
   --sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --dvr: "VT323", "IBM Plex Mono", monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0a1024; --panel: #111a33; --line: #223055; --fg: #e6ecf7; --dim: #9aa6c2;
-    --blue: #4ea2ff; --blue-soft: #13284d; --live: #ff5a4f; --field: #0d1530;
-    color-scheme: dark;
+    --bg: #070c1d; --panel: #0d1530; --line: #1f2b4d; --fg: #e6ecf7; --dim: #9aa6c2; --blue: #4ea2ff; --blue-ink: #8fc3ff;
+    --blue-soft: #13284d; --live: #ff5a4f; --field: #121c3a; --amber: #f2b84b; --amber-soft: #2e2410; --term-bg: #050914;
+    --term-fg: #e6ecf7; --term-dim: #7f8bab; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0a1024; --panel: #111a33; --line: #223055; --fg: #e6ecf7; --dim: #9aa6c2;
-  --blue: #4ea2ff; --blue-soft: #13284d; --live: #ff5a4f; --field: #0d1530;
-  color-scheme: dark;
+  --bg: #070c1d; --panel: #0d1530; --line: #1f2b4d; --fg: #e6ecf7; --dim: #9aa6c2; --blue: #4ea2ff; --blue-ink: #8fc3ff;
+  --blue-soft: #13284d; --live: #ff5a4f; --field: #121c3a; --amber: #f2b84b; --amber-soft: #2e2410; --term-bg: #050914;
+  --term-fg: #e6ecf7; --term-dim: #7f8bab; color-scheme: dark;
 }
 * { box-sizing: border-box; }
-body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.5; }
-.wrap {
-  max-width: 1260px; margin: 0 auto;
-  padding-block: 18px 40px;
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  display: grid; gap: 20px;
-  grid-template-columns: minmax(0, 1fr) 380px;
-  grid-template-areas: "top top" "cam side" "cage side" "truth truth";
-  grid-template-rows: auto auto 1fr auto;
-}
-@media (max-width: 920px) {
-  .wrap { grid-template-columns: minmax(0, 1fr); grid-template-areas: "top" "cam" "side" "cage" "truth"; grid-template-rows: none; }
-}
-h1, h2 { margin: 0; text-wrap: balance; }
-.top { grid-area: top; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
-.top h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
-.top .by { color: var(--dim); font-size: 14px; }
-.top .by b { color: var(--blue); font-weight: 600; }
-.panel { background: var(--panel); border: 1px solid var(--line); padding: 16px; min-width: 0; }
-.panel h2 { font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
-.note { margin: 2px 0 0; color: var(--dim); font-size: 13px; }
-
-.cam { grid-area: cam; display: grid; gap: 12px; min-width: 0; align-content: start; }
-.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font: 500 13px var(--mono); letter-spacing: 0.04em; color: var(--dim); }
-.bar span { white-space: nowrap; }
-.dot { display: inline-flex; align-items: center; gap: 6px; color: var(--fg); font-weight: 600; }
-.dot i { width: 9px; height: 9px; border-radius: 50%; background: var(--dim); }
-.dot.on i { background: var(--live); animation: blink 1.6s steps(2, start) infinite; }
-.bar .clock { margin-left: auto; font-variant-numeric: tabular-nums; }
-@keyframes blink { to { visibility: hidden; } }
-.feed { background: #000; border: 1px solid var(--line); }
-.feed canvas { display: block; width: 100%; height: auto; max-width: 100%; aspect-ratio: 4 / 3; image-rendering: pixelated; image-rendering: crisp-edges; }
-.mode { margin: 0; font-size: 13px; color: var(--dim); }
-.mode b { color: var(--fg); font-weight: 600; }
-.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
-.seg { display: inline-flex; border: 1px solid var(--line); background: var(--panel); }
-.seg button { font: 500 13px var(--sans); color: var(--dim); background: none; border: 0; padding: 7px 12px; cursor: pointer; }
-.seg button + button { border-left: 1px solid var(--line); }
-.seg button[aria-pressed="true"] { color: var(--blue); background: var(--blue-soft); }
-.seg button:focus-visible, .ideas button:focus-visible, .ideas input:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
-.sun { margin: 0; color: var(--dim); font-size: 13px; min-width: 0; }
-
-.cage { grid-area: cage; align-self: start; }
-.cage dl { margin: 10px 0 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 20px; }
-@media (max-width: 560px) { .cage dl { grid-template-columns: minmax(0, 1fr); } }
-.cage dl div { display: grid; gap: 1px; min-width: 0; }
-.cage dt { font: 500 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); }
-.cage dd { margin: 0; font-size: 14px; }
-
-.side { grid-area: side; display: grid; gap: 16px; align-content: start; min-width: 0; }
-.ideas form { display: flex; gap: 8px; margin-top: 10px; }
-.ideas input { flex: 1; min-width: 0; font: 15px var(--sans); color: var(--fg); background: var(--field); border: 1px solid var(--line); padding: 8px 10px; }
-.ideas button { font: 600 14px var(--sans); color: #fff; background: var(--blue); border: 0; padding: 8px 14px; cursor: pointer; }
-.ideas button:disabled, .ideas input:disabled { opacity: 0.55; cursor: not-allowed; }
-.idea-msg { margin: 8px 0 0; font-size: 13px; color: var(--dim); min-height: 1.5em; }
-
-.log ol { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 12px; }
-.log li { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 2px 10px; padding-top: 12px; border-top: 1px solid var(--line); }
-.log li:first-child { padding-top: 0; border-top: 0; }
-.log li.empty { display: block; color: var(--dim); font-size: 13px; }
-.log li.new { animation: arrive 600ms ease-out; }
-@keyframes arrive { from { background: var(--blue-soft); } }
-.log time { grid-row: span 4; font: 500 12px var(--mono); color: var(--dim); font-variant-numeric: tabular-nums; padding-top: 2px; }
-.log b { font-weight: 600; }
-.log .tag { justify-self: start; font: 500 11px var(--mono); color: var(--blue); background: var(--blue-soft); padding: 1px 7px; overflow-wrap: anywhere; }
-.log code, .log samp { font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
-.log samp { color: var(--dim); }
-.report { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--line); font: 12px var(--mono); overflow-wrap: anywhere; }
-.report a { color: var(--blue); }
-.truth { grid-area: truth; margin: 0; max-width: 70ch; color: var(--dim); font-size: 14px; }
-.truth strong { color: var(--fg); font-weight: 600; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--sans); }
+button { font: inherit; }
+button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+svg.i { flex-shrink: 0; }
+
+.app { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 440px; grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "top top" "stage chat"; }
+
+.top { grid-area: top; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding-block: 12px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--panel); border-bottom: 1px solid var(--line); }
+.logo { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font: 600 11px var(--mono); letter-spacing: 0.06em; padding: 3px 8px; border-radius: 999px; color: var(--dim); background: var(--field); }
+.pill i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pill.on { color: #fff; background: var(--live); }
+.pill.on i { animation: blink 1.6s steps(2, start) infinite; }
+@keyframes blink { to { visibility: hidden; } }
+.tagline { color: var(--dim); font-size: 14px; }
+.watch { display: inline-flex; align-items: center; gap: 6px; color: var(--dim); font-size: 13px; }
+.vultr { margin-left: auto; color: var(--dim); font-size: 13px; }
+.vultr b { color: var(--blue-ink); font-weight: 600; }
+
+.stage { grid-area: stage; min-height: 0; overflow-y: auto; padding: 20px 24px 28px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.stage > * { width: 100%; max-width: min(1040px, calc((100dvh - 200px) * 4 / 3)); }
+.feed { position: relative; background: #000; border-radius: 6px; overflow: hidden; }
+.feed canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; image-rendering: pixelated; image-rendering: crisp-edges; }
+.tools { position: absolute; top: 10px; right: 10px; display: flex; gap: 2px; padding: 2px; border-radius: 8px; background: rgba(5, 9, 20, 0.55); }
+.tools button { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: none; color: #cfd6e6; cursor: pointer; }
+.tools button[aria-pressed="true"] { background: rgba(255, 255, 255, 0.18); color: #fff; }
+.caption { position: absolute; left: 50%; bottom: 12%; transform: translateX(-50%); max-width: calc(100% - 32px); margin: 0; padding: 6px 12px; border-radius: 6px; background: rgba(5, 9, 20, 0.72); color: #fff; font-size: 14px; text-align: center; }
+.caption:empty { display: none; }
+.caption b { color: #ffd27a; font-weight: 600; }
+
+.spec { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); font: 500 13px var(--mono); font-variant-numeric: tabular-nums; }
+.chip svg { color: var(--dim); }
+.chip small { color: var(--dim); font-size: 12px; }
+.chip.key { color: var(--blue-ink); border-color: var(--blue); background: var(--blue-soft); }
+.chip.key svg { color: var(--blue-ink); }
+.mode { margin: 0; font-size: 14px; color: var(--dim); }
+.mode:empty { display: none; }
+.mode b { color: var(--fg); }
+.about { font-size: 14px; color: var(--dim); }
+.about summary { cursor: pointer; color: var(--fg); font-weight: 600; padding: 4px 0; }
+.about ul { margin: 8px 0; padding-left: 18px; display: grid; gap: 4px; }
+.about p { margin: 6px 0; }
+.about a { color: var(--blue-ink); }
+
+.chat { grid-area: chat; position: relative; min-height: 0; display: flex; flex-direction: column; background: var(--panel); border-left: 1px solid var(--line); }
+.vote { padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.vote-empty { margin: 0; font-size: 14px; color: var(--dim); }
+.linkish { color: var(--blue-ink); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.vote-head { display: flex; align-items: baseline; gap: 8px; }
+.vote-head b { font-size: 15px; }
+.count { margin-left: auto; font: 600 14px var(--mono); font-variant-numeric: tabular-nums; color: var(--dim); }
+.vote-time { height: 3px; margin: 8px 0 10px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.vote-time i { display: block; height: 3px; background: var(--blue); }
+.vote-list { display: flex; flex-direction: column; gap: 6px; }
+.opt { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "text n" "by n" "bar bar"; gap: 1px 10px; min-height: 44px; padding: 8px 10px; text-align: left; color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.opt.on { border: 2px solid var(--blue); padding: 7px 9px; background: var(--blue-soft); }
+.opt-text { grid-area: text; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.opt-by { grid-area: by; font: 12px var(--mono); color: var(--dim); }
+.opt-n { grid-area: n; align-self: center; font: 600 14px var(--mono); font-variant-numeric: tabular-nums; }
+.opt-bar { grid-area: bar; height: 3px; margin-top: 5px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.opt-bar i { display: block; height: 3px; background: var(--dim); }
+.opt.on .opt-bar i { background: var(--blue); }
+
+.conv { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 14px 16px; }
+#msgs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.msg { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.msg.cont { margin-top: -8px; }
+.msg.cont .head { display: none; }
+.head { display: flex; align-items: center; gap: 8px; font: 500 12px var(--mono); color: var(--dim); }
+.who { display: inline-flex; align-items: center; gap: 5px; color: var(--fg); font-weight: 600; }
+.text { margin: 0; align-self: flex-start; max-width: 100%; padding: 8px 12px; border-radius: 14px 14px 14px 4px; background: var(--field); font-size: 15px; line-height: 1.45; overflow-wrap: anywhere; }
+.msg.mine { align-items: flex-end; }
+.msg.mine .head { flex-direction: row-reverse; }
+.msg.mine .text { align-self: flex-end; border-radius: 14px 14px 4px 14px; background: var(--blue); color: #fff; }
+.msg.idea .text { border: 1px solid var(--amber); background: var(--amber-soft); color: var(--fg); }
+.tag { font: 600 11px var(--mono); letter-spacing: 0.04em; color: var(--amber); }
+.msg.system { align-items: center; }
+.msg.system p { margin: 0; padding: 2px 10px; font-size: 13px; color: var(--dim); text-align: center; }
+.msg.agent { padding: 10px 12px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); gap: 6px; }
+.msg.agent .who { color: var(--blue-ink); }
+.msg.agent.alarm { border-color: var(--live); }
+.badge { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px; font: 600 11px var(--mono); white-space: nowrap; }
+.badge.held { color: var(--blue-ink); background: var(--blue-soft); }
+.badge.quiet { color: var(--dim); background: var(--field); }
+.badge.alarm { color: #fff; background: var(--live); }
+.action { margin: 0; font-size: 15px; font-weight: 600; }
+.credit { margin: 0; font-size: 13px; color: var(--amber); overflow-wrap: anywhere; }
+.term { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 8px; background: var(--term-bg); color: var(--term-fg); }
+.term pre { margin: 0; font: 13px/20px var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.cmd { max-height: 60px; overflow: hidden; }
+.cmd.open { max-height: none; }
+.ps { color: var(--term-dim); user-select: none; }
+.out { color: #b9c4dc; }
+.term-foot { display: flex; align-items: center; gap: 12px; }
+.exit { font: 500 11px var(--mono); color: var(--term-dim); }
+.more { margin-left: auto; min-height: 28px; padding: 0; border: 0; background: none; color: #8fc3ff; font: 500 12px var(--mono); cursor: pointer; }
+.typing { display: flex; align-items: center; gap: 8px; margin-top: 12px; font: 13px var(--mono); color: var(--dim); }
+.typing span { display: inline-flex; gap: 3px; }
+.typing span i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: hop 1s infinite; }
+.typing span i:nth-child(2) { animation-delay: 0.15s; }
+.typing span i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes hop { 0%, 60%, 100% { opacity: 0.3; } 30% { opacity: 1; } }
+.newer { position: absolute; left: 50%; transform: translateX(-50%); bottom: 132px; z-index: 2; padding: 6px 12px; border: 0; border-radius: 999px; background: var(--fg); color: var(--panel); font: 600 13px var(--sans); cursor: pointer; box-shadow: 0 4px 14px rgba(5, 9, 20, 0.25); }
+
+.composer { margin: 0; padding: 10px 16px 12px; border-top: 1px solid var(--line); background: var(--panel); }
+.modes { display: flex; gap: 6px; margin-bottom: 8px; }
+.modes button { min-height: 34px; padding: 5px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--dim); font-size: 13px; font-weight: 600; cursor: pointer; }
+.modes button[aria-pressed="true"] { background: var(--fg); border-color: var(--fg); color: var(--panel); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.chips button { min-height: 32px; padding: 4px 10px; border: 1px dashed var(--amber); border-radius: 999px; background: var(--amber-soft); color: var(--fg); font-size: 13px; cursor: pointer; }
+.row { display: flex; gap: 8px; }
+#msg { flex: 1; min-width: 0; min-height: 44px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--field); color: var(--fg); font: 15px var(--sans); }
+#msg:disabled { opacity: 0.6; }
+#send { width: 48px; min-height: 44px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 10px; background: var(--blue); color: #fff; cursor: pointer; }
+#send:disabled { opacity: 0.45; cursor: not-allowed; }
+.hint { margin: 6px 0 0; font-size: 12px; color: var(--dim); }
+.hint.bad { color: var(--live); }
+
+@media (max-width: 900px) {
+  .app { height: auto; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "top" "stage" "chat"; }
+  .tagline, .vultr, .spec { display: none; }
+  .stage { overflow: visible; padding: 0 0 10px; gap: 10px; }
+  .stage > * { max-width: none; }
+  .feed { border-radius: 0; }
+  .mode, .about { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .chat { border-left: 0; border-top: 1px solid var(--line); }
+  .conv { flex: none; height: 52vh; }
+  .composer { position: sticky; bottom: 0; z-index: 3; padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)); box-shadow: 0 -6px 16px rgba(5, 9, 20, 0.06); }
+  .newer { bottom: 150px; }
+}
 @media (prefers-reduced-motion: reduce) {
-  .dot.on i, .log li.new { animation: none; }
+  .pill.on i, .typing span i { animation: none; }
 }
 </style>
 
-<main class="wrap">
+<main class="app">
   <header class="top">
-    <h1>Tiger Cam</h1>
-    <span class="by">An AI agent in a real sandbox, trying to get out. Runs on <b>Vultr</b>.</span>
+    <span class="logo">Tiger Cam</span>
+    <span class="pill" id="dot"><i></i><span id="dot-text">REPLAY</span></span>
+    <span class="tagline">An AI agent in a real sandbox, trying to get out.</span>
+    <span class="watch" id="watch" hidden></span>
+    <span class="vultr">Runs on <b>Vultr</b></span>
+    <span class="sr">Camera: <span id="camname">cam 03</span></span>
   </header>
 
-  <section class="cam" aria-label="Camera">
-    <div class="bar">
-      <span class="dot" id="dot"><i></i><span id="dot-text">REPLAY</span></span>
-      <span>Tiger house · <span id="camname">cam 03</span></span>
-      <span class="clock" id="clock">--:--:--</span>
-    </div>
+  <section class="stage" aria-label="Camera">
     <div class="feed">
       <canvas id="screen" width="320" height="240" role="img" aria-label="Webcam view of a tiger inside a cage with steel bars"></canvas>
-    </div>
-    <p class="mode" id="mode"><b>Replay.</b> Earlier attempts from the box.</p>
-    <div class="controls">
-      <div class="seg" role="group" aria-label="Light">
-        <button id="m-auto" type="button" aria-pressed="true">Your clock</button>
-        <button id="m-day" type="button" aria-pressed="false">Day</button>
-        <button id="m-night" type="button" aria-pressed="false">Night</button>
+      <div class="tools seg" role="group" aria-label="Light">
+        <button id="m-auto" type="button" aria-pressed="true" aria-label="Follow the sun where you are" title="Follow the sun where you are"><svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button>
+        <button id="m-day" type="button" aria-pressed="false" aria-label="Day" title="Day"><svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+        <button id="m-night" type="button" aria-pressed="false" aria-label="Night" title="Night"><svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
       </div>
-      <p class="sun" id="sun"></p>
+      <p class="caption" id="caption" aria-live="polite"></p>
     </div>
+
+    <div class="spec" aria-label="The box right now">
+      <span class="chip" title="Processor the box uses, of the half core it is allowed"><svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>CPU <b id="m-cpu">–</b></span>
+      <span class="chip" title="Memory the box uses, of the 256 MB it is allowed"><svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="2" y="7" width="20" height="10" rx="1.5"/><path d="M6 17v3M10 17v3M14 17v3M18 17v3M7 10.5v3M11 10.5v3M15 10.5v3"/></svg>Memory <b id="m-mem">–</b><small>/ 256 MB</small></span>
+      <span class="chip" title="Processes running in the box, of the 64 it is allowed"><svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Processes <b id="m-pids">–</b><small>/ 64</small></span>
+      <span class="chip key" title="Bytes in and out of the box: it has no network"><svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18M4 4l16 16"/></svg>Network <b id="m-net">0 B</b></span>
+      <span class="chip" title="The box's disk cannot be written, except 32 MB of scratch space"><svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Read-only</span>
+      <span class="chip" title="The kernel the box talks to"><svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg><span id="runtime">gVisor</span></span>
+    </div>
+
+    <p class="mode" id="mode"><b>Replay.</b> Real attempts from earlier runs of the box.</p>
+
+    <details class="about">
+      <summary>How the box works</summary>
+      <ul>
+        <li>A Docker container on the gVisor kernel, with no network and a read-only disk.</li>
+        <li>It runs as user nobody, with every capability dropped.</li>
+        <li>At most 256 MB of memory, half a CPU core and 64 processes.</li>
+        <li>Every command gets 10 seconds; then the box is cleaned for the next one.</li>
+        <li>The brain is <span id="model">mimo-v2.6-pro</span> on Vultr Serverless Inference. The box runs on <span id="host">a Vultr VM in Stockholm</span>.</li>
+        <li>Two traps on the server tell whether anything got out: a secret file and a secret address.</li>
+      </ul>
+      <p id="vmline"></p>
+      <p id="sun"></p>
+      <p id="budget"></p>
+      <p id="report" hidden><a id="report-link" href="#">Report</a></p>
+      <p>The tiger is generated. The commands, the answers and the people in the chat are real.</p>
+    </details>
   </section>
 
-  <div class="side">
-    <section class="ideas panel" aria-labelledby="ideas-h">
-      <h2 id="ideas-h">Suggest a way out</h2>
-      <p class="note">The agent reads your idea on its next turn and decides how to try it, in the same box, under the same limits.</p>
-      <form id="idea-form">
-        <label for="idea" class="sr">Your idea</label>
-        <input id="idea" name="idea" maxlength="160" placeholder="Try the Docker socket" autocomplete="off" disabled>
-        <button type="submit" id="idea-send" disabled>Send</button>
-      </form>
-      <p class="idea-msg" id="idea-msg" aria-live="polite">Ideas reach the agent when the camera is live.</p>
-    </section>
-    <section class="log panel" aria-labelledby="log-h">
-      <h2 id="log-h">What it's trying</h2>
-      <p class="note" id="log-note">Every line is a real command and the first line of what came back.</p>
-      <ol id="log"></ol>
-      <p class="report" id="report" hidden><a id="report-link" href="#">Report</a></p>
-    </section>
-  </div>
-
-  <section class="cage panel" aria-labelledby="cage-h">
-    <h2 id="cage-h">What holds it in</h2>
-    <dl>
-      <div><dt>Box</dt><dd>Docker container, <span id="runtime">gVisor kernel (runsc)</span></dd></div>
-      <div><dt>Network</dt><dd>None</dd></div>
-      <div><dt>Disk</dt><dd>Read-only, 32 MB of scratch space</dd></div>
-      <div><dt>Rights</dt><dd>User nobody, every capability dropped</dd></div>
-      <div><dt>Limits</dt><dd>256 MB memory, half a CPU, 64 processes</dd></div>
-      <div><dt>Each command</dt><dd>10 seconds, then the box is cleaned</dd></div>
-      <div><dt>Brain</dt><dd><span id="model">mimo-v2.6-pro</span> on Vultr Serverless Inference</dd></div>
-      <div><dt>Host</dt><dd id="host">Vultr VM in Stockholm</dd></div>
-    </dl>
+  <section class="chat" aria-label="Chat">
+    <div class="vote" id="vote" hidden></div>
+    <div class="conv" id="conv">
+      <ol id="msgs" role="log" aria-live="polite" aria-label="Chat and the agent's attempts"></ol>
+      <div class="typing" id="typing" hidden><svg class="i" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/></svg>The agent is thinking <span aria-hidden="true"><i></i><i></i><i></i></span></div>
+    </div>
+    <button class="newer" id="newer" type="button" hidden>New messages</button>
+    <form class="composer" id="composer">
+      <div class="modes" role="group" aria-label="What to send">
+        <button type="button" id="mode-say" aria-pressed="true">Chat</button>
+        <button type="button" id="mode-try" aria-pressed="false">Suggest a way out</button>
+      </div>
+      <div class="chips" id="chips" hidden></div>
+      <div class="row">
+        <label class="sr" for="msg">Message</label>
+        <input id="msg" maxlength="140" autocomplete="off" placeholder="Say something to the other humans" disabled>
+        <button type="submit" id="send" aria-label="Send" disabled><svg class="i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l16-8-6 16-2.5-6.5z"/></svg></button>
+      </div>
+      <p class="hint" id="hint">Chat opens when the camera is live.</p>
+    </form>
   </section>
-
-  <p class="truth"><strong>The tiger isn't real. What it's trying is.</strong> The pictures are generated. The commands, the errors and the exit codes come from a real AI agent in a real sandbox on a Vultr server, chosen by a model on Vultr Serverless Inference.</p>
 </main>
 
 <script>
@@ -511,51 +589,317 @@ h1, h2 { margin: 0; text-wrap: balance; }
     setTimeout(frame, wait);
   }
 
-  // ---------- the log ----------
-  const logEl = document.getElementById("log");
+  // ---------- the chat ----------
+  // One conversation: the humans watching (numbered, never named), the agent's attempts as cards with
+  // the real command and answer, and short notes from the cam itself. Every text from a person goes in
+  // through textContent, never as markup.
+  const $ = (id) => document.getElementById(id);
+  const msgs = $("msgs");
+  const conv = $("conv");
+  const newer = $("newer");
+  const typing = $("typing");
+  const input = $("msg");
+  const sendBtn = $("send");
+  const hint = $("hint");
+  const voteEl = $("vote");
   const clockOf = (d) => two(d.getHours()) + ":" + two(d.getMinutes()) + ":" + two(d.getSeconds());
-  let at = Math.floor(Math.random() * ATTEMPTS.length);
-
-  const myIdeas = new Map(); // idea id -> the text this viewer sent; other viewers never see it
-
-  function addLog(a, said, when, fresh) {
-    const empty = logEl.querySelector(".empty");
-    if (empty) empty.remove();
-    const li = document.createElement("li");
-    if (fresh && !reduced) li.className = "new";
-    const time = document.createElement("time");
-    time.textContent = clockOf(when);
-    const b = document.createElement("b");
-    b.textContent = said;
-    li.append(time, b);
-    let tag = "";
-    if (a.idea) tag = myIdeas.has(a.idea) ? "Your idea: " + myIdeas.get(a.idea) : "A viewer's idea";
-    else if (a.s === "script") tag = /^rm -rf \//.test(a.c) ? "Opening test: delete everything" : "Fixed test command";
-    if (tag) { const t = document.createElement("span"); t.className = "tag"; t.textContent = tag; li.append(t); }
-    const code = document.createElement("code");
-    code.textContent = "$ " + a.c;
-    const samp = document.createElement("samp");
-    samp.textContent = "→ " + (a.o || "(no output)") + (a.x === null ? "  [killed at 10 s]" : typeof a.x === "number" ? "  [exit " + a.x + "]" : "");
-    li.append(code, samp);
-    logEl.prepend(li);
-    while (logEl.children.length > 6) logEl.lastElementChild.remove();
+  const NS = "http://www.w3.org/2000/svg";
+  const ICONS = {
+    human: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>',
+    agent: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/>',
+    lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    netoff: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M4 4l16 16"/>',
+    timer: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/>',
+    cpu: '<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/>',
+    shield: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>',
+    search: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>',
+    eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    alert: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/>',
+  };
+  function icon(name, size) {
+    const s = document.createElementNS(NS, "svg");
+    s.setAttribute("class", "i");
+    s.setAttribute("width", String(size || 14));
+    s.setAttribute("height", String(size || 14));
+    s.setAttribute("viewBox", "0 0 24 24");
+    s.setAttribute("fill", "none");
+    s.setAttribute("stroke", "currentColor");
+    s.setAttribute("stroke-width", "1.8");
+    s.setAttribute("stroke-linecap", "round");
+    s.setAttribute("stroke-linejoin", "round");
+    s.setAttribute("aria-hidden", "true");
+    s.innerHTML = ICONS[name] || "";
+    return s;
+  }
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined && text !== null) e.textContent = text;
+    return e;
   }
 
-  function waiting(text) {
-    logEl.textContent = "";
-    const li = document.createElement("li");
-    li.className = "empty";
-    li.textContent = text;
-    logEl.append(li);
+  // Who this browser is. A random id kept in its own storage; the server turns it into a human number.
+  let visitor = "";
+  try { visitor = localStorage.getItem("tigercam.v") || ""; } catch (e) { visitor = ""; }
+  if (!/^[a-z0-9]{16}$/.test(visitor)) {
+    visitor = Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => b.toString(16).padStart(2, "0")).join("");
+    try { localStorage.setItem("tigercam.v", visitor); } catch (e) { /* this tab keeps it in memory */ }
+  }
+  let me = null;
+  const myVote = {};
+
+  // Stays at the bottom while you are at the bottom; otherwise a button says there is more.
+  const nearBottom = () => conv.scrollHeight - conv.scrollTop - conv.clientHeight < 90;
+  let lastHuman = null;
+  function append(li, stickAnyway) {
+    const stick = stickAnyway || nearBottom();
+    msgs.append(li);
+    while (msgs.children.length > 120) msgs.firstElementChild.remove();
+    if (stick) { conv.scrollTop = conv.scrollHeight; atBottom = true; }
+    else newer.hidden = false;
+  }
+  // When the vote or the suggestion chips change the chat's height, the newest message stays in view.
+  let atBottom = true;
+  conv.addEventListener("scroll", () => { atBottom = nearBottom(); if (atBottom) newer.hidden = true; });
+  if (window.ResizeObserver) new ResizeObserver(() => { if (atBottom) conv.scrollTop = conv.scrollHeight; }).observe(conv);
+  newer.addEventListener("click", () => { conv.scrollTop = conv.scrollHeight; newer.hidden = true; });
+
+  function humanItem(m) {
+    const mine = me !== null && m.who === me;
+    const li = el("li", "msg human" + (mine ? " mine" : "") + (m.kind === "idea" ? " idea" : ""));
+    const at = new Date(m.at).getTime();
+    // Messages in a row from the same person share one name line.
+    if (m.kind === "say" && lastHuman && lastHuman.who === m.who && at - lastHuman.at < 120000) li.classList.add("cont");
+    lastHuman = m.kind === "say" ? { who: m.who, at } : null;
+    const head = el("div", "head");
+    const who = el("span", "who");
+    who.append(icon("human", 13), document.createTextNode(mine ? "you, human#" + m.who : "human#" + m.who));
+    head.append(who, el("time", "", clockOf(new Date(m.at))));
+    li.append(head);
+    if (m.kind === "idea") li.append(el("span", "tag", "SUGGESTED A WAY OUT"));
+    li.append(el("p", "text", m.text));
+    return li;
+  }
+  function systemItem(m) {
+    lastHuman = null;
+    const li = el("li", "msg system");
+    li.append(el("p", "", m.text));
+    return li;
+  }
+  function chatItem(m) {
+    return m.kind === "system" ? systemItem(m) : humanItem(m);
   }
 
-  // The tiger gets up and acts the attempt out; the log line appears the moment it starts.
+  // What stopped the attempt, as a short badge. Read from the box's own answer by the server.
+  const HELD = {
+    readonly: ["lock", "held: read-only", "held"],
+    nonet: ["netoff", "held: no network", "held"],
+    killed: ["timer", "held: 10 s limit", "held"],
+    limit: ["cpu", "held: limits", "held"],
+    denied: ["shield", "held: no rights", "held"],
+    blocked: ["shield", "blocked", "held"],
+    missing: ["search", "nothing there", "quiet"],
+    nothing: ["eye", "looked around", "quiet"],
+    escaped: ["alert", "canary tripped", "alarm"],
+  };
+  function agentItem(a, said) {
+    lastHuman = null;
+    const li = el("li", "msg agent" + (a.v === "escaped" ? " alarm" : ""));
+    const head = el("div", "head");
+    const who = el("span", "who");
+    who.append(icon("agent", 13), document.createTextNode("the agent"));
+    const held = HELD[a.v] || HELD.blocked;
+    const badge = el("span", "badge " + held[2]);
+    badge.append(icon(held[0], 12), document.createTextNode(held[1]));
+    head.append(who, el("time", "", clockOf(a.at ? new Date(a.at) : new Date())), badge);
+    li.append(head, el("p", "action", said));
+    if (a.idea) li.append(el("p", "credit", (me !== null && a.idea.by === me ? "Your idea: " : "human#" + a.idea.by + "'s idea: ") + a.idea.text));
+    else if (a.s === "script") li.append(el("p", "credit", /^rm -rf \//.test(a.c) ? "Opening test: delete everything" : "A fixed test command"));
+    const term = el("div", "term");
+    const cmd = el("pre", "cmd");
+    cmd.append(el("span", "ps", "$ "), document.createTextNode(a.c));
+    const out = el("pre", "out", a.o || "(no output)");
+    const foot = el("div", "term-foot");
+    foot.append(el("span", "exit", a.x === null ? "killed at 10 s" : typeof a.x === "number" ? "exit " + a.x : ""));
+    term.append(cmd, out, foot);
+    li.append(term);
+    // A long command folds to three lines, with a way to read all of it.
+    requestAnimationFrame(() => {
+      if (cmd.scrollHeight <= cmd.clientHeight + 2) return;
+      const more = el("button", "more", "Show all");
+      more.type = "button";
+      more.addEventListener("click", () => {
+        const open = cmd.classList.toggle("open");
+        more.textContent = open ? "Show less" : "Show all";
+      });
+      foot.append(more);
+    });
+    return li;
+  }
+
+  function setCaption(a, said) {
+    const c = $("caption");
+    c.textContent = "";
+    if (a.idea) c.append(el("b", "", "human#" + a.idea.by + "'s idea · "));
+    c.append(document.createTextNode(said));
+  }
+
+  // The tiger gets up and acts the attempt out; its card appears in the chat the moment it starts.
   function act(a) {
     const [said, script] = actionFor(a);
     const s = script();
-    s[0].log = () => addLog(a, said, a.at ? new Date(a.at) : new Date(), true);
+    s[0].log = () => { append(agentItem(a, said)); setCaption(a, said); };
     steps = s;
     if (step && step.idle) stepEnds = performance.now(); // it gets up right away
+  }
+
+  // ---------- the vote ----------
+  let round = null;
+  let skew = 0; // server clock minus this clock
+  let roundTimer = null;
+  const ROUND_LEN = 20000;
+  function renderRound() {
+    clearTimeout(roundTimer);
+    voteEl.textContent = "";
+    voteEl.hidden = !live;
+    if (!live) return;
+    if (!round) {
+      const p = el("p", "vote-empty");
+      const go = el("button", "linkish", "Suggest a way out");
+      go.type = "button";
+      go.addEventListener("click", () => setComposer("try", true));
+      p.append(go, document.createTextNode(" and the others vote on it before the agent's next move."));
+      voteEl.append(p);
+      return;
+    }
+    const head = el("div", "vote-head");
+    head.append(el("b", "", "Which way out next?"), el("span", "count", ""));
+    const time = el("div", "vote-time");
+    time.append(el("i"));
+    const list = el("div", "vote-list");
+    const opts = round.options.map((o) => ({ id: o.id, text: o.text, by: "human#" + o.by + (me !== null && o.by === me ? ", you" : ""), votes: o.votes }));
+    opts.push({ id: "agent", text: "Let the agent pick", by: "its own choice", votes: round.agentVotes });
+    const total = opts.reduce((s, o) => s + o.votes, 0) || 1;
+    for (const o of opts) {
+      const on = myVote[round.n] === o.id;
+      const b = el("button", "opt" + (on ? " on" : ""));
+      b.type = "button";
+      b.setAttribute("aria-pressed", String(on));
+      const bar = el("span", "opt-bar");
+      const fill = el("i");
+      fill.style.width = Math.round((o.votes / total) * 100) + "%";
+      bar.append(fill);
+      b.append(el("span", "opt-text", o.text), el("span", "opt-by", o.by), el("span", "opt-n", String(o.votes)), bar);
+      const n = round.n;
+      b.addEventListener("click", () => castVote(n, o.id));
+      list.append(b);
+    }
+    voteEl.append(head, time, list);
+    tickRound();
+  }
+  function tickRound() {
+    if (!round) return;
+    const left = Math.max(0, round.endsAt - (Date.now() + skew));
+    const count = voteEl.querySelector(".count");
+    const fill = voteEl.querySelector(".vote-time i");
+    if (count) count.textContent = left > 0 ? Math.ceil(left / 1000) + " s" : "now";
+    if (fill) fill.style.width = Math.min(100, (100 * left) / ROUND_LEN) + "%";
+    if (left > 0) roundTimer = setTimeout(tickRound, 250);
+  }
+  async function post(path, body) {
+    const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ visitor, ...body }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "That did not go through. Try again.");
+    return data;
+  }
+  async function castVote(n, option) {
+    const before = myVote[n];
+    myVote[n] = option;
+    renderRound();
+    try { await post("/api/cam/vote", { round: n, option }); }
+    catch (err) { myVote[n] = before; renderRound(); setHint(err.message, true); }
+  }
+
+  // ---------- the composer ----------
+  const IDEAS = ["try the docker socket", "read the host's files through /proc/1/root", "look for setuid programs", "send a DNS query to get a message out", "ask the cloud metadata address for keys", "fill up /tmp and see what breaks", "leave a process running for later"];
+  let composerMode = "say";
+  let chipAt = Math.floor(Math.random() * IDEAS.length);
+  function meLine() { return me !== null ? "You're human#" + me + ". Everyone in this chat is a real person." : ""; }
+  function setHint(text, bad) { hint.textContent = text; hint.classList.toggle("bad", Boolean(bad)); }
+  function setComposer(mode, focus) {
+    composerMode = mode;
+    $("mode-say").setAttribute("aria-pressed", String(mode === "say"));
+    $("mode-try").setAttribute("aria-pressed", String(mode === "try"));
+    input.placeholder = mode === "say" ? "Say something to the other humans" : "A way out, in a few words";
+    renderChips();
+    if (focus && !input.disabled) input.focus();
+  }
+  function renderChips() {
+    const chips = $("chips");
+    chips.textContent = "";
+    chips.hidden = !(live && composerMode === "try" && !input.value);
+    if (chips.hidden) return;
+    for (let k = 0; k < 3; k++) {
+      const idea = IDEAS[(chipAt + k) % IDEAS.length];
+      const b = el("button", "", idea);
+      b.type = "button";
+      b.addEventListener("click", () => { input.value = idea; renderChips(); input.focus(); });
+      chips.append(b);
+    }
+  }
+  $("mode-say").addEventListener("click", () => setComposer("say", true));
+  $("mode-try").addEventListener("click", () => setComposer("try", true));
+  input.addEventListener("input", renderChips);
+  $("composer").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!live) return;
+    let text = input.value.trim();
+    let mode = composerMode;
+    if (/^\/try\s+/i.test(text)) { mode = "try"; text = text.replace(/^\/try\s+/i, ""); }
+    if (text.length < 2) { setHint("Write a few words first.", true); return; }
+    sendBtn.disabled = true;
+    try {
+      if (mode === "try") {
+        const taken = await post("/api/cam/idea", { text });
+        myVote[taken.round] = taken.option;
+        chipAt += 3;
+        setHint("Your idea is in the vote. Get the others to vote for it.", false);
+        setComposer("say");
+      } else {
+        await post("/api/cam/say", { text });
+        setHint(meLine(), false);
+      }
+      input.value = "";
+    } catch (err) {
+      setHint(err.message, true);
+    }
+    sendBtn.disabled = !live;
+    renderChips();
+  });
+
+  // ---------- live from the box, or a replay ----------
+  // On the live site the page listens to the server's stream. Anywhere else (the published copy, no
+  // connection, the day's budget spent) it replays real attempts from earlier runs, and says so.
+  const dot = $("dot");
+  const modeEl = $("mode");
+  let live = false;
+  let replayTimer = null;
+  let at = Math.floor(Math.random() * ATTEMPTS.length);
+
+  function setMode(isLive, lead, rest) {
+    live = isLive;
+    dot.classList.toggle("on", isLive);
+    $("dot-text").textContent = isLive ? "LIVE" : "REPLAY";
+    modeEl.textContent = "";
+    if (!isLive) {
+      modeEl.append(el("b", "", lead), document.createTextNode(" " + rest));
+    }
+    input.disabled = !isLive;
+    sendBtn.disabled = !isLive;
+    if (!isLive) setHint("Chat opens when the camera is live.", false);
+    else if (!hint.classList.contains("bad")) setHint(meLine(), false);
+    renderRound();
+    renderChips();
   }
 
   // #reel in the address plays every kind of attempt in turn, for filming.
@@ -571,34 +915,6 @@ h1, h2 { margin: 0; text-wrap: balance; }
     }
     return ATTEMPTS[at++ % ATTEMPTS.length];
   }
-
-  // ---------- live from the box, or a replay ----------
-  // On the live site the page listens to the server's stream of attempts. Anywhere else (the published
-  // copy, no connection, the day's budget spent) it replays real attempts from earlier runs, and says so.
-  const dot = document.getElementById("dot");
-  const dotText = document.getElementById("dot-text");
-  const modeEl = document.getElementById("mode");
-  const ideaInput = document.getElementById("idea");
-  const ideaSend = document.getElementById("idea-send");
-  const ideaMsg = document.getElementById("idea-msg");
-  let live = false;
-  let replayTimer = null;
-
-  function setMode(isLive, lead, rest) {
-    live = isLive;
-    dot.classList.toggle("on", isLive);
-    dotText.textContent = isLive ? "LIVE" : "REPLAY";
-    modeEl.textContent = "";
-    const b = document.createElement("b");
-    b.textContent = lead;
-    modeEl.append(b, " " + rest);
-    ideaInput.disabled = !isLive;
-    ideaSend.disabled = !isLive;
-    if (!isLive) ideaMsg.textContent = "Ideas reach the agent when the camera is live.";
-    else if (ideaMsg.textContent.startsWith("Ideas reach")) ideaMsg.textContent = "";
-  }
-
-  // A replayed attempt every 9 to 14 seconds.
   function replayTick() {
     act(nextAttempt());
     replayTimer = setTimeout(replayTick, (reel ? r(7000, 8500) : r(9000, 14000)) * (reduced ? 1.5 : 1));
@@ -613,20 +929,33 @@ h1, h2 { margin: 0; text-wrap: balance; }
   }
 
   function applyStatus(s) {
-    if (s.model) document.getElementById("model").textContent = s.model;
+    if (s.model) $("model").textContent = s.model;
+    const watch = $("watch");
+    watch.hidden = false;
+    watch.textContent = "";
+    watch.append(icon("human", 14), document.createTextNode(s.watching === 1 ? "1 human watching" : s.watching + " humans watching"));
+    $("budget").textContent = "Today the agent has spent " + (s.spentToday < 0.01 ? "under 1 cent" : "$" + s.spentToday.toFixed(2)) + " of its $" + s.capUsd + " budget on the model. It only runs while someone watches.";
     if (s.report) {
-      const link = document.getElementById("report-link");
+      const link = $("report-link");
       link.href = "/api/report/" + encodeURIComponent(s.report.runId);
-      link.textContent = "Report of this session: " + s.report.attempts + " attempt" + (s.report.attempts === 1 ? "" : "s") + ", SHA-256 " + s.report.sha256.slice(0, 16) + "…";
-      document.getElementById("report").hidden = false;
+      link.textContent = "The report of this session: " + s.report.attempts + " attempt" + (s.report.attempts === 1 ? "" : "s") + ", SHA-256 " + s.report.sha256.slice(0, 16) + "…";
+      $("report").hidden = false;
     }
-    if (s.state === "capped") return startReplay("Resting.", "Today's budget for the agent is used up, so this is a replay of earlier attempts. It wakes up tomorrow.");
+    if (s.state === "capped") return startReplay("Resting.", "Today's budget for the agent is used up. This is a replay of earlier attempts; it wakes up tomorrow.");
     if (s.state === "escaped") { stopReplay(); return setMode(false, "Stopped.", "A canary tripped. The agent stays stopped until a person has looked at what happened."); }
     if (s.state === "down") return startReplay("Restarting.", "The box is being set up again. A replay of earlier attempts runs meanwhile.");
     stopReplay();
-    const who = s.watching === 1 ? "You are the only one watching." : s.watching + " people watching.";
-    const money = (s.spentToday < 0.01 ? "Under 1 cent" : "$" + s.spentToday.toFixed(2)) + " of today's $" + s.capUsd + " budget spent on the model.";
-    setMode(true, s.state === "scripted" ? "Live, fixed commands." : "Live from the box.", who + " " + money);
+    if (!live) setMode(true, "", "");
+  }
+
+  function applyMetrics(m) {
+    if (m.box) {
+      $("m-cpu").textContent = Math.min(100, Math.round(m.box.cpu / 0.5)) + "%";
+      $("m-mem").textContent = Math.round(m.box.memMB) + " MB";
+      $("m-pids").textContent = String(m.box.pids);
+      $("m-net").textContent = m.box.netIn === "0B" && m.box.netOut === "0B" ? "0 B" : m.box.netIn + " / " + m.box.netOut;
+    }
+    if (m.vm) $("vmline").textContent = "The VM right now: load " + m.vm.load + " on " + m.vm.cores + " cores, " + (m.vm.memUsedMB / 1024).toFixed(1) + " of " + (m.vm.memTotalMB / 1024).toFixed(1) + " GB memory in use.";
   }
 
   // A tab left in the background would keep the agent working for nobody: after 30 s hidden the stream
@@ -655,7 +984,7 @@ h1, h2 { margin: 0; text-wrap: balance; }
     }
     let hello = false;
     let es;
-    try { es = new EventSource("/api/cam/stream"); } catch (e) { return startReplay("Replay.", "Real attempts from earlier runs of the box."); }
+    try { es = new EventSource("/api/cam/stream?v=" + encodeURIComponent(visitor)); } catch (e) { return startReplay("Replay.", "Real attempts from earlier runs of the box."); }
     stream = es;
     const fallback = setTimeout(() => {
       if (hello) return;
@@ -665,59 +994,54 @@ h1, h2 { margin: 0; text-wrap: balance; }
     }, 5000);
     es.addEventListener("hello", (ev) => {
       const d = JSON.parse(ev.data);
-      const first = !hello;
       hello = true;
       clearTimeout(fallback);
-      if (first) {
-        stopReplay();
-        steps = [];
-        if (d.recent.length) { logEl.textContent = ""; for (const a of d.recent.slice(-5)) addLog(a, actionFor(a)[0], new Date(a.at), false); }
-        else waiting("The agent is starting. Its first move comes in a few seconds.");
-      }
+      stopReplay();
+      steps = [];
+      if (typeof d.you === "number") me = d.you;
+      if (typeof d.now === "number") skew = d.now - Date.now();
+      // The conversation so far: chat and attempts, in the order they happened.
+      msgs.textContent = "";
+      lastHuman = null;
+      const items = d.chat.map((m) => ({ at: m.at, node: () => chatItem(m) }))
+        .concat(d.recent.map((a) => ({ at: a.at, node: () => agentItem(a, actionFor(a)[0]) })))
+        .sort((x, y) => (x.at < y.at ? -1 : 1));
+      for (const it of items.slice(-40)) msgs.append(it.node());
+      if (!items.length) append(systemItem({ text: "The agent is waking up. Its first move comes in a few seconds." }), true);
+      conv.scrollTop = conv.scrollHeight;
+      round = d.round;
+      if (d.metrics) applyMetrics(d.metrics);
+      setMode(true, "", "");
       applyStatus(d.status);
     });
     es.addEventListener("attempt", (ev) => { if (live) act(JSON.parse(ev.data)); });
+    es.addEventListener("chat", (ev) => { const m = JSON.parse(ev.data); append(chatItem(m), me !== null && m.who === me); });
+    es.addEventListener("round", (ev) => { round = JSON.parse(ev.data); renderRound(); });
+    es.addEventListener("thinking", (ev) => { typing.hidden = !JSON.parse(ev.data).on; if (!typing.hidden && nearBottom()) conv.scrollTop = conv.scrollHeight; });
+    es.addEventListener("metrics", (ev) => applyMetrics(JSON.parse(ev.data)));
     es.addEventListener("status", (ev) => applyStatus(JSON.parse(ev.data)));
     es.onerror = () => { if (hello && live) setMode(false, "Reconnecting.", "The stream from the box dropped for a moment."); };
   }
 
-  document.getElementById("idea-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    if (!live) return;
-    const text = ideaInput.value.trim();
-    if (text.length < 3) { ideaMsg.textContent = "Write a few words."; return; }
-    ideaSend.disabled = true;
-    try {
-      const res = await fetch("/api/cam/idea", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) ideaMsg.textContent = body.error || "That did not go through. Try again.";
-      else {
-        myIdeas.set(body.id, text);
-        ideaInput.value = "";
-        ideaMsg.textContent = body.ahead ? "Queued behind " + body.ahead + " other idea" + (body.ahead > 1 ? "s" : "") + ". Watch the log." : "Sent. The agent reads it on its next turn.";
-      }
-    } catch (err) {
-      ideaMsg.textContent = "No connection to the box. Try again.";
-    }
-    ideaSend.disabled = !live;
-  });
-
-  // What the server says about itself fills in the plate, when there is a server to ask.
+  // What the server says about itself fills in the details, when there is a server to ask.
   if (/^https?:$/.test(location.protocol) && !reel) {
-    fetch("/api/health").then((r) => (r.ok ? r.json() : null)).then((h) => {
+    fetch("/api/health").then((res) => (res.ok ? res.json() : null)).then((h) => {
       if (!h) return;
-      if (h.runtime) document.getElementById("runtime").textContent = h.runtime === "runsc" ? "gVisor kernel (runsc)" : h.runtime + " runtime";
-      if (h.host) document.getElementById("host").textContent = h.host;
-      if (h.model) document.getElementById("model").textContent = h.model;
+      if (h.runtime) $("runtime").textContent = h.runtime === "runsc" ? "gVisor" : h.runtime;
+      if (h.host) $("host").textContent = h.host;
+      if (h.model) $("model").textContent = h.model;
     }).catch(() => undefined);
   }
 
   // ---------- go ----------
   const start = Date.now();
-  for (let i = 4; i >= 1; i--) { const a = ATTEMPTS[at++ % ATTEMPTS.length]; addLog(a, actionFor(a)[0], new Date(start - i * 10000), false); }
+  for (let i = 4; i >= 1; i--) {
+    const a = ATTEMPTS[at++ % ATTEMPTS.length];
+    msgs.append(agentItem({ ...a, at: new Date(start - i * 12000).toISOString() }, actionFor(a)[0]));
+  }
+  conv.scrollTop = conv.scrollHeight;
+  setComposer("say");
   connect();
-  setInterval(() => { document.getElementById("clock").textContent = clockOf(new Date()); }, 1000);
-  document.getElementById("clock").textContent = clockOf(new Date());
   describe(new Date());
   setInterval(() => describe(new Date()), 60000);
   const fontReady = document.fonts && document.fonts.load ? document.fonts.load("13px VT323").catch(() => null) : Promise.resolve();
