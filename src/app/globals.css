@@ -31,36 +31,64 @@ a { color: var(--steel); }
 .btn:disabled { opacity: 0.4; cursor: default; }
 .err { color: var(--alarm); }
 
-/* Stage */
-.stage { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; padding: 24px; }
-.stage.solo { grid-template-columns: minmax(0, 1fr) 320px; }
-.stage-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.chrome { display: flex; justify-content: space-between; gap: 16px; font: 500 14px var(--mono); color: var(--dim); text-transform: uppercase; letter-spacing: 0.06em; flex-wrap: wrap; }
-.chrome b { color: var(--paper); font-weight: 600; }
-.box { position: relative; width: 100%; max-width: min(62vh, 820px); aspect-ratio: 1; margin: 0 auto; }
+/* Stage: a top bar, the arena on the left, the log on the right. Sized for a 1920x1080 projector. */
+.stage { height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) clamp(320px, 27vw, 540px); grid-template-rows: auto minmax(0, 1fr); gap: 18px 28px; padding: 22px 32px 24px; overflow: hidden; }
+.topbar { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 32px; }
+.brand { font: 700 22px var(--display); letter-spacing: 0.08em; display: flex; flex-direction: column; gap: 4px; }
+.brand span { font: 500 13px var(--mono); letter-spacing: 0.12em; color: var(--dim); text-transform: uppercase; }
+.count { text-align: right; font: 600 13px var(--mono); color: var(--dim); text-transform: uppercase; letter-spacing: 0.1em; display: flex; flex-direction: column; }
+.count b { font: 700 clamp(30px, 3vw, 52px) var(--display); color: var(--paper); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.arena { min-height: 0; display: flex; align-items: center; justify-content: center; }
+.box { position: relative; height: 100%; max-height: 100%; aspect-ratio: 1; max-width: 100%; }
 .box canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-.feed { font: 400 15px/1.5 var(--mono); color: var(--dim); min-height: 4.5em; overflow-wrap: anywhere; max-width: 900px; margin: 0 auto; width: 100%; }
-.feed .cmd { color: var(--paper); }
-.feed .ok { color: var(--steel-soft); font-weight: 600; }
-.feed .bad { color: var(--alarm); font-weight: 600; }
-.feed .tag { color: var(--dim); }
-.feed-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.controls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-.controls .btn { padding: 8px 14px; font-size: 14px; }
-.side { display: flex; flex-direction: column; gap: 14px; align-items: center; justify-content: center; }
-.qr { background: var(--paper); padding: 14px; border-radius: 8px; width: 260px; }
+.side { min-height: 0; display: flex; flex-direction: column; gap: 16px; }
+.join { display: flex; flex-direction: column; gap: 16px; align-items: stretch; }
+.qr { background: var(--paper); padding: 18px; border-radius: 10px; }
 .qr img { display: block; width: 100%; height: auto; }
-.join-url { font: 600 18px var(--mono); text-align: center; overflow-wrap: anywhere; max-width: 260px; }
-.solo-phone { width: 320px; height: min(640px, 90vh); border: 1px solid var(--line); border-radius: 28px; overflow: hidden; }
+.join-url { font: 600 clamp(16px, 1.4vw, 24px) var(--mono); text-align: center; overflow-wrap: anywhere; }
+.rules { margin: 0; padding: 0 0 0 1.2em; display: flex; flex-direction: column; gap: 8px; font-size: clamp(15px, 1.15vw, 20px); color: var(--paper); line-height: 1.35; }
+.rules li::marker { color: var(--amber, var(--agent)); font-weight: 700; }
+.solo-phone { width: 100%; flex: 1; min-height: 0; max-height: 720px; border: 1px solid var(--line); border-radius: 28px; overflow: hidden; }
 .solo-phone iframe { width: 100%; height: 100%; border: 0; }
+.late { display: flex; gap: 12px; align-items: center; font: 500 13px var(--mono); color: var(--dim); }
+.late img { width: 72px; height: 72px; border-radius: 4px; background: var(--paper); padding: 4px; }
+.vultr { font: 600 12px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--steel-soft); }
+.report-link { font: 600 15px var(--mono); color: var(--steel-soft); }
+.controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: auto; }
+.controls .btn { padding: 9px 16px; font-size: 14px; }
 
-.reveal { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 14px; padding: 7% 9%; background: color-mix(in srgb, var(--ink) 93%, transparent); }
-.reveal p { margin: 0; font-size: clamp(16px, 2.6vw, 30px); line-height: 1.25; opacity: 0; transition: opacity 0.6s; }
-.reveal p.show { opacity: 1; }
+/* The log of attempts. */
+.log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: hidden; flex: 1; }
+.log.empty { color: var(--dim); font: 500 15px var(--mono); }
+.log li { border-left: 2px solid var(--line); padding: 4px 0 4px 12px; font: 400 13px/1.4 var(--mono); }
+.log li:first-child { border-left-color: var(--steel); }
+.log li.bad { border-left-color: var(--alarm); }
+.log-head { display: flex; align-items: center; gap: 8px; color: var(--dim); }
+.log-head i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.log-head .n { color: var(--paper); font-weight: 600; }
+.chip { font: 700 11px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; background: color-mix(in srgb, var(--steel) 22%, transparent); color: var(--steel-soft); }
+.chip.recon, .chip.sandbox { background: var(--line); color: var(--dim); }
+.log li.bad .chip { background: var(--alarm); color: var(--ink); }
+.log-head .via { margin-left: auto; font-size: 12px; }
+.log-cmd { color: var(--paper); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.log-out { color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* The reveal, over the arena. */
+.reveal { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 14px; padding: 7% 9%; background: color-mix(in srgb, var(--ink) 94%, transparent); border-radius: 12px; }
+.reveal p { margin: 0; font-size: clamp(16px, 2vw, 30px); line-height: 1.25; opacity: 0; transition: opacity 0.6s; text-wrap: balance; }
+.reveal p.show, .reveal .stops.show { opacity: 1; }
 .reveal b { color: var(--agent); font-variant-numeric: tabular-nums; }
-.reveal p.steel b { color: var(--steel-soft); }
-.reveal p.last { margin-top: 12px; font-size: clamp(26px, 4.8vw, 60px); font-weight: 700; letter-spacing: -0.02em; text-wrap: balance; }
+.reveal p.last { margin-top: 10px; font-size: clamp(26px, 3.8vw, 64px); font-weight: 700; letter-spacing: -0.02em; line-height: 1.05; }
 .reveal .hash { font: 400 12px var(--mono); color: var(--dim); }
+.stops { opacity: 0; transition: opacity 0.6s; display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.stops-title { font: 600 13px var(--mono); color: var(--dim); text-transform: uppercase; letter-spacing: 0.1em; }
+.stops-title b { color: var(--steel-soft); }
+.stop { display: grid; grid-template-columns: minmax(0, 15em) 1fr 2.5em; gap: 12px; align-items: center; font: 500 clamp(12px, 1vw, 15px) var(--mono); color: var(--steel-soft); }
+.stop span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.stop i { height: 10px; border-radius: 3px; background: var(--steel); display: block; min-width: 4px; }
+.stop b { color: var(--paper); text-align: right; }
+.stop.quiet { color: var(--dim); }
+.stop.quiet i { background: var(--line); }
 
 /* Phone */
 .phone { position: fixed; inset: 0; display: flex; flex-direction: column; gap: 16px; padding: max(20px, env(safe-area-inset-top)) 18px max(20px, env(safe-area-inset-bottom)); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; }
@@ -84,22 +112,25 @@ a { color: var(--steel); }
 .facts { font: 13px/1.6 var(--mono); color: var(--dim); overflow-wrap: anywhere; }
 
 @media (max-width: 900px) {
-  .stage, .stage.solo { grid-template-columns: 1fr; }
+  .stage { height: auto; overflow: visible; grid-template-columns: 1fr; }
+  .topbar { grid-template-columns: 1fr; gap: 12px; }
+  .box { height: auto; width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
   .reveal p { transition: none; }
 }
 
 /* The game layer: a clock, a meter for how whole the wall is, and the Vultr line. */
-.hud { display: grid; grid-template-columns: auto 1fr auto; gap: 18px; align-items: center; max-width: 900px; margin: 0 auto; width: 100%; }
+.hud { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 28px; align-items: center; }
+.meter-wrap { display: flex; flex-direction: column; gap: 8px; }
+.meter-label em { color: var(--agent); font-style: normal; }
 .clock { font: 700 clamp(28px, 4vw, 52px) var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .clock.low { color: var(--agent); }
 .meter { height: 14px; border-radius: 7px; background: var(--line); overflow: hidden; position: relative; }
 .meter span { position: absolute; inset: 0 auto 0 0; background: var(--paper); transition: width 0.25s linear; }
-.meter-label { font: 600 13px var(--mono); color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; text-align: right; }
-.meter-label b { display: block; color: var(--paper); font-size: clamp(22px, 3vw, 40px); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
-.vultr { font: 600 12px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--steel-soft); }
-.lobby-call { text-align: center; font-size: clamp(22px, 3.2vw, 44px); font-weight: 700; letter-spacing: -0.02em; text-wrap: balance; }
+.meter-label { font: 600 13px var(--mono); color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; }
+.meter-label b { color: var(--paper); font-size: 18px; font-variant-numeric: tabular-nums; }
+.lobby-call { font-size: clamp(22px, 2.6vw, 44px); font-weight: 700; letter-spacing: -0.02em; text-wrap: balance; }
 
 /* Film mode: nothing a viewer should not see. */
 .stage.film .controls, .stage.film .chrome .err { display: none; }

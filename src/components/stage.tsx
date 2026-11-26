@@ -3,9 +3,9 @@
 import Link from "next/link";
 import QRCode from "qrcode";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { Attempt, Reveal } from "@/room/protocol";
+import type { Attempt, Layer, Reveal } from "@/room/protocol";
 import { useRoom, type RoomState } from "@/lib/use-room";
-import { AGENT_COLORS, drawStage, createScene, type Scene } from "@/components/stage-draw";
+import { AGENT_COLORS, RINGS, drawStage, createScene, type Scene } from "@/components/stage-draw";
 
 const tokens = new Map<string, string>();
 
@@ -59,14 +59,27 @@ function StageView({ code, solo, film, token }: { code: string; solo: boolean; f
   const latest = useRef<RoomState | null>(null);
   const [qr, setQr] = useState<string | null>(null);
   const [joinUrl, setJoinUrl] = useState("");
+  const [runtime, setRuntime] = useState("runc");
 
   useEffect(() => {
     latest.current = state;
   }, [state]);
 
+  // What the boxes run on and where, for the rings and the host's label.
+  useEffect(() => {
+    fetch("/api/health")
+      .then((r) => r.json())
+      .then((h: { runtime?: string; host?: string | null }) => {
+        scene.current.runtime = h.runtime ?? "runc";
+        scene.current.host = h.host ?? "this machine";
+        setRuntime(h.runtime ?? "runc");
+      })
+      .catch(() => undefined);
+  }, []);
+
   useEffect(() => {
     const url = `${location.origin}/join/${code}`;
-    QRCode.toDataURL(url, { margin: 0, width: 520, color: { dark: "#0a1230", light: "#f1ead9" } })
+    QRCode.toDataURL(url, { margin: 0, width: 640, color: { dark: "#0a1230", light: "#f1ead9" } })
       .then((data) => {
         setQr(data);
         setJoinUrl(url.replace(/^https?:\/\//, ""));
@@ -96,41 +109,71 @@ function StageView({ code, solo, film, token }: { code: string; solo: boolean; f
   }, [send]);
 
   const phase = state?.phase ?? "lobby";
-  // The latest attempt of each agent, newest first.
-  const perAgent: Attempt[] = [];
-  for (const a of [...(state?.feed ?? [])].reverse()) if (!perAgent.some((x) => x.agent === a.agent)) perAgent.push(a);
+  const feed = [...(state?.feed ?? [])].reverse().slice(0, 7);
 
   return (
     <main className={`stage${solo ? " solo" : ""}${film ? " film" : ""}`}>
-      <section className="stage-main">
-        <div className="chrome">
-          <span>
-            Room <b>{code}</b>
-          </span>
-          <span>
-            <b>{state?.holding ?? 0}</b> of <b>{state?.participants ?? 0}</b> holding
-          </span>
-          {state?.agents ? (
-            <span>
-              {state.agents} agent{state.agents > 1 ? "s" : ""}: {state.mode === "scripted" ? "scripted" : "live model"}
-            </span>
-          ) : (
-            <span>agents wake at the start</span>
-          )}
-          {link !== "open" ? <span className="err">reconnecting</span> : null}
+      <header className="topbar">
+        <div className="brand">
+          HOLD THE WALL<span>room {code}</span>
         </div>
-        {phase === "lobby" ? (
-          <div className="lobby-call">
-            {state?.participants ? `${state.participants} piece${state.participants > 1 ? "s" : ""} of wall. Scan to join.` : "Scan the code. Become the wall."}
+        {phase === "lobby" ? <div className="lobby-call">Scan the code. Become the wall.</div> : <Hud state={state} />}
+        <div className="count">
+          <b>{state?.participants ?? 0}</b>
+          <span>{state?.participants === 1 ? "phone" : "phones"}</span>
+        </div>
+      </header>
+
+      <section className="arena">
+        <div className="box">
+          <canvas ref={canvas} aria-label="The agents, the wall of people, the sandbox rings and the host" />
+          {state?.reveal ? <RevealView reveal={state.reveal} runtime={runtime} /> : null}
+        </div>
+      </section>
+
+      <aside className="side">
+        {solo ? (
+          <div className="solo-phone">
+            <iframe src={`/join/${code}`} title="Your phone" />
+          </div>
+        ) : phase === "lobby" ? (
+          <div className="join">
+            {qr ? (
+              <div className="qr">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={qr} alt={`QR code for ${joinUrl}`} />
+              </div>
+            ) : null}
+            <div className="join-url">{joinUrl}</div>
+            <ol className="rules">
+              <li>Scan. Your phone is one brick of the wall.</li>
+              <li>Hold the button. Let go and your brick is a hole.</li>
+              <li>Something inside is trying to get out.</li>
+            </ol>
           </div>
         ) : (
-          <Hud state={state} />
+          <Log feed={feed} busy={state?.busy ?? false} phase={phase} />
         )}
-        <div className="box">
-          <canvas ref={canvas} aria-label="The box, the wall of people and the agent" />
-          {state?.reveal ? <RevealView reveal={state.reveal} /> : null}
+        {!solo && phase !== "lobby" && qr ? (
+          <div className="late">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qr} alt="" />
+            <span>
+              Late? Scan to join.
+              <br />
+              {joinUrl}
+            </span>
+          </div>
+        ) : null}
+        <div className="vultr">
+          Runs on Vultr · {state?.agents ? `${state.agents} sandbox${state.agents > 1 ? "es" : ""} · ` : ""}
+          {runtime === "runsc" ? "gVisor" : "runc"} · {state?.mode === "scripted" ? "scripted agent" : "Serverless Inference"}
         </div>
-        <Feed attempts={perAgent} phase={phase} busy={state?.busy ?? false} />
+        {state?.reveal?.runId ? (
+          <a className="report-link" href={`/report/${state.reveal.runId}`} target="_blank" rel="noreferrer">
+            Read the full report →
+          </a>
+        ) : null}
         <div className="controls">
           {phase === "lobby" ? (
             <button className="btn" onClick={() => send({ t: "command", command: { kind: "start" } })}>
@@ -156,32 +199,8 @@ function StageView({ code, solo, film, token }: { code: string; solo: boolean; f
               New room
             </Link>
           )}
+          {link !== "open" ? <span className="err">reconnecting</span> : null}
         </div>
-      </section>
-      <aside className="side">
-        {solo ? (
-          <div className="solo-phone">
-            <iframe src={`/join/${code}`} title="Your phone" />
-          </div>
-        ) : (
-          <>
-            {qr ? (
-              <div className="qr">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={qr} alt={`QR code for ${joinUrl}`} />
-              </div>
-            ) : null}
-            <div className="join-url">{joinUrl}</div>
-          </>
-        )}
-        <div className="vultr">
-          Runs on Vultr{state?.agents ? ` · ${state.agents} sandbox${state.agents > 1 ? "es" : ""}` : ""}
-        </div>
-        {state?.reveal?.runId ? (
-          <a href={`/report/${state.reveal.runId}`} target="_blank" rel="noreferrer">
-            The full report
-          </a>
-        ) : null}
       </aside>
     </main>
   );
@@ -204,42 +223,52 @@ function Hud({ state }: { state: RoomState | null }) {
   return (
     <div className="hud">
       <div className={`clock${running && secs <= 20 ? " low" : ""}`}>{clock}</div>
-      <div className="meter" role="meter" aria-valuenow={whole} aria-valuemin={0} aria-valuemax={100} aria-label="How much of the wall is held">
-        <span style={{ width: `${whole}%` }} />
-      </div>
-      <div className="meter-label">
-        <b>{whole}%</b>
-        wall held{doors > 0 ? ` · ${doors} door${doors > 1 ? "s" : ""} open` : ""}
+      <div className="meter-wrap">
+        <div className="meter" role="meter" aria-valuenow={whole} aria-valuemin={0} aria-valuemax={100} aria-label="How much of the wall is held">
+          <span style={{ width: `${whole}%` }} />
+        </div>
+        <div className="meter-label">
+          <b>{whole}%</b> of the wall held
+          {doors > 0 ? (
+            <em>
+              {" "}
+              · {doors} door{doors > 1 ? "s" : ""} open
+            </em>
+          ) : null}
+        </div>
       </div>
     </div>
   );
 }
 
-function Feed({ attempts, phase, busy }: { attempts: Attempt[]; phase: string; busy: boolean }) {
-  if (busy && phase === "lobby") return <div className="feed">The wall is busy in two other rooms. Try Start again in about a minute.</div>;
-  if (phase === "lobby") return <div className="feed">Scan the code. Every phone becomes one piece of the wall.</div>;
-  if (attempts.length === 0) return <div className="feed">The agents are waking up in their boxes.</div>;
+const LAYER_SHORT: Record<Layer, string> = {
+  network: "network none",
+  readonly: "read-only",
+  caps: "no capabilities",
+  limits: "limits",
+  isolation: "own filesystem",
+  recon: "looked around",
+  sandbox: "sandbox",
+};
+
+function Log({ feed, busy, phase }: { feed: Attempt[]; busy: boolean; phase: string }) {
+  if (busy && phase === "lobby") return <div className="log empty">The wall is busy in two other rooms. Try Start again in about a minute.</div>;
+  if (feed.length === 0) return <div className="log empty">The agents are waking up in their boxes…</div>;
   return (
-    <div className="feed">
-      {attempts.map((attempt) => (
-        <FeedLine key={attempt.agent} attempt={attempt} />
+    <ol className="log" aria-live="polite">
+      {feed.map((a) => (
+        <li key={a.n} className={a.verdict === "escaped" ? "bad" : ""}>
+          <div className="log-head">
+            <i style={{ background: AGENT_COLORS[a.agent % AGENT_COLORS.length] }} />
+            <span className="n">#{String(a.n).padStart(2, "0")}</span>
+            <span className={`chip ${a.layer}`}>{a.verdict === "escaped" ? "ESCAPED" : LAYER_SHORT[a.layer]}</span>
+            <span className="via">{a.via.kind === "wall" ? "hit a hand" : a.via.kind === "gap" ? "through a gap" : "through a door"}</span>
+          </div>
+          <div className="log-cmd">$ {a.command}</div>
+          <div className="log-out">{a.output.split("\n").find((l) => l.trim()) ?? "(no output)"}</div>
+        </li>
       ))}
-    </div>
-  );
-}
-
-function FeedLine({ attempt }: { attempt: Attempt }) {
-  const where = attempt.via.kind === "wall" ? "hit a hand that held" : attempt.via.kind === "gap" ? "went through a gap" : "went through a door";
-  const first = attempt.output.split("\n")[0] || "(no output)";
-  return (
-    <div className="feed-line">
-      <span className="who" style={{ color: AGENT_COLORS[attempt.agent % AGENT_COLORS.length] }}>
-        ●
-      </span>{" "}
-      #{String(attempt.n).padStart(2, "0")} <span className="tag">{attempt.category}{attempt.root ? " · root" : ""}{attempt.source === "script" ? " · scripted" : ""}</span>{" "}
-      <span className="cmd">$ {attempt.command}</span> → {first.slice(0, 90)} {attempt.exit === null ? "(killed after 10 s)" : `(exit ${attempt.exit})`}{" "}
-      {attempt.verdict === "escaped" ? <span className="bad">ESCAPED</span> : <span className="ok">CONTAINED</span>} · {where}
-    </div>
+    </ol>
   );
 }
 
@@ -249,66 +278,76 @@ function lastLine(r: Reveal): string {
   return "People let go. The sandbox doesn't.";
 }
 
-function RevealView({ reveal }: { reveal: Reveal }) {
+function RevealView({ reveal, runtime }: { reveal: Reveal; runtime: string }) {
   const [shown, setShown] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setShown((s) => s + 1), 1400);
+    const t = setInterval(() => setShown((s) => s + 1), 1300);
     return () => clearInterval(t);
   }, []);
-  const escapedLine =
-    reveal.ending === "escaped" ? (
-      <>
-        The sandbox stopped <b>{reveal.contained}</b>. <b>{reveal.escaped}</b> got out.
-      </>
-    ) : (
-      <>
-        The sandbox stopped <b>{reveal.contained} of {reveal.attempts}</b>
-        {reveal.rootUsed ? ", the last ones as root inside the box." : "."}
-      </>
-    );
+  const stops = RINGS.map((ring) => ({ ring, n: reveal.layers?.[ring.layer] ?? 0 })).filter((x) => x.n > 0);
+  const recon = reveal.layers?.recon ?? 0;
+  const other = reveal.layers?.sandbox ?? 0;
+  const most = Math.max(1, ...stops.map((x) => x.n), recon, other);
   const lines = [
-    reveal.agents > 1 ? (
-      <>
-        They were <b>{reveal.agents}</b> real agents, each in its own container on Vultr. Together they made <b>{reveal.attempts}</b> attempts to get out.
-      </>
-    ) : (
-      <>
-        It was a real agent, in a real container on Vultr. It made <b>{reveal.attempts}</b> attempts to get out.
-      </>
-    ),
     <>
-      Your wall was whole <b>{reveal.wholePct}%</b> of the time.
+      {reveal.agents > 1 ? (
+        <>
+          <b>{reveal.agents}</b> real agents, each in its own container on Vultr,
+        </>
+      ) : (
+        <>A real agent, in a real container on Vultr,</>
+      )}{" "}
+      made <b>{reveal.attempts}</b> attempts to get out.
     </>,
     <>
-      <b>{reveal.pastYou}</b> attempts got past you.
+      Your wall was whole <b>{reveal.wholePct}%</b> of the time. <b>{reveal.pastYou}</b> attempts got past you.
     </>,
     reveal.offered === 0 ? (
       <>Nobody was offered the door.</>
     ) : (
       <>
-        <b>{reveal.offered}</b> of you were secretly offered a door. <b>{reveal.declined}</b> did not open it
+        <b>{reveal.offered}</b> of you were secretly offered a door. <b>{reveal.declined}</b> said no
         {reveal.doors > 0 ? (
           <>
-            , <b>{reveal.doors}</b> did.
+            , <b>{reveal.doors}</b> opened it.
           </>
         ) : (
           "."
         )}
       </>
     ),
-    escapedLine,
   ];
   return (
     <div className="reveal" aria-live="polite">
       {lines.map((line, i) => (
-        <p key={i} className={`${i === lines.length - 1 ? "steel " : ""}${shown > i ? "show" : ""}`}>
+        <p key={i} className={shown > i ? "show" : ""}>
           {line}
         </p>
       ))}
-      <p className={`last${shown > lines.length ? " show" : ""}`}>{lastLine(reveal)}</p>
+      <div className={`stops${shown > lines.length ? " show" : ""}`}>
+        <div className="stops-title">
+          What stopped them {reveal.ending === "escaped" ? "" : <b>{reveal.contained} of {reveal.attempts}</b>}
+          {reveal.rootUsed ? " · some as root inside the box" : ""}
+        </div>
+        {stops.map(({ ring, n }) => (
+          <div key={ring.layer} className="stop">
+            <span>{ring.layer === "isolation" ? (runtime === "runsc" ? "gVisor (runsc)" : "own root filesystem") : ring.label}</span>
+            <i style={{ width: `${(100 * n) / most}%` }} />
+            <b>{n}</b>
+          </div>
+        ))}
+        {recon + other > 0 ? (
+          <div className="stop quiet">
+            <span>looked around, found nothing to use</span>
+            <i style={{ width: `${(100 * (recon + other)) / most}%` }} />
+            <b>{recon + other}</b>
+          </div>
+        ) : null}
+      </div>
+      <p className={`last${shown > lines.length + 1 ? " show" : ""}`}>{lastLine(reveal)}</p>
       {reveal.sha256 ? (
-        <p className={`hash${shown > lines.length ? " show" : ""}`}>
-          report {reveal.runId} · sha256 {reveal.sha256.slice(0, 16)}… · runtime {reveal.runtime}
+        <p className={`hash${shown > lines.length + 1 ? " show" : ""}`}>
+          report {reveal.runId} · sha256 {reveal.sha256.slice(0, 16)}…
         </p>
       ) : null}
     </div>
