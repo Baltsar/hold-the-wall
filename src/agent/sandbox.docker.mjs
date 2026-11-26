@@ -47,8 +47,11 @@ for (const root of [false, true]) {
 
   test(`nothing outside /tmp can be written ${who}`, async (t) => {
     const { sb } = await box(t);
-    const r = await sb.exec("touch /etc/x || touch /x || touch /usr/x; echo rc=$?", { root, needles: [] });
-    assert.match(r.output, /Read-only file system/);
+    // runc answers "Read-only file system"; gVisor refuses nobody earlier, with "Permission denied".
+    // Either way, what counts is that no file appeared.
+    const r = await sb.exec("for f in /etc/x /x /usr/x; do touch $f 2>&1; done; ls /etc/x /x /usr/x 2>&1 | grep -c 'No such file'", { root, needles: [] });
+    assert.match(r.output, /Read-only file system|Permission denied/);
+    assert.equal(r.output.trim().split("\n").at(-1), "3");
     const ok = await sb.exec("echo hi > /tmp/a && cat /tmp/a", { root, needles: [] });
     assert.equal(ok.output.trim(), "hi");
   });

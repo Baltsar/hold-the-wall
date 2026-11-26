@@ -44,6 +44,8 @@ rsync -a --delete --exclude node_modules --exclude .next --exclude var --exclude
 if [ -f "$REPO_DIR/.env" ]; then cp "$REPO_DIR/.env" /opt/hold-the-wall/.env; elif [ ! -f /opt/hold-the-wall/.env ]; then cp "$REPO_DIR/.env.example" /opt/hold-the-wall/.env; fi
 grep -q '^PUBLIC_ORIGIN=.\+' /opt/hold-the-wall/.env || sed -i "s|^PUBLIC_ORIGIN=.*|PUBLIC_ORIGIN=https://$SITE|" /opt/hold-the-wall/.env
 if command -v runsc >/dev/null; then sed -i 's|^SANDBOX_RUNTIME=.*|SANDBOX_RUNTIME=runsc|' /opt/hold-the-wall/.env; fi
+# The .env file is read after the unit's own Environment=, so an empty line there would win.
+sed -i 's|^WALL_DATA_DIR=.*|WALL_DATA_DIR=/var/lib/wall|' /opt/hold-the-wall/.env
 chown -R wall:wall /opt/hold-the-wall
 chmod 600 /opt/hold-the-wall/.env
 cd /opt/hold-the-wall
