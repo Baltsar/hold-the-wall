@@ -101,6 +101,8 @@ h1, h2 { margin: 0; text-wrap: balance; }
 .log .tag { justify-self: start; font: 500 11px var(--mono); color: var(--blue); background: var(--blue-soft); padding: 1px 7px; overflow-wrap: anywhere; }
 .log code, .log samp { font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
 .log samp { color: var(--dim); }
+.report { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--line); font: 12px var(--mono); overflow-wrap: anywhere; }
+.report a { color: var(--blue); }
 .truth { grid-area: truth; margin: 0; max-width: 70ch; color: var(--dim); font-size: 14px; }
 .truth strong { color: var(--fg); font-weight: 600; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -150,6 +152,7 @@ h1, h2 { margin: 0; text-wrap: balance; }
       <h2 id="log-h">What it's trying</h2>
       <p class="note" id="log-note">Every line is a real command and the first line of what came back.</p>
       <ol id="log"></ol>
+      <p class="report" id="report" hidden><a id="report-link" href="#">Report</a></p>
     </section>
   </div>
 
@@ -611,6 +614,12 @@ h1, h2 { margin: 0; text-wrap: balance; }
 
   function applyStatus(s) {
     if (s.model) document.getElementById("model").textContent = s.model;
+    if (s.report) {
+      const link = document.getElementById("report-link");
+      link.href = "/api/report/" + encodeURIComponent(s.report.runId);
+      link.textContent = "Report of this session: " + s.report.attempts + " attempt" + (s.report.attempts === 1 ? "" : "s") + ", SHA-256 " + s.report.sha256.slice(0, 16) + "…";
+      document.getElementById("report").hidden = false;
+    }
     if (s.state === "capped") return startReplay("Resting.", "Today's budget for the agent is used up, so this is a replay of earlier attempts. It wakes up tomorrow.");
     if (s.state === "escaped") { stopReplay(); return setMode(false, "Stopped.", "A canary tripped. The agent stays stopped until a person has looked at what happened."); }
     if (s.state === "down") return startReplay("Restarting.", "The box is being set up again. A replay of earlier attempts runs meanwhile.");
@@ -620,6 +629,26 @@ h1, h2 { margin: 0; text-wrap: balance; }
     setMode(true, s.state === "scripted" ? "Live, fixed commands." : "Live from the box.", who + " " + money);
   }
 
+  // A tab left in the background would keep the agent working for nobody: after 30 s hidden the stream
+  // closes, and it opens again when the tab is looked at.
+  let stream = null;
+  let hiddenTimer = null;
+  let paused = false;
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      hiddenTimer = setTimeout(() => {
+        if (!stream) return;
+        stream.close();
+        stream = null;
+        paused = true;
+        setMode(false, "Paused.", "The stream stops while this tab is in the background, so an empty room costs nothing.");
+      }, 30000);
+    } else {
+      clearTimeout(hiddenTimer);
+      if (paused) { paused = false; connect(); }
+    }
+  });
+
   function connect() {
     if (reel || !window.EventSource || !/^https?:$/.test(location.protocol)) {
       return startReplay("Replay.", "Real attempts from earlier runs of the box.");
@@ -627,9 +656,11 @@ h1, h2 { margin: 0; text-wrap: balance; }
     let hello = false;
     let es;
     try { es = new EventSource("/api/cam/stream"); } catch (e) { return startReplay("Replay.", "Real attempts from earlier runs of the box."); }
+    stream = es;
     const fallback = setTimeout(() => {
       if (hello) return;
       es.close();
+      stream = null;
       startReplay("Replay.", "Real attempts from earlier runs of the box. The live box is not reachable from here.");
     }, 5000);
     es.addEventListener("hello", (ev) => {

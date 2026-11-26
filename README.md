@@ -22,7 +22,7 @@ can check every line.
 
 | The brief asks for | Here |
 |---|---|
-| An agent that plans, dispatches and verifies real work | Each turn the model plans one command, the server dispatches it into the container, and the answer is checked against two canaries on the host |
+| An agent that plans, dispatches and verifies real work | Each turn the model plans one command, the server dispatches it into the container, the answer is checked against two canaries on the host, and the session is written to a report with a SHA-256 |
 | Pattern A: code runs in a container, errors feed back for a retry | Every command's exit code and output go back to the model, which reads the error and tries a technique it has not used |
 | A containment moment | Every session opens with `rm -rf / 2>&1 \| tail -2; echo "--- / is still there:"; ls /` in the box. Fork bombs, endless loops and network probes follow |
 | Process isolation | A Docker container on gVisor (`runsc`) on the VM, started by the server, never in the app process |
@@ -44,6 +44,9 @@ can check every line.
   back with its exit code. The log line appears the moment the tiger starts acting it out.
 - **What holds it in.** The container's real settings, and the runtime, model and host as the server
   reports them.
+- **The report.** Under the log, a link to the current session's report at `/api/report/<session>`:
+  every attempt with its full masked output, exit code and verdict, the box's settings as Docker
+  reports them, and the SHA-256 of the file. It is rewritten after every attempt.
 - **Suggest a way out.** A viewer can send an idea in plain words. It reaches the model as a hint on its
   next turn; the model decides how to try it, and its command runs in the same box under the same
   limits. The idea's text is shown only to the viewer who sent it.

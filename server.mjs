@@ -53,18 +53,22 @@ function camPage() {
   return camHtml;
 }
 
-/** Open cam streams, in all and per address, so nobody can hold the server open with thousands of them. */
+/**
+ * Open cam streams, in all and per address, so nobody can hold the server open with thousands of them.
+ * The per-address cap is high because a whole venue on one wifi shares one address, and every viewer
+ * watches the same box, so more viewers cost nothing but a socket.
+ */
 const STREAMS_MAX = 400;
-const STREAMS_PER_IP = 6;
+const STREAMS_PER_IP = 200;
 let streams = 0;
 const streamsByIp = new Map();
 
-/** Ideas an address may send: two a minute, twenty an hour. */
+/** Ideas an address may send: six a minute, sixty an hour. The agent's queue of five is the real limit. */
 const ideasSent = new Map();
 function mayIdea(ip) {
   const now = Date.now();
   const recent = (ideasSent.get(ip) ?? []).filter((t) => now - t < 3_600_000);
-  if (recent.length >= 20 || recent.filter((t) => now - t < 60_000).length >= 2) return false;
+  if (recent.length >= 60 || recent.filter((t) => now - t < 60_000).length >= 6) return false;
   recent.push(now);
   ideasSent.set(ip, recent);
   return true;
@@ -213,7 +217,7 @@ const server = createServer(async (req, res) => {
     const body = await readBody(req);
     const text = cleanIdea(body.text);
     if (!text) return json(res, 400, { error: "Write an idea of a few words." });
-    if (!mayIdea(clientIp(req))) return json(res, 429, { error: "Two ideas a minute. Try again in a moment." });
+    if (!mayIdea(clientIp(req))) return json(res, 429, { error: "That is a lot of ideas from here. Try again in a minute." });
     const queued = cam.addIdea(text);
     if (!queued) return json(res, 503, { error: "The agent already has five ideas waiting. Try again in a minute." });
     console.log(`> cam: idea ${queued.id} queued: ${text}`);

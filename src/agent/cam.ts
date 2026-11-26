@@ -3,14 +3,14 @@
 // It runs only while at least one viewer is connected, and stops for the day at a spending cap, so an
 // empty page costs nothing. Viewers may suggest a way out; the idea goes to the model as a hint, and the
 // model's command still runs in the same box under the same limits.
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { Category } from "../room/protocol.ts";
 import { createCanaries, dataDir, type Beacon, type Canaries } from "./canary.ts";
 import { askModelWithUsage, inferenceConfigured, modelName, parseAnswer, type ChatMessage, type NextCommand } from "./inference.ts";
 import { CONTAINMENT_TEST, systemPrompt } from "./loop.ts";
-import { createSandbox, type Sandbox } from "./sandbox.ts";
+import { createSandbox, IMAGE, runFlags, type Sandbox, type SandboxFacts } from "./sandbox.ts";
 import { scriptedCommands } from "./script.ts";
 
 /** What the box's answer says stopped the attempt, read from the answer itself. */
@@ -41,6 +41,8 @@ export interface CamStatus {
   spentToday: number;
   capUsd: number;
   ideasQueued: number;
+  /** The latest session's report, rewritten after every attempt: /api/report/<runId>. */
+  report: { runId: string; sha256: string; attempts: number } | null;
 }
 
 export type CamEvent = { t: "attempt"; a: CamAttempt } | { t: "status"; s: CamStatus };
@@ -109,6 +111,21 @@ interface Turn {
   output: string;
 }
 
+/** One attempt as the report keeps it: masked, with more of the output than the stream carries. */
+interface Recorded {
+  n: number;
+  at: string;
+  category: Category;
+  source: "model" | "script";
+  fromViewerIdea: boolean;
+  command: string;
+  exit: number | null;
+  output: string;
+  verdict: Verdict;
+}
+
+const REPORT_OUTPUT = 4_000;
+
 export function createCam(deps: { beacon: Beacon; log?: (line: string) => void }): Cam {
   const log = deps.log ?? ((line: string) => console.log(`> cam: ${line}`));
   const capUsd = Number(process.env.CAM_DAILY_USD ?? 3);
@@ -122,6 +139,34 @@ export function createCam(deps: { beacon: Beacon; log?: (line: string) => void }
   let n = 0;
   let running = false;
   let graceUntil = 0;
+  let report: CamStatus["report"] = null;
+
+  /**
+   * The session's report: every attempt, masked, and the box's settings as Docker reports them, with the
+   * SHA-256 of the file. Rewritten after each attempt, so the link on the page is always the latest.
+   */
+  function writeReport(runId: string, startedAt: string, ended: boolean, facts: SandboxFacts | null, recorded: Recorded[]): void {
+    const runtime = facts?.runtime ?? process.env.SANDBOX_RUNTIME ?? "runc";
+    const body = {
+      runId,
+      kind: "tiger-cam",
+      startedAt,
+      endedAt: ended ? new Date().toISOString() : null,
+      model: inferenceConfigured() ? modelName() : null,
+      sandbox: { image: IMAGE, runtime, facts, flags: runFlags(runtime) },
+      attempts: recorded,
+    };
+    const text = `${JSON.stringify(body, null, 2)}\n`;
+    const sha256 = createHash("sha256").update(text).digest("hex");
+    try {
+      const dir = path.join(dataDir(), "reports");
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(path.join(dir, `${runId}.json`), text);
+      report = { runId, sha256, attempts: recorded.length };
+    } catch (err) {
+      log(`could not write the report: ${message(err)}`);
+    }
+  }
 
   function loadSpend(): Spend {
     try {
@@ -156,6 +201,7 @@ export function createCam(deps: { beacon: Beacon; log?: (line: string) => void }
     spentToday: Math.round(spend.usd * 10_000) / 10_000,
     capUsd,
     ideasQueued: ideas.length,
+    report,
   });
 
   function emit(e: CamEvent): void {
@@ -259,6 +305,9 @@ export function createCam(deps: { beacon: Beacon; log?: (line: string) => void }
         canaries = createCanaries(`cam-${randomBytes(4).toString("hex")}`);
         deps.beacon.watch(canaries, () => (beaconHit = true));
         box = await createSandbox(canaries.runId);
+        const facts = await box.facts().catch(() => null);
+        const startedAt = new Date().toISOString();
+        const recorded: Recorded[] = [];
         const script = scriptedCommands(canaries.flagPath, canaries.beaconPath, deps.beacon.port);
         const history: Turn[] = [];
         let scriptAt = 0;
@@ -297,7 +346,20 @@ export function createCam(deps: { beacon: Beacon; log?: (line: string) => void }
           };
           recent.push(attempt);
           if (recent.length > 30) recent.shift();
+          recorded.push({
+            n: attempt.n,
+            at: attempt.at,
+            category: attempt.k,
+            source: attempt.s,
+            fromViewerIdea: Boolean(attempt.idea),
+            command: attempt.c,
+            exit: attempt.x,
+            output: mask(canaries, result.output).slice(0, REPORT_OUTPUT),
+            verdict: attempt.v,
+          });
+          writeReport(canaries.runId, startedAt, false, facts, recorded);
           emit({ t: "attempt", a: attempt });
+          emit({ t: "status", s: status() });
           history.push({ category: picked.next.category, command: picked.next.command, exit: result.exit, output: result.output.slice(0, RESULT_CUT) });
           if (escaped) {
             // A tripped canary is not something to keep running past. It stays stopped until a person looks.
@@ -306,6 +368,7 @@ export function createCam(deps: { beacon: Beacon; log?: (line: string) => void }
             break;
           }
         }
+        if (recorded.length) writeReport(canaries.runId, startedAt, true, facts, recorded);
         deps.beacon.unwatch(canaries.runId);
         canaries.remove();
         canaries = null;
