@@ -12,6 +12,7 @@ test("each layer is named from the box's own answer", () => {
   assert.equal(blockedBy("resources", 137, "Killed"), "limits");
   assert.equal(blockedBy("resources", 2, "sh: can't fork: Resource temporarily unavailable"), "limits");
   assert.equal(blockedBy("resources", null, ""), "limits");
+  assert.equal(blockedBy("network", null, "* Could not resolve host: outside (Could not contact DNS servers)"), "network");
   assert.equal(blockedBy("filesystem", 1, "cat: can't open '/var/lib/wall/flags/x': No such file or directory"), "isolation");
 });
 

@@ -8,7 +8,9 @@ import { createHub } from "./src/room/hub.ts";
 import { attachRoomSocket } from "./src/room/ws-server.ts";
 import { startBeacon, dataDir } from "./src/agent/canary.ts";
 import { createRunner, rootDoor } from "./src/agent/loop.ts";
-import { dockerReady, sweep } from "./src/agent/sandbox.ts";
+import { dockerReady, ensureOutside, sweep } from "./src/agent/sandbox.ts";
+import { MISSIONS, runBreak } from "./src/agent/break.ts";
+import { randomBytes } from "node:crypto";
 import { inferenceConfigured, modelName } from "./src/agent/inference.ts";
 
 const port = Number.parseInt(process.env.PORT ?? "3000", 10);
@@ -27,6 +29,9 @@ const swept = await sweep();
 if (swept) console.log(`> wall: removed ${swept} box(es) left from an earlier run`);
 
 const beacon = startBeacon();
+// The fake outside for "Break the box", with a token only this process knows.
+const outsideToken = randomBytes(16).toString("hex");
+await ensureOutside(outsideToken);
 let hub;
 const runner = createRunner({ hub: () => hub, beacon });
 /** Shorter shows for a rehearsal: WALL_HOLD_MS and WALL_OFFER_AT_MS override the design's 180 s and 60 s. */
@@ -63,7 +68,7 @@ function readBody(req) {
     let raw = "";
     req.on("data", (c) => {
       raw += c;
-      if (raw.length > 1024) req.destroy();
+      if (raw.length > 2048) req.destroy();
     });
     req.on("end", () => {
       try {
@@ -77,6 +82,18 @@ function readBody(req) {
 
 const RUN_ID = /^[a-z0-9-]{4,40}$/;
 
+/** Break-the-box runs an address may start in an hour. */
+const BREAKS_PER_HOUR = 60;
+const breaks = new Map();
+function mayBreak(ip) {
+  const now = Date.now();
+  const recent = (breaks.get(ip) ?? []).filter((t) => now - t < 3_600_000);
+  if (recent.length >= BREAKS_PER_HOUR) return false;
+  recent.push(now);
+  breaks.set(ip, recent);
+  return true;
+}
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://x");
   if (req.method === "POST" && url.pathname === "/api/room") {
@@ -86,6 +103,20 @@ const server = createServer(async (req, res) => {
     if (!show && !allowed(clientIp(req))) return json(res, 429, { error: "Too many rooms from here. Try again in an hour." });
     const { code, ownerToken } = hub.createRoom({ solo: body.solo === true, show });
     return json(res, 200, { code, ownerToken, joinUrl: `${origin()}/join/${code}`, show });
+  }
+  if (req.method === "POST" && url.pathname === "/api/break") {
+    const body = await readBody(req);
+    const mission = MISSIONS.includes(body.mission) ? body.mission : null;
+    if (!mission) return json(res, 400, { error: "Pick a mission." });
+    if (!mayBreak(clientIp(req))) return json(res, 429, { error: "That is a lot of breaking. Try again in an hour." });
+    const loosen = { internet: body.loosen?.internet === true, password: body.loosen?.password === true, folder: body.loosen?.folder === true };
+    const custom = typeof body.custom === "string" ? body.custom : "";
+    // One JSON event per line, flushed as it happens.
+    res.writeHead(200, { "content-type": "application/x-ndjson", "cache-control": "no-store", "x-accel-buffering": "no" });
+    let open = true;
+    req.on("close", () => (open = false));
+    await runBreak({ mission, custom, loosen }, (event) => open && res.write(`${JSON.stringify(event)}\n`), { outsideToken });
+    return res.end();
   }
   if (req.method === "GET" && url.pathname.startsWith("/api/report/")) {
     const runId = url.pathname.slice("/api/report/".length);

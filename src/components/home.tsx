@@ -99,7 +99,10 @@ export function Home() {
           brick, and see what really keeps it in.
         </p>
         <div className="actions">
-          <button className="btn" disabled={busy} onClick={() => open(true)}>
+          <a className="btn" href="/break">
+            Break the box
+          </a>
+          <button className="btn ghost" disabled={busy} onClick={() => open(true)}>
             Try it alone
           </button>
           <button className="btn ghost" disabled={busy} onClick={() => open(false)}>

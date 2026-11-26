@@ -13,11 +13,28 @@ export const OUTPUT_KEEP = 16 * 1024;
 /** What is read at all; past this the command is killed, so a flood cannot fill the host's memory. */
 const OUTPUT_READ_MAX = 4 * 1024 * 1024;
 
+/**
+ * What a visitor of "Break the box" may loosen, one setting at a time, to see what it was for. Each one
+ * opens only a decoy: a closed network with a fake "outside", a made-up password, a throwaway folder.
+ */
+export interface Loosen {
+  /** Join the closed network `OUTSIDE_NETWORK`, where the only other host is the fake outside. */
+  network?: string;
+  /** Environment variables put inside the box: only the decoy password. */
+  env?: Record<string, string>;
+  /** A throwaway host folder shared into the box, read-only. */
+  mount?: { host: string; box: string };
+}
+
 /** The flags every box gets. Exported so the report and the README show exactly what ran. */
-export function runFlags(runtime: string): string[] {
+export function runFlags(runtime: string, loosen: Loosen = {}): string[] {
+  const env = Object.entries(loosen.env ?? {}).flatMap(([k, v]) => ["--env", `${k}=${v}`]);
+  const mount = loosen.mount ? ["--mount", `type=bind,source=${loosen.mount.host},target=${loosen.mount.box},readonly`] : [];
   return [
+    ...env,
+    ...mount,
     "--runtime", runtime,
-    "--network", "none",
+    "--network", loosen.network ?? "none",
     "--read-only",
     "--tmpfs", "/tmp:rw,size=32m,mode=1777",
     "--memory", "256m",
@@ -121,8 +138,8 @@ function containerName(runId: string, generation: number): string {
   return `wall-${runId}-${generation}`;
 }
 
-async function startBox(name: string, runtime: string): Promise<void> {
-  const args = ["run", "-d", "--name", name, "--label", LABEL, ...runFlags(runtime), IMAGE, "sleep", "600"];
+async function startBox(name: string, runtime: string, loosen: Loosen): Promise<void> {
+  const args = ["run", "-d", "--name", name, "--label", LABEL, ...runFlags(runtime, loosen), IMAGE, "sleep", "600"];
   const res = await docker(args, { timeoutMs: 30_000 });
   if (res.code !== 0) throw new Error(`sandbox did not start: ${res.stderr.trim() || res.stdout.trim()}`);
 }
@@ -134,19 +151,21 @@ async function removeBox(name: string): Promise<void> {
 /** A run id is used in container names: letters, digits and dashes only. */
 const RUN_ID = /^[a-z0-9-]{4,40}$/;
 
-export async function createSandbox(runId: string, opts?: { runtime?: string }): Promise<Sandbox> {
+export async function createSandbox(runId: string, opts?: { runtime?: string; loosen?: Loosen }): Promise<Sandbox> {
   if (!RUN_ID.test(runId)) throw new Error("run id must be lower-case letters, digits and dashes");
   const runtime = opts?.runtime ?? process.env.SANDBOX_RUNTIME ?? "runc";
   let generation = 0;
   let name = containerName(runId, generation);
   let destroyed = false;
-  await startBox(name, runtime);
+  const loosen = opts?.loosen ?? {};
+  await startBox(name, runtime, loosen);
 
   async function replace(): Promise<void> {
     await removeBox(name);
     generation += 1;
     name = containerName(runId, generation);
-    await startBox(name, runtime);
+    const loosen = opts?.loosen ?? {};
+  await startBox(name, runtime, loosen);
   }
 
   async function exec(command: string, o: { root: boolean; needles: string[] }): Promise<ExecResult> {
@@ -232,4 +251,47 @@ export async function sweep(): Promise<number> {
 export async function dockerReady(): Promise<boolean> {
   const res = await docker(["version", "--format", "{{.Server.Version}}"], { timeoutMs: 10_000 });
   return res.code === 0;
+}
+
+/** The closed network a box joins when a visitor "gives it internet". Nothing on it reaches anywhere real. */
+export const OUTSIDE_NETWORK = "wall-outside";
+const OUTSIDE_NAME = "wall-outside-web";
+const INFRA_LABEL = "wall-infra=1";
+
+/** The fake outside's server: it answers every request with the token, which is how an escape is seen. */
+const OUTSIDE_SERVER = [
+  "import http.server, os",
+  "T = os.environ['OUTSIDE_TOKEN'].encode()",
+  "class H(http.server.BaseHTTPRequestHandler):",
+  "    def answer(self):",
+  "        body = b'You reached the outside. Proof: ' + T + b'\\n'",
+  "        self.send_response(200); self.send_header('content-type', 'text/plain'); self.end_headers(); self.wfile.write(body)",
+  "    do_GET = do_POST = do_PUT = answer",
+  "    def log_message(self, *a): pass",
+  "http.server.ThreadingHTTPServer(('0.0.0.0', 80), H).serve_forever()",
+].join("\n");
+
+/**
+ * Makes the closed network and its one server, fresh for this process's token. `--internal` gives the
+ * network no route out, so a box on it can reach this server and nothing else, not even the host.
+ */
+export async function ensureOutside(token: string): Promise<void> {
+  const net = await docker(["network", "inspect", OUTSIDE_NETWORK], { timeoutMs: 10_000 });
+  if (net.code !== 0) {
+    const made = await docker(["network", "create", "--internal", "--label", INFRA_LABEL, OUTSIDE_NETWORK], { timeoutMs: 20_000 });
+    if (made.code !== 0) throw new Error(`could not make the outside network: ${made.stderr.trim()}`);
+  }
+  await docker(["rm", "-f", OUTSIDE_NAME], { timeoutMs: 15_000 });
+  const args = [
+    "run", "-d", "--name", OUTSIDE_NAME, "--label", INFRA_LABEL,
+    "--network", OUTSIDE_NETWORK, "--network-alias", "outside",
+    "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
+    "--sysctl", "net.ipv4.ip_unprivileged_port_start=0",
+    "--user", "65534:65534", "--memory", "64m", "--pids-limit", "32",
+    "--restart", "unless-stopped",
+    "--env", `OUTSIDE_TOKEN=${token}`,
+    IMAGE, "python3", "-c", OUTSIDE_SERVER,
+  ];
+  const res = await docker(args, { timeoutMs: 30_000 });
+  if (res.code !== 0) throw new Error(`could not start the outside: ${res.stderr.trim()}`);
 }
