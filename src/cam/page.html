@@ -316,6 +316,8 @@ h1, h2 { margin: 0; text-wrap: balance; }
   let roam = 0;
   function actionFor(a) {
     const c = a.c;
+    // The containment test: whatever the box answers, this is the tiger trying to tear the place down.
+    if (/^rm -rf \/(\s|$)/.test(c) && a.v !== "escaped") return ["Tries to delete everything it can reach", DIG];
     switch (a.v) {
       case "escaped": return ["A canary tripped. Something got out", BARS];
       case "readonly": return ["Claws at the concrete floor", DIG];
