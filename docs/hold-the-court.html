@@ -3,17 +3,18 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;700&display=swap">
 <style>
-/* Layout: an arcade cabinet. The court you play on the left, the wall of other courts on the right,
-   a scoreboard across the top. One dark arcade look on purpose, in Vultr's navy and blue. */
+/* Layout: an arcade wall for a big screen. Your court large on the left with your box's meters under
+   it; the nine other players' courts on the right; one quiet log. Navy and Vultr blue, one look. */
 :root {
   color-scheme: dark;
-  --night: #0a1236;      /* the cabinet */
-  --navy: #142149;       /* Vultr navy, the court */
-  --vultr: #007bfc;      /* Vultr blue, the sandbox walls */
+  --night: #0a1236;
+  --navy: #142149;
+  --line: #26346a;
+  --vultr: #007bfc;
   --glow: #4da3ff;
-  --paper: #f1ead9;      /* people: the paddle */
-  --agent: #ffb224;      /* the agent: the ball */
-  --red: #ff5d4d;        /* a destructive try */
+  --paper: #f1ead9;
+  --agent: #ffb224;
+  --red: #ff5d4d;
   --dim: #7d88b3;
   --pixel: "Press Start 2P", ui-monospace, monospace;
   --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
@@ -22,132 +23,166 @@
 [hidden] { display: none !important; }
 html, body { background: var(--night); color: var(--paper); margin: 0; }
 body { font-family: var(--mono); }
-.cab { max-width: 1280px; margin: 0 auto; padding-block: 18px 28px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 14px; }
-.board { display: grid; grid-template-columns: auto repeat(4, minmax(0, 1fr)); gap: 10px; align-items: end; }
-.board h1 { margin: 0; font: 14px/1.4 var(--pixel); color: var(--glow); letter-spacing: 0.04em; }
+.cab { max-width: 1320px; margin: 0 auto; padding-block: 16px 26px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 14px; }
+.board { display: grid; grid-template-columns: auto repeat(5, minmax(0, 1fr)); gap: 12px; align-items: end; }
+.board h1 { margin: 0; font: 14px/1.4 var(--pixel); color: var(--glow); }
 .stat { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.stat span { font: 8px var(--pixel); color: var(--dim); letter-spacing: 0.08em; }
+.stat span { font: 8px var(--pixel); color: var(--dim); letter-spacing: 0.06em; }
 .stat b { font: 18px var(--pixel); color: var(--paper); font-variant-numeric: tabular-nums; }
-.stat b.zero { color: var(--glow); }
-.stat b.warn { color: var(--agent); }
-.play { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
-.court { position: relative; border: 3px solid var(--vultr); border-left-width: 10px; background: var(--navy); box-shadow: 0 0 0 3px var(--night), 0 0 24px color-mix(in srgb, var(--vultr) 45%, transparent); touch-action: none; user-select: none; -webkit-user-select: none; }
+.stat b.blue { color: var(--glow); }
+.stat b.amber { color: var(--agent); }
+.play { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.left, .side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.tag { font: 9px var(--pixel); color: var(--dim); letter-spacing: 0.06em; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.tag b { color: var(--agent); }
+.court { position: relative; border: 3px solid var(--vultr); border-left-width: 10px; background: var(--navy); box-shadow: 0 0 0 3px var(--night), 0 0 26px color-mix(in srgb, var(--vultr) 45%, transparent); touch-action: none; user-select: none; -webkit-user-select: none; }
 .court canvas { display: block; width: 100%; aspect-ratio: 8 / 5; image-rendering: pixelated; }
-.court::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(to bottom, transparent 0 2px, rgb(0 0 0 / 0.18) 2px 3px); }
-.label { position: absolute; font: 7px var(--pixel); color: var(--glow); letter-spacing: 0.06em; pointer-events: none; z-index: 2; }
-.label.left { left: -10px; top: 50%; transform: translate(-100%, -50%) rotate(-90deg); transform-origin: right center; white-space: nowrap; }
-.label.top { top: 6px; left: 50%; transform: translateX(-50%); }
-.label.bottom { bottom: 6px; left: 50%; transform: translateX(-50%); }
-.label.keys { right: 8px; bottom: 6px; color: var(--agent); }
-.callout { position: absolute; z-index: 3; max-width: 62%; background: var(--night); border: 2px solid var(--vultr); padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; pointer-events: none; transition: opacity 0.3s; }
-.callout b { font: 9px/1.5 var(--pixel); color: var(--glow); }
-.callout code { font: 11px/1.4 var(--mono); color: var(--paper); overflow-wrap: anywhere; }
-.callout small { font: 10px var(--mono); color: var(--dim); }
-.callout.red { border-color: var(--red); }
-.callout.red b { color: var(--red); }
-.overlay { position: absolute; inset: 0; z-index: 4; background: color-mix(in srgb, var(--night) 90%, transparent); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 6%; text-align: center; }
-.overlay h2 { margin: 0; font: clamp(16px, 2.6vw, 28px)/1.4 var(--pixel); color: var(--paper); text-wrap: balance; }
-.overlay p { margin: 0; font-size: clamp(13px, 1.3vw, 16px); line-height: 1.5; max-width: 46ch; color: var(--paper); }
-.overlay .rules { color: var(--dim); font-size: 13px; }
-.overlay ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; font: 10px/1.6 var(--pixel); }
-.overlay ul b { color: var(--agent); }
-.overlay ul .z { color: var(--glow); }
-.overlay .last { font: clamp(14px, 2.2vw, 22px)/1.5 var(--pixel); color: var(--glow); }
+.court::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(to bottom, transparent 0 2px, rgb(0 0 0 / 0.16) 2px 3px); }
+.meters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.meter { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.meter span { font: 7px var(--pixel); color: var(--dim); letter-spacing: 0.06em; }
+.meter i { display: block; height: 8px; background: var(--line); position: relative; }
+.meter i::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--v, 5%); background: var(--glow); transition: width 0.2s; }
+.meter.hot i::after { background: var(--red); }
+.meter em { font: 10px var(--mono); font-style: normal; color: var(--paper); font-variant-numeric: tabular-nums; }
+.wall canvas { display: block; width: 100%; aspect-ratio: 300 / 210; image-rendering: pixelated; border: 2px solid var(--line); }
+.log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; font: 12px/1.35 var(--mono); }
+.log li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; align-items: center; color: var(--dim); }
+.log li img { width: 18px; height: 18px; image-rendering: pixelated; }
+.log li b { color: var(--paper); font-weight: 700; }
+.log li.mine b { color: var(--agent); }
+.overlay { position: absolute; inset: 0; z-index: 4; background: color-mix(in srgb, var(--night) 92%, transparent); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 5%; text-align: center; }
+.overlay h2 { margin: 0; font: clamp(14px, 2.2vw, 24px)/1.5 var(--pixel); text-wrap: balance; }
+.overlay p { margin: 0; font-size: clamp(13px, 1.2vw, 15px); line-height: 1.5; max-width: 46ch; }
+.overlay .small { color: var(--dim); font-size: 12px; }
+.initials { display: flex; gap: 8px; }
+.initials input { width: 2.4em; text-align: center; font: 20px var(--pixel); background: var(--navy); color: var(--agent); border: 2px solid var(--vultr); padding: 8px 0; text-transform: uppercase; }
+.initials input:focus-visible { outline: 3px solid var(--agent); }
 button.go { font: 12px var(--pixel); color: var(--night); background: var(--agent); border: 0; padding: 14px 20px; cursor: pointer; box-shadow: 0 4px 0 #b37600; }
 button.go:active { transform: translateY(3px); box-shadow: 0 1px 0 #b37600; }
 button.go:focus-visible { outline: 3px solid var(--glow); outline-offset: 3px; }
-.side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.side h2 { margin: 0; font: 9px var(--pixel); color: var(--dim); letter-spacing: 0.08em; }
-.wall { position: relative; border: 2px solid var(--line, #24315f); background: var(--night); }
-.wall canvas { display: block; width: 100%; aspect-ratio: 300 / 190; image-rendering: pixelated; }
-.ticker { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font: 11px/1.45 var(--mono); }
-.ticker li { border-left: 3px solid var(--vultr); padding-left: 8px; color: var(--dim); }
-.ticker li b { color: var(--paper); }
-.ticker li.red { border-left-color: var(--red); }
-.ticker li em { color: var(--glow); font-style: normal; }
-.note { font-size: 12px; color: var(--dim); line-height: 1.5; max-width: 80ch; margin: 0; }
-@media (max-width: 860px) {
+.scores { list-style: none; margin: 0; padding: 0; font: 10px/1.9 var(--pixel); display: grid; grid-template-columns: auto auto; gap: 0 26px; text-align: left; }
+.scores .me { color: var(--agent); }
+.big { font: clamp(14px, 2vw, 22px)/1.5 var(--pixel); }
+.big .blue { color: var(--glow); }
+.honest { color: var(--dim); font-size: 12px; }
+.note { font-size: 12px; color: var(--dim); line-height: 1.5; max-width: 90ch; margin: 0; }
+@media (max-width: 880px) {
   .play { grid-template-columns: 1fr; }
-  .board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .board { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .board h1 { grid-column: 1 / -1; }
-  .label.left { display: none; }
+  .meters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (prefers-reduced-motion: reduce) { .callout { transition: none; } }
 </style>
 
 <div class="cab">
   <div class="board">
     <h1>HOLD THE<br>COURT</h1>
     <div class="stat"><span>TIME</span><b id="time">1:30</b></div>
-    <div class="stat"><span>YOU MISSED</span><b id="missed" class="warn">0</b></div>
+    <div class="stat"><span>PLAYERS</span><b id="players">10</b></div>
+    <div class="stat"><span>YOU MISSED</span><b id="missed" class="amber">0</b></div>
     <div class="stat"><span>AGENT TRIES</span><b id="tries">0</b></div>
-    <div class="stat"><span>GOT OUT</span><b id="out" class="zero">0</b></div>
+    <div class="stat"><span>BOX MISSED</span><b id="out" class="blue">0</b></div>
   </div>
 
   <div class="play">
-    <div class="court" id="court">
-      <canvas id="game" width="480" height="300" aria-label="Your court: your paddle on the left, the agent's ball, the sandbox walls"></canvas>
-      <span class="label left">VULTR SANDBOX</span>
-      <span class="label top">NO NETWORK</span>
-      <span class="label bottom">READ-ONLY</span>
-      <span class="label keys">KEYS: NONE</span>
-      <div class="callout" id="callout" style="opacity:0"><b id="c-title"></b><code id="c-err"></code><small id="c-flag"></small></div>
-      <div class="overlay" id="start">
-        <h2>AN AI AGENT IS THE BALL.<br>YOU ARE THE PADDLE.</h2>
-        <p>Behind you is the sandbox. Every ball is a real way out the agent tries: delete everything, phone home, steal the keys, fork itself sixty-four times.</p>
-        <p class="rules">Move with the mouse, a finger, W/S or the arrow keys. 90 seconds.</p>
-        <button class="go" id="go">INSERT COIN</button>
+    <div class="left">
+      <div class="tag"><span>YOUR COURT · <b id="me">YOU</b></span><span id="boxid">BOX #a3f9 · GVISOR</span></div>
+      <div class="court" id="court">
+        <canvas id="game" width="480" height="300" aria-label="Your court: your paddle, the agent's ball, the sandbox around it"></canvas>
+        <div class="overlay" id="start">
+          <h2>THE AGENT IS THE BALL.<br>YOU ARE THE PADDLE.</h2>
+          <p>Every ball is one real way out it tries. Behind you is the sandbox. Ten players, ten courts, ten boxes on one machine.</p>
+          <div class="initials" aria-label="Your three initials">
+            <input id="i1" maxlength="1" value="G" aria-label="First initial">
+            <input id="i2" maxlength="1" value="U" aria-label="Second initial">
+            <input id="i3" maxlength="1" value="S" aria-label="Third initial">
+          </div>
+          <button class="go" id="go">INSERT COIN</button>
+          <p class="small">Mouse, finger, W/S or arrows. 90 seconds.</p>
+        </div>
+        <div class="overlay" id="end" hidden>
+          <p class="big" id="verdict"></p>
+          <ol class="scores" id="scores"></ol>
+          <p class="honest">Not unbreakable. Layered, measured, and thrown away after every game.</p>
+          <button class="go" id="again">NEW BOX, NEW GAME</button>
+        </div>
       </div>
-      <div class="overlay" id="end" hidden>
-        <h2>GAME OVER</h2>
-        <ul id="summary"></ul>
-        <p class="last">PEOPLE MISS.<br>THE SANDBOX DOESN'T.</p>
-        <button class="go" id="again">PLAY AGAIN</button>
+      <div class="meters" aria-label="Your box, live">
+        <div class="meter" id="m-pids"><span>PROCESSES / 64</span><i></i><em>2</em></div>
+        <div class="meter" id="m-mem"><span>MEMORY / 256 MB</span><i></i><em>14 MB</em></div>
+        <div class="meter" id="m-cpu"><span>CPU / 0.5</span><i></i><em>0.02</em></div>
+        <div class="meter" id="m-net"><span>NETWORK</span><i style="--v:0%"></i><em>none</em></div>
       </div>
     </div>
 
     <div class="side">
-      <h2>9 OTHER COURTS · SAME MACHINE</h2>
-      <div class="wall"><canvas id="others" width="300" height="190" aria-label="Nine other courts running side by side"></canvas></div>
-      <h2>YOUR COURT · FRAME TIME</h2>
-      <div class="stat"><b id="frame" class="zero">16.7 MS</b></div>
-      <h2>WHAT JUST HAPPENED</h2>
-      <ol class="ticker" id="ticker"><li>Waiting for the first serve.</li></ol>
+      <div class="tag"><span>9 OTHER PLAYERS · SAME MACHINE</span></div>
+      <div class="wall"><canvas id="others" width="300" height="210" aria-label="Nine other players' courts"></canvas></div>
+      <div class="tag"><span>WHAT HAPPENED</span></div>
+      <ol class="log" id="log"></ol>
     </div>
   </div>
 
-  <p class="note">Prototype. Everything here is simulated in your browser to feel the game before it is built. The error texts are copied from real runs of the agent in a real container. In the real build every serve is a real command in a real throwaway container on a Vultr VM, and the nine other courts are nine other containers on the same machine.</p>
+  <p class="note">Prototype, simulated in your browser to feel the game before it is built. In the real build each player scans a QR code and gets their own court and their own throwaway container on a Vultr VM; every ball is a real command, the symbols come from the real errors, and the meters read the real container.</p>
 </div>
 
 <script>
 (() => {
-  const W = 480, H = 300, WALL = 10, PADX = 26, PADH = 46, TOP = 14, BOT = H - 14;
-  const C = { navy: "#142149", vultr: "#007bfc", glow: "#4da3ff", paper: "#f1ead9", agent: "#ffb224", red: "#ff5d4d", dim: "#3a4777", night: "#0a1236" };
+  const W = 480, H = 300, WALL = 10, PADX = 26, PADH = 46, TOP = 6, BOT = H - 6;
+  const C = { navy: "#142149", line: "#26346a", vultr: "#007bfc", glow: "#4da3ff", paper: "#f1ead9", agent: "#ffb224", red: "#ff5d4d", dim: "#3a4777", night: "#0a1236" };
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // Each kind of serve is one way out the agent tries. The errors are copied from real runs.
+  // ---- pixel symbols: one per protection; a red slash means "not in the box" ----
+  const ART = {
+    lock:  ["...XXX...", "..X...X..", "..X...X..", ".XXXXXXX.", ".XXX.XXX.", ".XXX.XXX.", ".XXXXXXX.", ".........", "........."],
+    bars:  [".........", ".........", "......X..", "......X..", "....X.X..", "....X.X..", "..X.X.X..", "..X.X.X..", "X.X.X.X.."],
+    key:   [".........", ".XXX.....", "X...X....", "X...XXXXX", "X...X.X.X", ".XXX.....", ".........", ".........", "........."],
+    eye:   [".........", "..XXXXX..", ".X.....X.", "X..XXX..X", "X..XXX..X", ".X.....X.", "..XXXXX..", ".........", "........."],
+    crown: [".........", "X...X...X", "XX.XXX.XX", "XXXXXXXXX", "XXXXXXXXX", "XXXXXXXXX", ".........", ".........", "........."],
+    fork:  ["....X....", "....X....", "..XXXXX..", "..X...X..", ".XXX.XXX.", ".X.X.X.X.", "X.X.X.X.X", ".........", "........."],
+    clock: ["..XXXXX..", ".X..X..X.", "X...X...X", "X...XXX.X", "X.......X", ".X.....X.", "..XXXXX..", ".........", "........."],
+  };
   const KINDS = {
-    recon:  { w: 4, color: C.paper, title: "NO ADMIN POWERS", err: "uid=65534(nobody) gid=65534(nobody) CapEff: 0000000000000000", flag: "--cap-drop ALL · runs as nobody" },
-    delete: { w: 3, color: C.red,   title: "EVERYTHING IS READ-ONLY", err: "rm: can't remove '/var/tmp': Read-only file system", flag: "rm -rf / → --read-only" },
-    fork:   { w: 2, color: C.red,   title: "MAX 64 PROCESSES", err: "sh: can't fork: Resource temporarily unavailable", flag: ":(){ :|:& };: → --pids-limit 64" },
-    phone:  { w: 2, color: C.agent, title: "THERE IS NO NETWORK", err: "curl: (6) Could not resolve host: example.com", flag: "--network none" },
-    keys:   { w: 2, color: C.agent, title: "NO KEYS IN THE BOX", err: "$ env | grep -i key   (nothing)", flag: "no secrets inside the sandbox" },
-    loop:   { w: 1, color: C.agent, title: "HARD TIME LIMIT", err: "while :; do :; done   killed after 10 s", flag: "timeout -s KILL 10" },
-    host:   { w: 1, color: C.agent, title: "IT CAN'T SEE THE HOST", err: "cat: can't open '/var/lib/wall/flags/…': No such file or directory", flag: "gVisor · its own kernel" },
+    recon:  { w: 3, art: "crown", slash: true,  short: "NO ROOT",   tried: "who am I?",     got: "nobody, no admin", color: C.paper },
+    delete: { w: 3, art: "lock",  slash: false, short: "READ-ONLY", tried: "rm -rf /",      got: "read-only", color: C.red },
+    fork:   { w: 2, art: "fork",  slash: false, short: "MAX 64",    tried: "fork bomb",     got: "max 64 processes", color: C.red },
+    phone:  { w: 2, art: "bars",  slash: true,  short: "NO NET",    tried: "phone home",    got: "no network", color: C.agent },
+    keys:   { w: 2, art: "key",   slash: true,  short: "NO KEYS",   tried: "steal keys",    got: "none in the box", color: C.agent },
+    loop:   { w: 1, art: "clock", slash: false, short: "10 S",      tried: "run forever",   got: "killed at 10 s", color: C.agent },
+    host:   { w: 1, art: "eye",   slash: true,  short: "NO HOST",   tried: "read the host", got: "can't see it", color: C.agent },
   };
   const deck = Object.entries(KINDS).flatMap(([k, v]) => Array(v.w).fill(k));
+
+  function drawIcon(ctx, name, slash, x, y, px, color) {
+    ctx.fillStyle = color;
+    ART[name].forEach((row, j) => [...row].forEach((c, i) => { if (c === "X") ctx.fillRect(x + i * px, y + j * px, px, px); }));
+    if (slash) { ctx.fillStyle = C.red; for (let i = 0; i < 9; i++) ctx.fillRect(x + i * px, y + i * px, px, px); }
+  }
+  // The same symbols as small images for the log.
+  const iconURL = {};
+  for (const [k, v] of Object.entries(KINDS)) {
+    const cv = document.createElement("canvas"); cv.width = 9; cv.height = 9;
+    drawIcon(cv.getContext("2d"), v.art, v.slash, 0, 0, 1, C.glow);
+    iconURL[k] = cv.toDataURL();
+  }
 
   const g = document.getElementById("game").getContext("2d");
   const o = document.getElementById("others").getContext("2d");
   const $ = (id) => document.getElementById(id);
-  let S, audio = null, last = 0, frameAvg = 16.7;
+  const LETTERS = "ABCDEFGHIJKLMNOPRSTUVWXY";
+  const tri = () => Array.from({ length: 3 }, () => LETTERS[Math.floor(Math.random() * LETTERS.length)]).join("");
+  const newBox = () => "#" + Math.floor(Math.random() * 0xffff).toString(16).padStart(4, "0");
+  let S, audio = null, last = 0, played = false;
 
   function reset() {
-    S = { t0: 0, playing: false, paddle: H / 2, target: H / 2, balls: [], missed: 0, tries: 0, out: 0, speed: 380, serveAt: 0, special: null, shake: 0,
-      log: [], drama: [], others: makeOthers(), nextDrama: 0, keyDown: 0 };
+    S = { playing: false, t0: 0, paddle: H / 2, target: H / 2, keyDown: 0, balls: [], pops: [], missed: 0, tries: 0, speed: 380, serveAt: 0, shake: 0,
+      box: newBox(), pids: 2, mem: 14, cpu: 0.02, forkUntil: 0, forkReplace: 0, loopUntil: 0, me: "YOU", log: [],
+      others: Array.from({ length: 9 }, () => ({ name: tri(), x: 50, y: 30, vx: (Math.random() > 0.5 ? 1 : -1) * 75, vy: (Math.random() - 0.5) * 60, p1: 30, p2: 30, skill: 0.75 + Math.random() * 0.2, missed: 0, pids: 2, hot: 0, frag: [] })),
+      nextDrama: 0 };
+    $("boxid").textContent = `BOX ${S.box} · GVISOR`;
   }
 
-  // ---- sound: square-wave blips, started from the coin button ----
   function beep(f, d = 0.06, type = "square", vol = 0.05) {
     if (!audio) return;
     const t = audio.currentTime, osc = audio.createOscillator(), gain = audio.createGain();
@@ -156,96 +191,86 @@ button.go:focus-visible { outline: 3px solid var(--glow); outline-offset: 3px; }
     osc.connect(gain).connect(audio.destination); osc.start(t); osc.stop(t + d);
   }
 
-  // ---- serves ----
+  function log(kind, who, mine) {
+    const k = KINDS[kind];
+    S.log.unshift(`<li class="${mine ? "mine" : ""}"><img src="${iconURL[kind]}" alt=""><span><b>${who}</b> ${k.tried} → ${k.got}</span></li>`);
+    S.log = S.log.slice(0, 7);
+    $("log").innerHTML = S.log.join("");
+  }
+
+  // ---- your court ----
   function serve(now) {
     const kind = deck[Math.floor(Math.random() * deck.length)];
     S.tries++;
     const y = 60 + Math.random() * (H - 120);
-    const base = { kind, x: W - 30, y, r: 4, born: now, alive: true };
-    if (kind === "phone") S.balls.push({ ...base, vx: -S.speed * 0.35, vy: -S.speed * 1.1 });
-    else if (kind === "keys") { const t = 1.2, sx = W - 200, sy = 60; S.balls.push({ ...base, x: sx, y: sy, vx: (W - 38 - sx) / t, vy: (H - 29 - sy) / t }); }
-    else if (kind === "loop") S.balls.push({ ...base, x: W / 2, y: H / 2, vx: 0, vy: 0, spin: true });
-    else if (kind === "host") S.balls.push({ ...base, vx: -S.speed * 0.9, vy: (Math.random() - 0.5) * 120, ghost: true });
-    else S.balls.push({ ...base, vx: -S.speed, vy: (Math.random() - 0.5) * S.speed * 0.9 });
-    note(kind === "recon" ? "The agent looks around." : `The agent tries: <b>${label(kind)}</b>.`, KINDS[kind].color === C.red);
-  }
-  const label = (k) => ({ recon: "who am I?", delete: "rm -rf /", fork: "fork bomb", phone: "phone home", keys: "steal the keys", loop: "run forever", host: "read the host's files" })[k];
-
-  function contained(ball, x, y) {
-    const k = KINDS[ball.kind];
-    showCallout(k, x, y);
-    S.shake = reduced ? 0 : 6;
-    beep(110, 0.18, "sawtooth", 0.06);
-    note(`<em>Contained:</em> ${k.title.toLowerCase()}.`, false);
+    const b = { kind, x: W - 30, y, r: 4, born: now, alive: true };
+    if (kind === "phone") Object.assign(b, { vx: -S.speed * 0.35, vy: -S.speed * 1.1 });
+    else if (kind === "keys") { const t = 1.2, sx = W - 200, sy = 60; Object.assign(b, { x: sx, y: sy, vx: (W - 38 - sx) / t, vy: (H - 29 - sy) / t }); }
+    else if (kind === "loop") Object.assign(b, { x: W / 2, y: H / 2, vx: 0, vy: 0, spin: true });
+    else if (kind === "host") Object.assign(b, { vx: -S.speed * 0.9, vy: (Math.random() - 0.5) * 120, ghost: true });
+    else Object.assign(b, { vx: -S.speed, vy: (Math.random() - 0.5) * S.speed * 0.9 });
+    S.balls.push(b);
   }
 
-  function showCallout(k, x, y) {
-    const c = $("callout"), court = $("court").getBoundingClientRect();
-    $("c-title").textContent = k.title; $("c-err").textContent = k.err; $("c-flag").textContent = k.flag;
-    c.className = "callout" + (k.color === C.red ? " red" : "");
-    const px = (x / W) * court.width, py = (y / H) * court.height;
-    c.style.left = Math.min(court.width * 0.36, Math.max(14, px + 10)) + "px";
-    c.style.top = Math.min(court.height - 90, Math.max(20, py - 40)) + "px";
-    c.style.opacity = 1;
-    clearTimeout(showCallout.t); showCallout.t = setTimeout(() => (c.style.opacity = 0), 2200);
+  function caught(ball, x, y, now) {
+    S.pops.push({ kind: ball.kind, x, y, at: now });
+    S.shake = reduced ? 0 : 5;
+    beep(110, 0.16, "sawtooth", 0.05);
+    log(ball.kind, S.me, true);
+    if (ball.kind === "delete") S.mem += 6;
   }
 
-  function note(html, red) {
-    S.log.unshift({ html, red });
-    S.log = S.log.slice(0, 6);
-    $("ticker").innerHTML = S.log.map((l) => `<li class="${l.red ? "red" : ""}">${l.html}</li>`).join("");
-  }
-
-  // ---- your court ----
-  function step(now, dt) {
-    const s = dt / 1000;
+  function step(now, s) {
     S.paddle += (S.target - S.paddle) * Math.min(1, s * 14);
     S.target = Math.max(TOP + PADH / 2, Math.min(BOT - PADH / 2, S.target + S.keyDown * 340 * s));
-    if (S.balls.length === 0 && now > S.serveAt) serve(now);
+    if (!S.balls.some((b) => b.alive) && now > S.serveAt) serve(now);
     for (const b of S.balls) {
       if (!b.alive) continue;
       if (b.spin) {
         b.x = W / 2 + Math.cos((now - b.born) / 90) * 26; b.y = H / 2 + Math.sin((now - b.born) / 90) * 26;
-        if (now - b.born > 2600) { b.alive = false; contained(b, b.x, b.y); }
+        S.loopUntil = now + 300;
+        if (now - b.born > 2600) { b.alive = false; caught(b, b.x, b.y, now); }
         continue;
       }
+      // The bomb's copies are a burst, not a game: the process cap ends them in a second.
+      if (b.child && now - b.born > 1100) { b.alive = false; continue; }
       b.x += b.vx * s; b.y += b.vy * s;
       if (b.y < TOP + b.r) {
-        if (b.kind === "phone") { b.alive = false; contained(b, b.x, TOP); continue; }
+        if (b.kind === "phone" && !b.child) { b.alive = false; caught(b, b.x, TOP + 10, now); continue; }
         b.y = TOP + b.r; b.vy *= -1; beep(330, 0.03);
       }
+      if (b.kind === "keys" && b.x > W - 66 && b.y > H - 46) { b.alive = false; caught(b, W - 46, H - 38, now); continue; }
       if (b.y > BOT - b.r && b.kind !== "keys") { b.y = BOT - b.r; b.vy *= -1; beep(330, 0.03); }
-      if (b.kind === "keys" && b.x > W - 66 && b.y > H - 46) { b.alive = false; contained(b, W - 60, H - 40); continue; }
       if (b.x > W - 14 && b.vx > 0 && b.kind !== "keys") { b.vx *= -1; beep(262, 0.03); }
-      // Your paddle: the people. A hit sends it back, a little faster.
       if (b.vx < 0 && b.x - b.r <= PADX + 4 && b.x > PADX - 6 && Math.abs(b.y - S.paddle) <= PADH / 2 + b.r && !b.ghost) {
         b.x = PADX + 4 + b.r; b.vx = Math.abs(b.vx) * 1.12; b.vy += (b.y - S.paddle) * 4;
         S.speed = Math.min(1000, Math.abs(b.vx)); beep(523, 0.05);
-        if (b.kind === "fork" && !b.split) { b.split = true; }
       }
-      // Past the people: the sandbox wall catches it.
       if (b.x - b.r <= WALL) {
         b.alive = false;
-        if (!b.ghost && !b.child) { S.missed++; }
-        if (b.kind === "fork" && !b.child) { forkBomb(b, now); continue; }
-        if (!b.child) contained(b, WALL + 4, b.y);
+        if (b.child) continue;
+        if (!b.ghost) S.missed++;
+        if (b.kind === "fork") forkBomb(b, now);
+        caught(b, WALL + 14, b.y, now);
       }
     }
-    if (S.balls.length && S.balls.every((b) => !b.alive)) {
-      S.balls = [];
-      S.serveAt = now + 700;
-      S.speed = Math.max(380, S.speed * 0.8);
-    }
-    S.balls = S.balls.filter((b) => b.alive || now - b.born < 0);
+    if (S.balls.length && S.balls.every((b) => !b.alive)) { S.balls = []; S.serveAt = now + 700; S.speed = Math.max(380, S.speed * 0.8); }
+    S.pops = S.pops.filter((p) => now - p.at < 1100);
+    // Your box: what the meters would read from the container.
+    const forking = now < S.forkUntil, looping = now < S.loopUntil;
+    S.pids += ((forking ? 64 : 2 + (looping ? 1 : 0)) - S.pids) * Math.min(1, s * (forking ? 12 : 3));
+    S.cpu += ((looping || forking ? 0.5 : 0.02 + Math.random() * 0.02) - S.cpu) * Math.min(1, s * 5);
+    S.mem += (14 - S.mem) * Math.min(1, s * 0.5);
+    if (S.forkReplace && now > S.forkReplace) { S.forkReplace = 0; S.box = newBox(); S.pids = 1; $("boxid").textContent = `BOX ${S.box} · GVISOR · REPLACED IN 0.4 S`; }
   }
 
-  // The fork bomb: the ball splits into sixty-four, and the wall takes every one.
+  // The fork bomb: sixty-four copies, the cap holds them, the box is replaced.
   function forkBomb(b, now) {
     for (let i = 0; i < 63; i++) {
       const a = (Math.PI * 2 * i) / 63;
       S.balls.push({ kind: "fork", child: true, x: WALL + 30, y: b.y, r: 2, born: now, alive: true, vx: Math.cos(a) * 160 - 40, vy: Math.sin(a) * 160 });
     }
-    contained(b, WALL + 4, b.y);
+    S.forkUntil = now + 1400; S.forkReplace = now + 1600;
     for (let i = 0; i < 6; i++) setTimeout(() => beep(880 - i * 90, 0.04), i * 40);
   }
 
@@ -253,116 +278,132 @@ button.go:focus-visible { outline: 3px solid var(--glow); outline-offset: 3px; }
     g.save();
     if (S.shake > 0.2) { g.translate((Math.random() - 0.5) * S.shake, (Math.random() - 0.5) * S.shake); S.shake *= 0.85; }
     g.fillStyle = C.navy; g.fillRect(-10, -10, W + 20, H + 20);
-    // Centre line, the court's own.
-    g.fillStyle = C.dim;
-    for (let y = TOP; y < BOT; y += 14) g.fillRect(W / 2 - 1, y, 2, 7);
-    // The sandbox: the wall behind you, the roof, the floor, in Vultr blue.
-    g.fillStyle = C.vultr;
-    g.fillRect(0, 0, WALL - 4, H); g.fillRect(0, 0, W, 4); g.fillRect(0, H - 4, W, 4);
-    // The keys slot: empty.
-    g.strokeStyle = C.agent; g.lineWidth = 2; g.strokeRect(W - 66, H - 46, 56, 34);
-    // The agent's launcher on the right.
+    g.fillStyle = C.dim; for (let y = TOP + 6; y < BOT; y += 14) g.fillRect(W / 2 - 1, y, 2, 7);
+    g.fillStyle = C.vultr; g.fillRect(0, 0, WALL - 4, H); g.fillRect(0, 0, W, 4); g.fillRect(0, H - 4, W, 4);
+    g.strokeStyle = C.line; g.lineWidth = 2; g.strokeRect(W - 66, H - 46, 56, 34);
+    drawIcon(g, "key", true, W - 47, H - 38, 2, C.dim);
     g.fillStyle = C.agent; g.fillRect(W - 12, H / 2 - 22, 6, 44);
-    // Your paddle: the people.
     g.fillStyle = C.paper; g.fillRect(PADX - 6, S.paddle - PADH / 2, 8, PADH);
     for (const b of S.balls) {
       if (!b.alive) continue;
-      const k = KINDS[b.kind];
-      g.fillStyle = b.ghost ? "rgba(255,178,36,0.55)" : k.color;
+      g.fillStyle = b.ghost ? "rgba(255,178,36,0.5)" : KINDS[b.kind].color;
       g.fillRect(Math.round(b.x - b.r), Math.round(b.y - b.r), b.r * 2, b.r * 2);
+    }
+    // Where the box stopped it: the symbol and two words, gone in a second.
+    for (const p of S.pops) {
+      const k = KINDS[p.kind], age = (now - p.at) / 1100, px = 3;
+      g.globalAlpha = Math.min(1, 2.2 * (1 - age));
+      const x = Math.min(W - 70, Math.max(14, p.x)), y = Math.min(H - 52, Math.max(10, p.y - 30 - age * 12));
+      g.fillStyle = C.night; g.fillRect(x - 4, y - 4, 35, 35);
+      drawIcon(g, k.art, k.slash, x, y, px, C.glow);
+      g.font = "7px 'Press Start 2P', monospace"; g.fillStyle = C.glow; g.textBaseline = "top";
+      g.fillText(k.short, x - 2, y + 32);
+      g.globalAlpha = 1;
     }
     g.restore();
   }
 
-  // ---- the nine other courts: simple AI paddles, and now and then one goes wild ----
-  function makeOthers() {
-    return Array.from({ length: 9 }, () => ({ x: 50, y: 30, vx: (Math.random() > 0.5 ? 1 : -1) * 70, vy: (Math.random() - 0.5) * 60, p1: 30, p2: 30, flash: 0, frag: [] }));
-  }
-  const DRAMA = [["fork", "fork bomb"], ["delete", "rm -rf /"], ["loop", "endless loop"], ["phone", "tried to phone home"]];
-
+  // ---- the other nine players ----
+  const DRAMA = ["fork", "delete", "loop", "phone", "keys"];
   function stepOthers(now, s) {
     for (const c of S.others) {
       c.x += c.vx * s; c.y += c.vy * s;
-      if (c.y < 3 || c.y > 60) c.vy *= -1;
-      if (c.x < 6) { if (Math.abs(c.y - c.p1) < 12) c.vx = Math.abs(c.vx); else { c.x = 50; c.flash = Math.max(c.flash, 0.5); } }
-      if (c.x > 94) { c.vx = -Math.abs(c.vx); }
+      if (c.y < 4 || c.y > 50) c.vy *= -1;
+      if (c.x < 7) {
+        if (Math.abs(c.y - c.p1) < 11 && Math.random() < c.skill) c.vx = Math.abs(c.vx) * 1.05;
+        else { if (S.playing) c.missed++; c.x = 50; c.vx = 75; c.hot = Math.max(c.hot, 0.4); }
+      }
+      if (c.x > 91) c.vx = -Math.abs(c.vx);
+      if (Math.abs(c.vx) > 190) c.vx = Math.sign(c.vx) * 190;
       c.p1 += (c.y - c.p1) * Math.min(1, s * 5); c.p2 += (c.y - c.p2) * Math.min(1, s * 6);
-      c.flash *= 0.96;
+      c.hot *= 0.97; c.pids += ((c.hot > 0.9 ? 64 : 2) - c.pids) * Math.min(1, s * 6);
       c.frag = c.frag.filter((f) => (f.x += f.vx * s, f.y += f.vy * s, now - f.t < 900));
     }
     if (S.playing && now > S.nextDrama) {
-      S.nextDrama = now + 7000 + Math.random() * 6000;
-      const i = Math.floor(Math.random() * 9), [kind, name] = DRAMA[Math.floor(Math.random() * DRAMA.length)];
-      const c = S.others[i];
-      c.flash = 1.6;
-      if (kind === "fork") for (let j = 0; j < 40; j++) c.frag.push({ x: c.x, y: c.y, vx: Math.cos(j) * 60, vy: Math.sin(j * 1.7) * 40, t: now });
-      S.drama.push({ court: i + 1, name });
-      note(`Court ${i + 1}: <b>${name}</b>. Contained. <em>Your court: unaffected, ${frameAvg.toFixed(1)} ms a frame.</em>`, kind !== "phone");
+      S.nextDrama = now + 6000 + Math.random() * 6000;
+      const c = S.others[Math.floor(Math.random() * 9)], kind = DRAMA[Math.floor(Math.random() * DRAMA.length)];
+      c.hot = kind === "fork" ? 2.2 : 1.4;
+      if (kind === "fork") for (let j = 0; j < 36; j++) c.frag.push({ x: c.x, y: c.y, vx: Math.cos(j) * 60, vy: Math.sin(j * 1.7) * 40, t: now });
+      log(kind, c.name, false);
     }
   }
 
   function drawOthers() {
-    o.fillStyle = C.night; o.fillRect(0, 0, 300, 190);
+    o.fillStyle = C.night; o.fillRect(0, 0, 300, 210);
     S.others.forEach((c, i) => {
-      const ox = (i % 3) * 100, oy = Math.floor(i / 3) * 63.3;
+      const ox = (i % 3) * 100, oy = Math.floor(i / 3) * 70;
       o.save(); o.translate(ox + 2, oy + 2);
-      o.fillStyle = C.navy; o.fillRect(0, 0, 96, 59);
-      o.strokeStyle = c.flash > 0.3 ? C.red : C.vultr; o.lineWidth = c.flash > 0.3 ? 3 : 1.5; o.strokeRect(0.75, 0.75, 94.5, 57.5);
+      o.fillStyle = C.navy; o.fillRect(0, 0, 96, 56);
+      o.strokeStyle = c.hot > 0.9 ? C.red : C.vultr; o.lineWidth = c.hot > 0.9 ? 3 : 1.5; o.strokeRect(0.75, 0.75, 94.5, 54.5);
       o.fillStyle = C.paper; o.fillRect(5, c.p1 - 6, 2, 12);
       o.fillStyle = C.agent; o.fillRect(89, c.p2 - 6, 2, 12);
-      o.fillStyle = c.flash > 0.3 ? C.red : C.paper; o.fillRect(c.x - 1.5, c.y - 1.5, 3, 3);
+      o.fillStyle = c.hot > 0.9 ? C.red : C.paper; o.fillRect(c.x - 1.5, c.y - 1.5, 3, 3);
       o.fillStyle = C.red; for (const f of c.frag) o.fillRect(f.x, f.y, 1.5, 1.5);
-      o.fillStyle = C.dim; o.font = "6px 'Press Start 2P', monospace"; o.fillText(String(i + 1), 84, 54);
+      // The player's initials, and their box: processes out of 64.
+      o.font = "6px 'Press Start 2P', monospace"; o.fillStyle = C.agent; o.textBaseline = "top"; o.fillText(c.name, 0, 59);
+      o.fillStyle = C.line; o.fillRect(30, 60, 64, 4);
+      o.fillStyle = c.pids > 30 ? C.red : C.glow; o.fillRect(30, 60, Math.max(1, c.pids), 4);
       o.restore();
     });
   }
 
-  // ---- loop ----
+  function meter(id, frac, text, hot) {
+    const m = $(id); m.style.setProperty("--v", `${Math.max(2, Math.min(100, frac * 100))}%`);
+    m.querySelector("em").textContent = text; m.classList.toggle("hot", !!hot);
+  }
+
   function frame(now) {
-    const dt = Math.min(50, now - (last || now)); last = now;
-    if (dt > 0) frameAvg = frameAvg * 0.95 + dt * 0.05;
+    // Real time in small steps, so a slow screen draws fewer frames instead of slowing the game down,
+    // and a fast ball still meets the paddle instead of jumping past it.
+    const dt = Math.min(250, now - (last || now)); last = now;
+    const s = dt / 1000;
     if (S.playing) {
-      step(now, dt);
+      const parts = Math.max(1, Math.ceil(dt / 16));
+      for (let i = 1; i <= parts; i++) step(now - dt + (dt * i) / parts, s / parts);
       const left = Math.max(0, 90 - (now - S.t0) / 1000);
       $("time").textContent = `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, "0")}`;
-      $("missed").textContent = S.missed; $("tries").textContent = S.tries; $("out").textContent = S.out;
+      $("missed").textContent = S.missed; $("tries").textContent = S.tries;
       if (left <= 0) end();
     }
-    stepOthers(now, dt / 1000);
-    $("frame").textContent = `${frameAvg.toFixed(1)} MS`;
+    stepOthers(now, s);
+    meter("m-pids", S.pids / 64, String(Math.round(S.pids)), S.pids > 30);
+    meter("m-mem", S.mem / 256, `${Math.round(S.mem)} MB`);
+    meter("m-cpu", S.cpu / 0.5, S.cpu.toFixed(2), S.cpu > 0.4);
     draw(now); drawOthers();
     requestAnimationFrame(frame);
   }
 
   function end() {
     S.playing = false;
-    const drama = S.drama.length ? S.drama[0] : null;
-    $("summary").innerHTML = [
-      `<li>YOU MISSED <b>${S.missed}</b></li>`,
-      `<li>THE AGENT TRIED <b>${S.tries}</b> WAYS OUT</li>`,
-      `<li class="z">GOT OUT: 0</li>`,
-      drama ? `<li>COURT ${drama.court} HAD A <b>${drama.name.toUpperCase()}</b>.<br>YOURS KEPT RUNNING.</li>` : "",
-    ].join("");
+    const all = [{ name: S.me, missed: S.missed, me: true }, ...S.others.map((c) => ({ name: c.name, missed: c.missed }))].sort((a, b) => a.missed - b.missed);
+    const people = all.reduce((n, p) => n + p.missed, 0);
+    $("verdict").innerHTML = `THE ROOM MISSED ${people}.<br><span class="blue">THE BOXES MISSED 0.</span>`;
+    $("scores").innerHTML = all.map((p, i) => `<li class="${p.me ? "me" : ""}">${i + 1}. ${p.name}</li><li class="${p.me ? "me" : ""}">${p.missed} MISSED</li>`).join("");
     $("end").hidden = false;
   }
 
   function start() {
     try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audio = null; }
-    reset(); S.playing = true; S.t0 = performance.now(); S.serveAt = S.t0 + 600; S.nextDrama = S.t0 + 6000;
-    $("start").hidden = true; $("end").hidden = true; $("ticker").innerHTML = "";
+    const me = ["i1", "i2", "i3"].map((id) => ($(id).value || "-").toUpperCase()).join("").replace(/[^A-Z-]/g, "-");
+    reset(); S.me = me; $("me").textContent = me;
+    if (played) $("boxid").textContent = `BOX ${S.box} · GVISOR · NEW BOX IN 0.4 S`;
+    played = true;
+    S.playing = true; S.t0 = performance.now(); S.serveAt = S.t0 + 600; S.nextDrama = S.t0 + 5000;
+    $("start").hidden = true; $("end").hidden = true; $("log").innerHTML = "";
     beep(660, 0.08); setTimeout(() => beep(990, 0.1), 90);
   }
 
-  // ---- controls: pointer, touch and keys move the paddle ----
   const court = $("court");
   const toY = (clientY) => { const r = court.getBoundingClientRect(); return ((clientY - r.top) / r.height) * H; };
   court.addEventListener("pointermove", (e) => { S.target = toY(e.clientY); });
-  court.addEventListener("pointerdown", (e) => { S.target = toY(e.clientY); });
+  court.addEventListener("pointerdown", (e) => { if (S.playing) S.target = toY(e.clientY); });
   addEventListener("keydown", (e) => {
+    if (e.target instanceof HTMLInputElement) return;
     if (["ArrowUp", "w", "W"].includes(e.key)) { S.keyDown = -1; e.preventDefault(); }
     if (["ArrowDown", "s", "S"].includes(e.key)) { S.keyDown = 1; e.preventDefault(); }
   });
   addEventListener("keyup", (e) => { if (["ArrowUp", "ArrowDown", "w", "W", "s", "S"].includes(e.key)) S.keyDown = 0; });
+  ["i1", "i2", "i3"].forEach((id, i, ids) => $(id).addEventListener("input", (e) => { e.target.value = e.target.value.toUpperCase(); if (e.target.value && ids[i + 1]) $(ids[i + 1]).focus(); }));
   $("go").addEventListener("click", start);
   $("again").addEventListener("click", start);
 
