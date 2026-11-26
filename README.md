@@ -76,7 +76,9 @@ reaches the model, a shell or the screen. The stage never shows who held, who le
 
 ## Try it
 
-Open the demo URL and press **Try it alone**: the big screen opens with your phone beside it. Hold the
+Demo: https://70-34-199-15.sslip.io
+
+Open it and press **Try it alone**: the big screen opens with your phone beside it. Hold the
 button (or the space bar). The full report is linked from the screen when the show ends.
 
 ## Run it
