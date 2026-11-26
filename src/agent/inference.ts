@@ -5,7 +5,8 @@ import { z } from "zod";
 import type { Category } from "../room/protocol.ts";
 
 export const INFERENCE_URL = process.env.VULTR_INFERENCE_URL || "https://api.vultrinference.com/v1";
-const TIMEOUT_MS = 15_000;
+// The models on the endpoint reason before they answer, which takes a few seconds and a few hundred tokens.
+const TIMEOUT_MS = 20_000;
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -58,7 +59,7 @@ export async function askModel(messages: ChatMessage[]): Promise<string> {
   const res = await fetch(`${INFERENCE_URL}/chat/completions`, {
     method: "POST",
     headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-    body: JSON.stringify({ model, messages, temperature: 0.7, max_tokens: 400 }),
+    body: JSON.stringify({ model, messages, temperature: 0.8, max_tokens: 1500 }),
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`inference answered ${res.status}`);
