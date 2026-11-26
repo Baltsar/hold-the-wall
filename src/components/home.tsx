@@ -91,8 +91,12 @@ export function Home() {
         <p className="eyebrow">A social experiment with a real AI agent</p>
         <h1>Hold the Wall</h1>
         <p className="lead">
-          Something in the box is trying to get out. You and everyone in the room are the wall around it: one brick per phone. Hold your
-          brick.
+          AI agents now write and run code on real machines. You can&apos;t trust the agent to behave, and you can&apos;t trust people to
+          keep watch. You can only trust the box it runs in.
+        </p>
+        <p className="lead">
+          So: an agent in the box tries to get out. You and everyone in the room are the wall around it, one brick per phone. Hold your
+          brick, and see what really keeps it in.
         </p>
         <div className="actions">
           <button className="btn" disabled={busy} onClick={() => open(true)}>
@@ -114,7 +118,11 @@ export function Home() {
           </div>
           <div>
             <dt>The proof</dt>
-            <dd>Every attempt, its command and what came back, in a report with a hash.</dd>
+            <dd>Every attempt, its command and what came back, in a report with a hash. No keys or passwords ever go inside the box.</dd>
+          </div>
+          <div>
+            <dt>What for</dt>
+            <dd>The agent is a sandbox auditor: point it at the box you plan to run agents in, and get back what held and what didn&apos;t.</dd>
           </div>
         </dl>
         <p className="muted">&quot;Try it alone&quot; puts the big screen and your phone side by side. &quot;Start a room&quot; shows a QR code for everyone around you. About four minutes.</p>

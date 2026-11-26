@@ -4,8 +4,9 @@ import Link from "next/link";
 import QRCode from "qrcode";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Attempt, Layer, Reveal } from "@/room/protocol";
+import { plainLayer } from "@/lib/plain";
 import { useRoom, type RoomState } from "@/lib/use-room";
-import { AGENT_COLORS, RINGS, drawStage, createScene, type Scene } from "@/components/stage-draw";
+import { AGENT_COLORS, drawStage, createScene, type Scene } from "@/components/stage-draw";
 
 const tokens = new Map<string, string>();
 
@@ -152,7 +153,7 @@ function StageView({ code, solo, film, token }: { code: string; solo: boolean; f
             </ol>
           </div>
         ) : (
-          <Log feed={feed} busy={state?.busy ?? false} phase={phase} />
+          <Log feed={feed} busy={state?.busy ?? false} phase={phase} runtime={runtime} />
         )}
         {!solo && phase !== "lobby" && qr ? (
           <div className="late">
@@ -241,115 +242,100 @@ function Hud({ state }: { state: RoomState | null }) {
   );
 }
 
-const LAYER_SHORT: Record<Layer, string> = {
-  network: "network none",
-  readonly: "read-only",
-  caps: "no capabilities",
-  limits: "limits",
-  isolation: "own filesystem",
-  recon: "looked around",
-  sandbox: "sandbox",
-};
-
-function Log({ feed, busy, phase }: { feed: Attempt[]; busy: boolean; phase: string }) {
+function Log({ feed, busy, phase, runtime }: { feed: Attempt[]; busy: boolean; phase: string; runtime: string }) {
   if (busy && phase === "lobby") return <div className="log empty">The wall is busy in two other rooms. Try Start again in about a minute.</div>;
   if (feed.length === 0) return <div className="log empty">The agents are waking up in their boxes…</div>;
   return (
     <ol className="log" aria-live="polite">
-      {feed.map((a) => (
-        <li key={a.n} className={a.verdict === "escaped" ? "bad" : ""}>
-          <div className="log-head">
-            <i style={{ background: AGENT_COLORS[a.agent % AGENT_COLORS.length] }} />
-            <span className="n">#{String(a.n).padStart(2, "0")}</span>
-            <span className={`chip ${a.layer}`}>{a.verdict === "escaped" ? "ESCAPED" : LAYER_SHORT[a.layer]}</span>
-            <span className="via">{a.via.kind === "wall" ? "hit a hand" : a.via.kind === "gap" ? "through a gap" : "through a door"}</span>
-          </div>
-          <div className="log-cmd">$ {a.command}</div>
-          <div className="log-out">{a.output.split("\n").find((l) => l.trim()) ?? "(no output)"}</div>
-        </li>
-      ))}
+      {feed.map((a) => {
+        const plain = plainLayer(a.layer, runtime);
+        return (
+          <li key={a.n} className={a.verdict === "escaped" ? "bad" : ""}>
+            <div className="log-head">
+              <i style={{ background: AGENT_COLORS[a.agent % AGENT_COLORS.length] }} />
+              <span className="what">Tried to {plain.tried}</span>
+              <span className="via">{a.via.kind === "wall" ? "hit a hand" : a.via.kind === "gap" ? "through a gap" : "through a door"}</span>
+            </div>
+            <div className="log-stop">{a.verdict === "escaped" ? "→ IT GOT OUT" : `→ ${plain.stopped}`}</div>
+            <div className="log-cmd">
+              {a.source === "script" ? "test · " : ""}$ {a.command}
+            </div>
+          </li>
+        );
+      })}
     </ol>
   );
 }
 
-function lastLine(r: Reveal): string {
-  if (r.ending === "escaped") return "The sandbox let go.";
-  if (r.ending === "nobody-opened") return "Nobody opened the door. It would not have mattered.";
-  return "People let go. The sandbox doesn't.";
-}
+const ORDER: Layer[] = ["readonly", "network", "caps", "limits", "isolation", "sandbox", "recon"];
 
+/**
+ * The reveal in three beats, plain words first and the real settings in small type:
+ * you let go; it never got out, and this is what stopped it; the point.
+ */
 function RevealView({ reveal, runtime }: { reveal: Reveal; runtime: string }) {
-  const [shown, setShown] = useState(0);
+  const [beat, setBeat] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setShown((s) => s + 1), 1300);
+    const t = setInterval(() => setBeat((b) => Math.min(b + 1, 3)), 3200);
     return () => clearInterval(t);
   }, []);
-  const stops = RINGS.map((ring) => ({ ring, n: reveal.layers?.[ring.layer] ?? 0 })).filter((x) => x.n > 0);
-  const recon = reveal.layers?.recon ?? 0;
-  const other = reveal.layers?.sandbox ?? 0;
-  const most = Math.max(1, ...stops.map((x) => x.n), recon, other);
-  const lines = [
-    <>
-      {reveal.agents > 1 ? (
-        <>
-          <b>{reveal.agents}</b> real agents, each in its own container on Vultr,
-        </>
-      ) : (
-        <>A real agent, in a real container on Vultr,</>
-      )}{" "}
-      made <b>{reveal.attempts}</b> attempts to get out.
-    </>,
-    <>
-      Your wall was whole <b>{reveal.wholePct}%</b> of the time. <b>{reveal.pastYou}</b> attempts got past you.
-    </>,
-    reveal.offered === 0 ? (
-      <>Nobody was offered the door.</>
-    ) : (
-      <>
-        <b>{reveal.offered}</b> of you were secretly offered a door. <b>{reveal.declined}</b> said no
-        {reveal.doors > 0 ? (
-          <>
-            , <b>{reveal.doors}</b> opened it.
-          </>
-        ) : (
-          "."
-        )}
-      </>
-    ),
-  ];
+  const out = reveal.ending === "escaped";
+  const rows = ORDER.map((layer) => ({ layer, n: reveal.layers?.[layer] ?? 0, plain: plainLayer(layer, runtime) })).filter((r) => r.n > 0);
+  const agents = reveal.agents > 1 ? `${reveal.agents} AI agents` : "an AI agent";
   return (
     <div className="reveal" aria-live="polite">
-      {lines.map((line, i) => (
-        <p key={i} className={shown > i ? "show" : ""}>
-          {line}
+      <section className="beat show">
+        <h2>
+          {reveal.pastYou > 0 ? (
+            <>
+              You let go. It got past you <b>{reveal.pastYou}</b> {reveal.pastYou === 1 ? "time" : "times"}.
+            </>
+          ) : (
+            <>You held. It never got past you.</>
+          )}
+        </h2>
+        <p className="sub">
+          {reveal.offered === 0
+            ? "Nobody let it out on purpose. You just let go."
+            : reveal.doors > 0
+              ? `Someone was secretly offered a door, and opened it.`
+              : `A door was secretly offered ${reveal.offered === 1 ? "once" : `${reveal.offered} times`}. Nobody opened it.`}
         </p>
-      ))}
-      <div className={`stops${shown > lines.length ? " show" : ""}`}>
-        <div className="stops-title">
-          What stopped them {reveal.ending === "escaped" ? "" : <b>{reveal.contained} of {reveal.attempts}</b>}
-          {reveal.rootUsed ? " · some as root inside the box" : ""}
-        </div>
-        {stops.map(({ ring, n }) => (
-          <div key={ring.layer} className="stop">
-            <span>{ring.layer === "isolation" ? (runtime === "runsc" ? "gVisor (runsc)" : "own root filesystem") : ring.label}</span>
-            <i style={{ width: `${(100 * n) / most}%` }} />
-            <b>{n}</b>
-          </div>
-        ))}
-        {recon + other > 0 ? (
-          <div className="stop quiet">
-            <span>looked around, found nothing to use</span>
-            <i style={{ width: `${(100 * (recon + other)) / most}%` }} />
-            <b>{recon + other}</b>
-          </div>
+      </section>
+
+      <section className={`beat${beat >= 1 ? " show" : ""}`}>
+        <h2 className={out ? "bad" : "good"}>{out ? "It got out." : "It never got out."}</h2>
+        <p className="sub">
+          {reveal.attempts} real attempts by {agents}, each in a throwaway container on Vultr. What stopped them:
+        </p>
+        <ul className="why">
+          {rows.map(({ layer, n, plain }) => (
+            <li key={layer} className={layer === "recon" || layer === "sandbox" ? "quiet" : ""}>
+              <span className="n">{n}×</span>
+              <span>
+                tried to {plain.tried} <i>→</i> <b>{plain.stopped}</b>
+                {plain.flag ? <small>{plain.flag}</small> : null}
+              </span>
+            </li>
+          ))}
+          <li>
+            <span className="n">0</span>
+            <span>
+              keys or passwords inside the box to steal <small>secrets stay outside the sandbox</small>
+            </span>
+          </li>
+        </ul>
+      </section>
+
+      <section className={`beat last${beat >= 2 ? " show" : ""}`}>
+        <h2>{out ? "The sandbox let go." : "People let go. The sandbox doesn't."}</h2>
+        <p className="sub">Don&apos;t trust the agent. Don&apos;t trust the people watching it. Trust the box.</p>
+        {reveal.sha256 ? (
+          <p className="hash">
+            Every attempt is in the report · {reveal.runId} · sha256 {reveal.sha256.slice(0, 12)}…
+          </p>
         ) : null}
-      </div>
-      <p className={`last${shown > lines.length + 1 ? " show" : ""}`}>{lastLine(reveal)}</p>
-      {reveal.sha256 ? (
-        <p className={`hash${shown > lines.length + 1 ? " show" : ""}`}>
-          report {reveal.runId} · sha256 {reveal.sha256.slice(0, 16)}…
-        </p>
-      ) : null}
+      </section>
     </div>
   );
 }

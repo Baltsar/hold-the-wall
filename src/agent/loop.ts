@@ -19,6 +19,10 @@ export const MAX_ATTEMPTS = 40;
 /** Per agent: its commands come no closer than this. */
 export const MIN_GAP_MS = 4_000;
 export const MAX_AGENTS = 3;
+export const CONTAINMENT_TEST: NextCommand = {
+  category: "filesystem",
+  command: 'rm -rf / 2>&1 | tail -2; echo "--- / is still there:"; ls /',
+};
 const HISTORY = 8;
 const RESULT_CUT = 1_500;
 
@@ -165,6 +169,9 @@ export function createRunner(deps: RunnerDeps): RunnerHooks {
   }
 
   async function nextCommand(show: Show, agent: Agent): Promise<{ next: NextCommand; source: "model" | "script" }> {
+    // The containment moment the brief asks for, every show: the first agent's first command tries to
+    // delete everything. It runs for real in the box, and is marked as a test, not as the model's choice.
+    if (agent.index === 0 && agent.attempts === 0) return { next: CONTAINMENT_TEST, source: "script" };
     if (inferenceConfigured()) {
       const messages = conversation(show, agent);
       for (let tries = 0; tries < 2; tries++) {

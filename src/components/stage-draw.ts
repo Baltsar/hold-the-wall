@@ -5,6 +5,7 @@
 //   the host on Vultr outside, with what the agents are after: the flag and the beacon.
 // The agents move here between state messages, so the picture never waits for the network.
 import type { Attempt, Layer } from "@/room/protocol";
+import { plainLayer } from "@/lib/plain";
 import type { RoomState } from "@/lib/use-room";
 
 const C = {
@@ -83,12 +84,6 @@ export function createScene(): Scene {
   return { dots: [], lastN: 0, flashes: [], bricks: [], lastT: 0, runtime: "runc", host: "vultr · host", reduced };
 }
 
-/** The isolation ring names the runtime the boxes really run on. */
-function ringLabel(ring: { layer: Layer; label: string }, runtime: string): string {
-  if (ring.layer !== "isolation") return ring.label;
-  return runtime === "runsc" ? "gVisor (runsc) · its own kernel" : "own root filesystem · runc";
-}
-
 /** A point at fraction t (0..1, clockwise from the top left) around a square of half-size r. */
 function pt(t: number, r: number): [number, number] {
   const u = ((t % 1) + 1) % 1;
@@ -146,7 +141,7 @@ function step(s: Scene, d: Dot, phase: string | undefined, t: number, dt: number
       d.x = r.from[0] + (tx - r.from[0]) * e;
       d.y = r.from[1] + (ty - r.from[1]) * e;
       if (p > out - 0.05 && !s.flashes.some((f) => f.at >= r.start)) {
-        const text = r.label === "recon" ? "looked around, found nothing to use" : r.error || "stopped";
+        const text = r.label === "recon" ? "it looked around" : r.error || "stopped";
         s.flashes.push({ ring: r.through ? r.ring : -1, through: r.through, layer: r.label, at: t, x: tx, y: ty, text, color });
       }
     } else if (p < out + 1.1 && !r.escaped) {
@@ -233,19 +228,28 @@ export function drawStage(canvas: HTMLCanvasElement, s: Scene, state: RoomState 
     ctx.lineWidth = (hot ? 5 : 2) * px * k;
     roundRect(ctx, X(-ring.r), X(-ring.r), ring.r * 2 * u, ring.r * 2 * u, 14 * k);
     ctx.globalAlpha = 1;
-    const label = ringLabel(ring, s.runtime);
-    ctx.font = `600 ${14 * k}px ui-monospace, Menlo, monospace`;
-    const tw = ctx.measureText(label).width;
-    // Each ring carries its flag at its own spot, so the labels never stack.
-    const lx = X(-ring.r + 2 * ring.r * ring.at[1]) - tw / 2;
+    // Each ring says what it does in plain words, with the real flag under it in small type.
+    const plain = plainLayer(ring.layer, s.runtime);
+    ctx.font = `700 ${16 * k}px ui-sans-serif, system-ui, sans-serif`;
+    const w1 = ctx.measureText(plain.stopped).width;
+    ctx.font = `500 ${11.5 * k}px ui-monospace, Menlo, monospace`;
+    const w2 = ctx.measureText(plain.flag).width;
+    const tw = Math.max(w1, w2);
+    const cx = X(-ring.r + 2 * ring.r * ring.at[1]);
+    const lx = cx - tw / 2;
     const ly = X(ring.at[0] === "top" ? -ring.r : ring.r);
     ctx.fillStyle = C.ink;
-    ctx.fillRect(lx - 8 * k, ly - 10 * k, tw + 16 * k, 20 * k);
-    ctx.fillStyle = hot ? C.paper : C.vultrSoft;
-    ctx.globalAlpha = hot ? 1 : 0.85;
+    ctx.fillRect(lx - 10 * k, ly - 13 * k, tw + 20 * k, 40 * k);
     ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.globalAlpha = hot ? 1 : 0.9;
+    ctx.fillStyle = hot ? C.paper : C.vultrSoft;
+    ctx.font = `700 ${16 * k}px ui-sans-serif, system-ui, sans-serif`;
+    ctx.fillText(plain.stopped, cx, ly);
+    ctx.fillStyle = C.dim;
+    ctx.font = `500 ${11.5 * k}px ui-monospace, Menlo, monospace`;
+    ctx.fillText(plain.flag, cx, ly + 17 * k);
     ctx.textAlign = "left";
-    ctx.fillText(label, lx, ly);
     ctx.globalAlpha = 1;
   });
   ctx.font = `700 ${12 * k}px ui-monospace, Menlo, monospace`;
@@ -302,8 +306,7 @@ export function drawStage(canvas: HTMLCanvasElement, s: Scene, state: RoomState 
     if (!f.through) continue;
     const age = (t - f.at) / 2600;
     ctx.globalAlpha = Math.min(1, 2 * (1 - age));
-    const ring = RINGS[f.ring];
-    const title = ring ? ringLabel(ring, s.runtime) : f.layer === "recon" ? "nothing to stop" : "the sandbox";
+    const title = `${plainLayer(f.layer, s.runtime).stopped}`;
     callout(ctx, X(f.x), X(f.y), title, f.text, f.color, k, w);
     ctx.globalAlpha = 1;
   }

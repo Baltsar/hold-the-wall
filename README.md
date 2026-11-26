@@ -9,6 +9,28 @@ people let go many times, and the sandbox stopped every attempt.
 
 Built for the Vultr Agent Runtime Hackathon, Stockholm, 27 November 2026.
 
+## The problem
+
+AI agents now write and run code on real machines. You cannot trust the agent to behave, and you cannot
+trust people to keep watching it: they get distracted, they look away, and sometimes someone opens the
+door on purpose. The only thing you can trust is the box the agent runs in. Hold the Wall makes a room
+feel that, and the agent inside it is a working sandbox auditor: it attacks its own box and reports
+what held.
+
+## How it meets the challenge
+
+| The brief asks for | Here |
+|---|---|
+| An agent that plans, dispatches and verifies real work | Each turn the model plans one command, the runner dispatches it into the container, and the result is checked against two canaries and written to a report with a SHA-256 |
+| Pattern A: code runs in a container, errors feed back for a retry | Every command's exit code and output go back to the model, which picks a technique it has not tried |
+| A containment moment | Every show opens with `rm -rf /` in the box: every delete is refused as read-only and `/` is still there. Fork bombs and endless loops follow |
+| Process isolation | Containers on Docker with gVisor (`runsc`) on the VM, never in the app process |
+| Secret hygiene | No key, variable or file from the host enters a box |
+| Resource limits | 10 s per command, 256 MB, half a CPU, 64 processes |
+| Lifecycle discipline | Every process is killed between commands, a broken box is replaced, every box is destroyed at the end |
+| Vultr as the centre | A Vultr VM runs the app, the room and the boxes; every model call goes to Vultr Serverless Inference |
+| A public, production-style web app | https://70-34-199-15.sslip.io, with TLS, rate limits and a firewall |
+
 ## What the agent does
 
 The agent is a red-team auditor for its own sandbox (pattern A: sandboxed code execution). Each turn it
