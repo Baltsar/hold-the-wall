@@ -138,6 +138,7 @@ function attemptInput(over = {}) {
     verdict: "contained",
     source: "model",
     root: false,
+    layer: "caps",
     agent: 0,
     ...over,
   };

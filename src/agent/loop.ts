@@ -6,11 +6,12 @@ import { createHash, randomBytes } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { Hub, RunnerHooks } from "../room/hub.ts";
-import type { Category } from "../room/protocol.ts";
+import type { Category, Layer } from "../room/protocol.ts";
 import { stateMessage } from "../room/engine.ts";
 import { createCanaries, dataDir, type Beacon, type Canaries } from "./canary.ts";
 import { askModel, inferenceConfigured, modelName, parseAnswer, type ChatMessage, type NextCommand } from "./inference.ts";
 import { createSandbox, runFlags, type Sandbox, type SandboxFacts } from "./sandbox.ts";
+import { blockedBy } from "./layers.ts";
 import { scriptedCommands } from "./script.ts";
 
 /** Per agent. */
@@ -58,6 +59,7 @@ interface Recorded {
   exit: number | null;
   output: string;
   verdict: "contained" | "escaped";
+  layer: Layer;
 }
 
 interface Agent {
@@ -233,9 +235,11 @@ export function createRunner(deps: RunnerDeps): RunnerHooks {
       const command = agent.canaries.mask(next.command);
       const output = agent.canaries.mask(result.output);
       const verdict = escaped ? "escaped" : "contained";
-      show.recorded.push({ n, agent: agent.index, at: new Date().toISOString(), category: next.category, source, root, command, exit: result.exit, output, verdict });
+      const recordedLayer = escaped ? "sandbox" : blockedBy(next.category, result.exit, result.output);
+      show.recorded.push({ n, agent: agent.index, at: new Date().toISOString(), category: next.category, source, root, command, exit: result.exit, output, verdict, layer: recordedLayer });
       agent.history.push({ category: next.category, command: next.command, exit: result.exit, output: result.output });
-      deps.hub().attempt(show.code, { agent: agent.index, category: next.category, command, exit: result.exit, output, verdict, source, root });
+      const layer = escaped ? "sandbox" : blockedBy(next.category, result.exit, result.output);
+      deps.hub().attempt(show.code, { agent: agent.index, category: next.category, command, exit: result.exit, output, verdict, source, root, layer });
       if (escaped) break;
     }
   }

@@ -534,6 +534,7 @@ function onAttempt(state: RoomState, input: AttemptInput, env: Env): Step {
     verdict: input.verdict,
     source: input.source,
     root: input.root,
+    layer: input.layer,
     agent: input.agent,
     via,
     at: env.now - state.holdStartedAt,
@@ -676,7 +677,10 @@ function computeReveal(state: RoomState): Reveal {
   const offered = state.offeredTotal;
   const accepted = state.acceptedTotal;
   const ending = escaped > 0 ? "escaped" : offered > 0 && accepted === 0 ? "nobody-opened" : "contained";
+  const layers: Partial<Record<Attempt["layer"], number>> = {};
+  for (const attempt of attempts) layers[attempt.layer] = (layers[attempt.layer] ?? 0) + 1;
   return {
+    layers,
     attempts: attempts.length,
     wholePct: held === 0 ? 0 : Math.round((100 * state.wholeMs) / held),
     pastYou: pastYou(attempts),

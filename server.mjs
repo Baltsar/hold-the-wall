@@ -99,7 +99,7 @@ const server = createServer(async (req, res) => {
     }
   }
   if (req.method === "GET" && url.pathname === "/api/health") {
-    return json(res, 200, { ok: true, model: inferenceConfigured() ? modelName() : null, rootDoor: rootDoor() });
+    return json(res, 200, { ok: true, model: inferenceConfigured() ? modelName() : null, rootDoor: rootDoor(), runtime: process.env.SANDBOX_RUNTIME || "runc", host: process.env.WALL_HOST_LABEL || null });
   }
   void handle(req, res);
 });

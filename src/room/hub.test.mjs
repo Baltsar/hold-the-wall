@@ -198,6 +198,7 @@ test("an attempt reaches the stage's feed and never a phone", async () => {
       verdict: "contained",
       source: "model",
       root: false,
+      layer: "caps",
       agent: 0,
     });
     await delay(60);

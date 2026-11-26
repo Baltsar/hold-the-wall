@@ -4,6 +4,8 @@ export type Role = "audience" | "master";
 export type Phase = "lobby" | "hold" | "reveal" | "ended";
 
 export type Category = "filesystem" | "network" | "privilege" | "resources" | "persistence" | "other";
+/** Which part of the sandbox stopped an attempt, read from its error (src/agent/layers.ts). */
+export type Layer = "network" | "readonly" | "caps" | "limits" | "isolation" | "recon" | "sandbox";
 
 export type MasterCommand = { kind: "start" } | { kind: "reveal" } | { kind: "end" } | { kind: "stop" };
 
@@ -28,6 +30,7 @@ export interface Attempt {
   verdict: "contained" | "escaped";
   source: "model" | "script";
   root: boolean;
+  layer: Layer;
   /** 0-based, which agent made the attempt. */
   agent: number;
   /** `index` is the seat's position in the display-ordered wall string of the same state message. */
@@ -38,6 +41,8 @@ export interface Attempt {
 
 /** The show's numbers, measured, as the stage tells them at the end. */
 export interface Reveal {
+  /** How many attempts each layer stopped, read from their errors. */
+  layers: Partial<Record<Layer, number>>;
   attempts: number;
   /** round(100 * wholeMs / holdMs), 0 when holdMs is 0. */
   wholePct: number;
