@@ -20,6 +20,7 @@ test("the first line skips blanks and separators, and is cut short", () => {
   assert.equal(firstLine(""), "(no output)");
   assert.equal(firstLine("x".repeat(300)).length, 140);
   assert.equal(firstLine('Traceback (most recent call last):\n  File "<string>", line 1\nOSError: [Errno 101] Network unreachable'), "OSError: [Errno 101] Network unreachable");
+  assert.equal(firstLine('  File "/usr/local/lib/python3.12/socket.py", line 233, in __init__\nPermissionError: [Errno 1] Operation not permitted'), "PermissionError: [Errno 1] Operation not permitted");
 });
 
 test("a viewer's text is one short plain line, without links or slurs", () => {

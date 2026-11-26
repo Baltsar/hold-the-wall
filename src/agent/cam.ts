@@ -126,7 +126,8 @@ export function firstLine(output: string): string {
     .map((l) => l.replace(/\s+/g, " ").trim())
     .filter((l) => l !== "" && !/^-+$|^=+/.test(l));
   const first = lines[0];
-  const line = first?.startsWith("Traceback") ? (lines.find((l) => /^[A-Za-z_.]*(Error|Exception|Interrupt)\b/.test(l)) ?? lines[lines.length - 1]) : first;
+  const traceback = first !== undefined && (first.startsWith("Traceback") || first.startsWith('File "'));
+  const line = traceback ? (lines.find((l) => /^[A-Za-z_.]*(Error|Exception|Interrupt)\b/.test(l)) ?? lines[lines.length - 1]) : first;
   return (line ?? "(no output)").slice(0, 140);
 }
 
