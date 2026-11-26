@@ -25,3 +25,4 @@ Morning summary:
 - 00:53 real model: tried six chat models with the real prompt; chose deepseek-v4.1-flash-1017; fixed history so the model keeps sending a category; full show with 35 phones ran on the model, all contained.
 - 01:08 VM created (vc2-2c-4gb, sto, $20/month) and set up: Caddy TLS via sslip.io, gVisor, firewall 22/80/443 only. test:sandbox 11/11 under runsc. Show with 40 phones on the VM: 2 agents, 70 attempts, all contained.
 - 01:19 layers: blockedBy classifier (network, read-only, caps, limits, isolation, recon, sandbox) with tests; Attempt.layer and reveal.layers; /api/health reports the runtime.
+- 01:24 stage redesign: concentric layers (agents with cursor eyes and command trails, brick wall, five labelled Vultr-blue rings that light up with the real error, host grid with the flag and the beacon), top bar with clock and meter, live log, reveal counts per ring.

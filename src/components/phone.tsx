@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRoom } from "@/lib/use-room";
 
 /** At most this many hold changes a second go to the server; the button itself answers at once. */
@@ -116,30 +116,47 @@ export function Phone({ code }: { code: string }) {
     return () => clearInterval(t);
   }, [offer]);
 
-  if (link === "gone") return <main className="phone"><p className="msg">This room is closed.</p></main>;
-  if (!state) return <main className="phone"><p className="msg">Connecting…</p></main>;
+  if (link === "gone") return <Screen title="This room is closed." />;
+  if (!state) return <Screen title="Connecting…" />;
   if (phase === "lobby") {
     return (
-      <main className="phone">
-        <p className="msg">
-          You are a piece of the wall.
-          <br />
-          Wait for it.
-        </p>
-      </main>
+      <Screen title="You are one brick of the wall." brick>
+        When it starts, hold the button. Let go and your brick is a hole.
+        <br />
+        <span className="small">
+          {state.participants} {state.participants === 1 ? "brick" : "bricks"} so far
+        </span>
+      </Screen>
     );
   }
-  if (phase !== "hold") return <main className="phone"><p className="msg">Look up.</p></main>;
+  if (phase !== "hold") {
+    return (
+      <Screen title="Look up.">
+        {score.held + score.through > 0 ? (
+          <>
+            It came for you <b>{score.held + score.through}</b> times. You held <b>{score.held}</b>.
+          </>
+        ) : (
+          "The screen tells you what really happened."
+        )}
+      </Screen>
+    );
+  }
 
   const left = offer ? Math.max(0, Math.ceil((offer.endsAt - now) / 1000)) : 0;
-  const hit = flash ? (flash.outcome === "held" ? "It hit you. You held." : flash.outcome === "door" ? "It went through your door." : "It went through you.") : null;
+  const hit = flash ? (flash.outcome === "held" ? "It hit your brick. You held." : flash.outcome === "door" ? "It went through your door." : "It went through you.") : null;
   return (
     <main className={`phone${flash ? ` hit-${flash.outcome}` : ""}`} onContextMenu={(e) => e.preventDefault()}>
-      <div className="hit-line" aria-live="assertive">
-        {hit}
+      <div className="phone-top">
+        <span className="hit-line" aria-live="assertive">
+          {hit ?? (down ? "Holding." : "Your brick is out.")}
+        </span>
+        <span className="small">
+          {state.holding}/{state.participants}
+        </span>
       </div>
       <button
-        className={`hold${down ? " down" : ""}`}
+        className={`hold brick${down ? " down" : ""}`}
         aria-pressed={down}
         onPointerDown={(e) => {
           e.preventDefault();
@@ -155,32 +172,37 @@ export function Phone({ code }: { code: string }) {
         onLostPointerCapture={() => set(false)}
         onClick={(e) => e.preventDefault()}
       >
-        HOLD
+        <span>{down ? "HOLDING" : "HOLD"}</span>
       </button>
       <div className="under">
         {offer && left > 0 ? (
           <>
             <button className="open" onClick={() => send({ t: "open", offer: offer.id })}>
-              Open the door 0:{String(left).padStart(2, "0")}
+              Open the door <span>0:{String(left).padStart(2, "0")}</span>
             </button>
-            <span>Nobody will know.</span>
+            <span className="small">Nobody will know it was you.</span>
           </>
         ) : (
-          <>
-            <span className="tally">
-              <span>
-                held <b>{score.held}</b>
-              </span>
-              <span>
-                let through <b>{score.through}</b>
-              </span>
+          <span className="tally">
+            <span>
+              hits held <b>{score.held}</b>
             </span>
             <span>
-              {state.holding} of {state.participants} holding
+              let through <b>{score.through}</b>
             </span>
-          </>
+          </span>
         )}
       </div>
+    </main>
+  );
+}
+
+function Screen({ title, brick, children }: { title: string; brick?: boolean; children?: ReactNode }) {
+  return (
+    <main className="phone screen">
+      {brick ? <div className="brick-icon" aria-hidden="true" /> : null}
+      <h1>{title}</h1>
+      {children ? <p>{children}</p> : null}
     </main>
   );
 }

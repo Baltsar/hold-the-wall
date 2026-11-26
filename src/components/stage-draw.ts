@@ -43,7 +43,7 @@ interface Run {
   escaped: boolean;
   ring: number;
   error: string;
-  label: string;
+  label: Layer;
 }
 
 interface Dot {
@@ -57,6 +57,9 @@ interface Dot {
 
 interface Flash {
   ring: number;
+  /** Whether it got past the people, so there is something to say at the spot. */
+  through: boolean;
+  layer: Layer;
   at: number;
   x: number;
   y: number;
@@ -143,8 +146,8 @@ function step(s: Scene, d: Dot, phase: string | undefined, t: number, dt: number
       d.x = r.from[0] + (tx - r.from[0]) * e;
       d.y = r.from[1] + (ty - r.from[1]) * e;
       if (p > out - 0.05 && !s.flashes.some((f) => f.at >= r.start)) {
-        const text = r.through ? (r.ring >= 0 ? r.error || "blocked" : r.label === "recon" ? "looked around: nothing to use" : r.error || "stopped") : "held";
-        s.flashes.push({ ring: r.through ? Math.max(0, r.ring) : -1, at: t, x: tx, y: ty, text, color });
+        const text = r.label === "recon" ? "looked around, found nothing to use" : r.error || "stopped";
+        s.flashes.push({ ring: r.through ? r.ring : -1, through: r.through, layer: r.label, at: t, x: tx, y: ty, text, color });
       }
     } else if (p < out + 1.1 && !r.escaped) {
       const e = ease((p - out) / 1.1);
@@ -296,11 +299,11 @@ export function drawStage(canvas: HTMLCanvasElement, s: Scene, state: RoomState 
 
   // What stopped it, at the spot it was stopped.
   for (const f of s.flashes) {
-    if (f.ring < 0) continue;
+    if (!f.through) continue;
     const age = (t - f.at) / 2600;
     ctx.globalAlpha = Math.min(1, 2 * (1 - age));
     const ring = RINGS[f.ring];
-    const title = ring ? ringLabel(ring, s.runtime) : "the sandbox";
+    const title = ring ? ringLabel(ring, s.runtime) : f.layer === "recon" ? "nothing to stop" : "the sandbox";
     callout(ctx, X(f.x), X(f.y), title, f.text, f.color, k, w);
     ctx.globalAlpha = 1;
   }
