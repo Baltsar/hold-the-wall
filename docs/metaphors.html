@@ -1,0 +1,387 @@
+<title>Hold the Wall metaforer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column for the argument, cards in a two-column grid for the metaphors.
+   One dark look on purpose, the same as the product: navy ground, paper for people, Vultr blue for the sandbox, amber for the agent. */
+:root {
+  color-scheme: dark;
+  --ink: #0a1230;
+  --panel: #111c44;
+  --line: #24315f;
+  --paper: #f1ead9;
+  --dim: #98a2c3;
+  --vultr: #007bfc;
+  --vultr-soft: #4da3ff;
+  --amber: #ffb224;
+  --display: "Space Grotesk", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+* { box-sizing: border-box; }
+body { background: var(--ink); color: var(--paper); font-family: var(--display); font-size: 17px; line-height: 1.55; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 48px 96px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 64px; }
+h1, h2, h3 { text-wrap: balance; letter-spacing: -0.02em; margin: 0; }
+h1 { font-size: clamp(40px, 7vw, 76px); line-height: 0.95; }
+h2 { font-size: clamp(26px, 3.4vw, 38px); line-height: 1.1; }
+h3 { font-size: 24px; line-height: 1.15; }
+p { margin: 0; max-width: 66ch; }
+a { color: var(--vultr-soft); }
+.eyebrow { font: 600 13px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--vultr-soft); }
+.lead { font-size: clamp(19px, 2vw, 23px); line-height: 1.45; }
+.dim { color: var(--dim); }
+section { display: flex; flex-direction: column; gap: 18px; }
+.hero { gap: 22px; }
+.rec { border-left: 3px solid var(--amber); padding: 6px 0 6px 20px; display: flex; flex-direction: column; gap: 10px; }
+.rec strong { color: var(--amber); }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.fact { background: var(--panel); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.fact b { font: 700 22px var(--display); }
+.fact span { color: var(--dim); font-size: 15px; }
+.fit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.fit div { padding: 12px 16px; border-bottom: 1px solid var(--line); min-width: 0; }
+.fit div:nth-child(odd) { border-right: 1px solid var(--line); color: var(--vultr-soft); }
+.fit .head { font: 600 12px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim) !important; background: var(--panel); }
+.fit div:nth-last-child(-n+2) { border-bottom: 0; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); gap: 20px; }
+.card { border: 1px solid var(--line); border-radius: 12px; padding: 22px; display: flex; flex-direction: column; gap: 14px; min-width: 0; background: color-mix(in srgb, var(--panel) 55%, var(--ink)); }
+.card.pick { border-color: var(--amber); }
+.card-top { display: grid; grid-template-columns: 116px minmax(0, 1fr); gap: 18px; align-items: start; }
+.card svg { width: 116px; height: 116px; display: block; }
+.card .tag { font: 600 12px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); }
+.card.pick .tag { color: var(--amber); }
+.card .en { font: 500 14px var(--mono); color: var(--vultr-soft); }
+.roles { display: grid; grid-template-columns: 8.5em minmax(0, 1fr); gap: 4px 12px; font-size: 15px; margin: 0; }
+.roles dt { font: 600 12px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); padding-top: 3px; }
+.roles dd { margin: 0; }
+.line { font-weight: 700; font-size: 19px; color: var(--paper); border-top: 1px solid var(--line); padding-top: 12px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font: 600 12px var(--mono); padding: 3px 9px; border-radius: 4px; background: var(--line); color: var(--dim); }
+.chip.s { background: color-mix(in srgb, var(--vultr) 25%, transparent); color: var(--vultr-soft); }
+.chip.m { background: color-mix(in srgb, var(--amber) 18%, transparent); color: var(--amber); }
+.mech { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 14px; }
+.mech div { background: var(--panel); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.mech b { font-size: 18px; }
+.mech span { color: var(--dim); font-size: 15px; }
+.film { border: 1px solid var(--line); border-radius: 10px; overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 680px; font-size: 15px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+th { font: 600 12px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); background: var(--panel); }
+td:first-child { font: 600 14px var(--mono); color: var(--vultr-soft); white-space: nowrap; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: 0; }
+.taglines { display: flex; flex-direction: column; gap: 10px; }
+.taglines p { font-size: clamp(20px, 2.4vw, 28px); font-weight: 700; line-height: 1.2; }
+.taglines small { display: block; font: 500 14px var(--mono); color: var(--dim); margin-top: 4px; }
+.warn { border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+ol, ul { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 6px; max-width: 70ch; }
+.sources { font-size: 14px; color: var(--dim); }
+.sources li { overflow-wrap: anywhere; }
+@media (max-width: 560px) {
+  .card-top { grid-template-columns: 1fr; }
+  .roles { grid-template-columns: 1fr; }
+  .roles dt { padding-top: 6px; }
+  .fit { grid-template-columns: 1fr; }
+  .fit div:nth-child(odd) { border-right: 0; }
+}
+</style>
+
+<div class="wrap">
+
+<section class="hero">
+  <p class="eyebrow">Hold the Wall · koncept inför fredag 27 november</p>
+  <h1>Sju sätt att visa en sandlåda för någon som aldrig hört ordet</h1>
+  <p class="lead">Det vi vill att alla ska fatta på tre sekunder: <strong>en AI kan göra vad som helst. Man kan inte lita på AI:n, och inte på människorna som vaktar den. Man kan bara lita på lådan den körs i.</strong> Här är olika bilder för samma sak, hur publiken spelar dem med telefonen, och hur filmen blir något Vultr själva skulle vilja visa.</p>
+  <div class="rec">
+    <p><strong>Rekommendation:</strong> bygg om showen till <strong>Släck ljuset</strong>. Varje telefon blir en ficklampa i ett mörkt rum, och agenten letar efter mörkret. Det är samma spel som idag, men det syns i verkligheten. 100 telefoner som lyser och slocknar ger bilder som ingen annan grupp får.</p>
+    <p>Lägg till tre saker som gör det roligt att spela: <strong>varningen</strong> ("den är vid dig, tryck nu!"), <strong>titta på din granne</strong> i avslöjandet, och <strong>ljud</strong> från telefonen när du träffas.</p>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Vad Vultr vill säga just nu</p>
+  <h2>Deras budskap och vårt är nästan samma mening</h2>
+  <div class="facts">
+    <div class="fact"><b>"The alternative hyperscaler"</b><span>Så kallar Vultr sig 2026: ett alternativ till AWS, Azure och Google, byggt för AI i produktion.</span></div>
+    <div class="fact"><b>Kontroll och förutsägbarhet</b><span>Orden de upprepar: "control", "predictability", "governable", "fully within your control".</span></div>
+    <div class="fact"><b>Agentisk AI i företag</b><span>Oktober 2026: nya funktioner för att köra agenter i företag. Säkerhet, IAM, datasuveränitet.</span></div>
+    <div class="fact"><b>Från CISO till ensam utvecklare</b><span>De skriver uttryckligen till "a CISO, a CIO, a CTO, a head of platform engineering, or even just a single developer".</span></div>
+  </div>
+  <p>Den som är rädd för agenter är CISO:n. Vår film säger till CISO:n: <strong>agenten kommer att försöka, människorna kommer att släppa, men infrastrukturen håller.</strong> Det är Vultrs "control" och "predictability", visat med 100 personers händer i stället för en slide.</p>
+  <div class="fit">
+    <div class="head">Vultr säger</div><div class="head">Hold the Wall visar</div>
+    <div>Predictability</div><div>Människor är oförutsägbara, lådan är det inte</div>
+    <div>Control</div><div>Ni tappade kontrollen, Vultr-lådan gjorde det inte</div>
+    <div>Agentic AI for the enterprise</div><div>En riktig agent som verkligen försöker ta sig ut</div>
+    <div>Security and governance</div><div>Varje försök i en rapport med hash, inga nycklar i lådan</div>
+    <div>Built for developers too</div><div>Prova själv på demo-länken, koden är öppen</div>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Metaforerna</p>
+  <h2>Samma spel, olika bilder</h2>
+  <p class="dim">Alla bygger på det vi redan har: telefonen hålls, agenten letar efter svaga punkter, en person blir i hemlighet tillfrågad, och sandlådan stoppar allt. Det som byts är bilden och orden. Storleken anger hur mycket som måste byggas om från dagens version.</p>
+
+  <div class="cards">
+
+    <article class="card pick">
+      <div class="card-top">
+        <svg viewBox="0 0 116 116" aria-hidden="true">
+          <rect width="116" height="116" rx="10" fill="#050a1c"/>
+          <circle cx="30" cy="30" r="14" fill="#f1ead9" opacity="0.9"/><circle cx="58" cy="22" r="14" fill="#f1ead9" opacity="0.9"/>
+          <circle cx="88" cy="32" r="14" fill="#f1ead9" opacity="0.9"/><circle cx="24" cy="70" r="14" fill="#f1ead9" opacity="0.9"/>
+          <circle cx="92" cy="76" r="14" fill="#1b2650"/><circle cx="58" cy="96" r="14" fill="#f1ead9" opacity="0.9"/>
+          <circle cx="90" cy="76" r="5" fill="#ffb224"/>
+          <rect x="6" y="6" width="104" height="104" rx="8" fill="none" stroke="#007bfc" stroke-width="2.5"/>
+        </svg>
+        <div>
+          <p class="tag">Rekommenderad</p>
+          <h3>Släck ljuset</h3>
+          <p class="en">Lights Out</p>
+        </div>
+      </div>
+      <dl class="roles">
+        <dt>Rummet</dt><dd>Ljuset släcks i salen. Bara telefonerna lyser.</dd>
+        <dt>Telefonen</dt><dd>Håll inne: hela skärmen blir en vit lampa. Släpp: den slocknar.</dd>
+        <dt>Agenten</dt><dd>Något i mörkret som söker sig mot det som inte lyser.</dd>
+        <dt>Människorna</dt><dd>Vakterna med ficklampor.</dd>
+        <dt>Sandlådan</dt><dd>Väggarna runt rummet, som står kvar när lamporna slocknar.</dd>
+      </dl>
+      <p>Alla förstår mörker och ficklampor. På storskärmen ser man lamporna som prickar och agenten som letar sig fram till de mörka. I salen ser kameran samma sak på riktigt.</p>
+      <p class="line">"The lights went out. The walls didn't."</p>
+      <div class="meta"><span class="chip s">Liten ombyggnad</span><span class="chip">Bäst på film</span><span class="chip">Kräver att ljuset kan släckas</span></div>
+    </article>
+
+    <article class="card">
+      <div class="card-top">
+        <svg viewBox="0 0 116 116" aria-hidden="true">
+          <rect width="116" height="116" rx="10" fill="#0a1230"/>
+          <rect x="10" y="30" width="96" height="56" fill="#f1ead9"/>
+          <circle cx="40" cy="58" r="5" fill="#0a1230"/><circle cx="72" cy="48" r="5" fill="#0a1230"/><circle cx="84" cy="70" r="5" fill="#0a1230"/>
+          <path d="M40 58 q8 14 0 30" stroke="#4da3ff" stroke-width="4" fill="none"/>
+          <rect x="6" y="88" width="104" height="20" fill="#007bfc" opacity="0.5"/>
+        </svg>
+        <div>
+          <p class="tag">Fingret i dammen</p>
+          <h3>Läckan</h3>
+          <p class="en">Finger in the Dike</p>
+        </div>
+      </div>
+      <dl class="roles">
+        <dt>Telefonen</dt><dd>Ditt finger på skärmen är bokstavligen fingret i hålet.</dd>
+        <dt>Agenten</dt><dd>Vattnet som pressar på och hittar varje spricka.</dd>
+        <dt>Människorna</dt><dd>Dammen, ett finger per hål.</dd>
+        <dt>Sandlådan</dt><dd>Berget under dammen. Vattnet kommer igenom dammen men aldrig genom berget.</dd>
+      </dl>
+      <p>Gesten och metaforen är exakt samma sak: håll fingret mot skärmen så läcker det inte. Berättelsen om pojken som höll fingret i dammen känner många till.</p>
+      <p class="line">"Fingers slip. Bedrock doesn't."</p>
+      <div class="meta"><span class="chip s">Liten ombyggnad</span><span class="chip">Tydligast gest</span></div>
+    </article>
+
+    <article class="card">
+      <div class="card-top">
+        <svg viewBox="0 0 116 116" aria-hidden="true">
+          <rect width="116" height="116" rx="10" fill="#0a1230"/>
+          <rect x="6" y="6" width="104" height="104" rx="50" fill="#007bfc" opacity="0.28"/>
+          <rect x="30" y="30" width="56" height="56" fill="none" stroke="#f1ead9" stroke-width="5" stroke-dasharray="10 6"/>
+          <circle cx="58" cy="58" r="6" fill="#ffb224"/>
+        </svg>
+        <div>
+          <p class="tag">Ön</p>
+          <h3>Fängelseön</h3>
+          <p class="en">The Island</p>
+        </div>
+      </div>
+      <dl class="roles">
+        <dt>Agenten</dt><dd>En fånge som vill rymma.</dd>
+        <dt>Människorna</dt><dd>Vakterna på muren. En av dem blir mutad i hemlighet.</dd>
+        <dt>Sandlådan</dt><dd>Havet runt ön. Den tar sig förbi vakterna, men ingen simmar därifrån.</dd>
+      </dl>
+      <p>Rymningsfilmer kan alla. Muta-förrädaren blir naturlig: "en vakt fick ett erbjudande". Havet är en stark bild för en gräns som inte kräver någon som vaktar.</p>
+      <p class="line">"Guards fall asleep. The ocean doesn't."</p>
+      <div class="meta"><span class="chip s">Liten ombyggnad</span><span class="chip">Bäst berättelse</span></div>
+    </article>
+
+    <article class="card">
+      <div class="card-top">
+        <svg viewBox="0 0 116 116" aria-hidden="true">
+          <rect width="116" height="116" rx="10" fill="#0a1230"/>
+          <rect x="16" y="22" width="84" height="76" rx="6" fill="none" stroke="#f1ead9" stroke-width="8"/>
+          <circle cx="58" cy="60" r="15" fill="none" stroke="#f1ead9" stroke-width="3"/>
+          <line x1="58" y1="45" x2="58" y2="75" stroke="#f1ead9" stroke-width="3"/>
+          <text x="58" y="66" text-anchor="middle" font-family="monospace" font-size="12" fill="#4da3ff">0</text>
+          <circle cx="36" cy="40" r="5" fill="#ffb224"/>
+        </svg>
+        <div>
+          <p class="tag">Valvet</p>
+          <h3>Bankvalvet</h3>
+          <p class="en">The Empty Vault</p>
+        </div>
+      </div>
+      <dl class="roles">
+        <dt>Agenten</dt><dd>En tjuv som redan är inne i valvet och vill ut med bytet.</dd>
+        <dt>Människorna</dt><dd>Larmet, en sensor per telefon.</dd>
+        <dt>Sandlådan</dt><dd>Valvet själv, och tvisten: det fanns inget att stjäla. Nycklarna låg aldrig där inne.</dd>
+      </dl>
+      <p>Den enda metaforen som visar uppdragets "inga nycklar i lådan" som en poäng. Slutet blir en tvist i två steg: den kom inte ut, och om den hade gjort det hade den haft tomma händer.</p>
+      <p class="line">"It got nothing out. There was nothing to take."</p>
+      <div class="meta"><span class="chip m">Medel ombyggnad</span><span class="chip">Bäst för säkerhetsfolk</span></div>
+    </article>
+
+    <article class="card">
+      <div class="card-top">
+        <svg viewBox="0 0 116 116" aria-hidden="true">
+          <rect width="116" height="116" rx="10" fill="#0a1230"/>
+          <rect x="12" y="12" width="92" height="92" rx="6" fill="#007bfc" opacity="0.22" stroke="#4da3ff" stroke-width="3"/>
+          <path d="M30 70 q14 -18 28 0 q14 18 28 0" stroke="#ffb224" stroke-width="5" fill="none"/>
+          <circle cx="86" cy="70" r="5" fill="#ffb224"/>
+          <line x1="22" y1="40" x2="94" y2="40" stroke="#f1ead9" stroke-width="3" stroke-dasharray="6 5"/>
+        </svg>
+        <div>
+          <p class="tag">Akvariet</p>
+          <h3>Hajen i tanken</h3>
+          <p class="en">The Tank</p>
+        </div>
+      </div>
+      <dl class="roles">
+        <dt>Agenten</dt><dd>En haj som cirklar.</dd>
+        <dt>Människorna</dt><dd>Nätet i vattnet. Det har hål.</dd>
+        <dt>Sandlådan</dt><dd>Glaset. Hajen kommer genom nätet och slår i glaset.</dd>
+      </dl>
+      <p>Lätt att förstå för barn och för en jury efter lunch. Glaset är genomskinligt, precis som rapporten: man ser allt som händer därinne.</p>
+      <p class="line">"Nets tear. Glass holds."</p>
+      <div class="meta"><span class="chip m">Medel ombyggnad</span><span class="chip">Mest lekfull</span></div>
+    </article>
+
+    <article class="card">
+      <div class="card-top">
+        <svg viewBox="0 0 116 116" aria-hidden="true">
+          <rect width="116" height="116" rx="10" fill="#0a1230"/>
+          <rect x="20" y="58" width="76" height="40" rx="4" fill="#f1ead9"/>
+          <rect x="44" y="30" width="28" height="22" rx="3" fill="none" stroke="#4da3ff" stroke-width="3"/>
+          <circle cx="58" cy="22" r="8" fill="#ffb224"/>
+          <text x="58" y="84" text-anchor="middle" font-family="monospace" font-size="11" fill="#0a1230">sudo?</text>
+        </svg>
+        <div>
+          <p class="tag">Praktikanten</p>
+          <h3>AI-praktikanten</h3>
+          <p class="en">The AI Intern</p>
+        </div>
+      </div>
+      <dl class="roles">
+        <dt>Form</dt><dd>Inget spel: ett kort sketch-intro till filmen.</dd>
+        <dt>Bilden</dt><dd>En ny praktikant som är snabb, glad och vill ha nycklarna till allt.</dd>
+        <dt>Poängen</dt><dd>Man ger inte praktikanten serverrummet. Man ger den ett eget skrivbord.</dd>
+      </dl>
+      <p>Det här är bilden en CISO känner igen direkt, och den är rolig. Den passar som filmens första tio sekunder, före rummet. Det är så Vultr själva skulle kunna öppna en annons.</p>
+      <p class="line">"You wouldn't give the intern the server room."</p>
+      <div class="meta"><span class="chip s">Bara film</span><span class="chip">Bäst för CISO-publik</span></div>
+    </article>
+
+    <article class="card">
+      <div class="card-top">
+        <svg viewBox="0 0 116 116" aria-hidden="true">
+          <rect width="116" height="116" rx="10" fill="#0a1230"/>
+          <rect x="8" y="8" width="100" height="100" rx="6" fill="none" stroke="#007bfc" stroke-width="2"/>
+          <rect x="16" y="16" width="84" height="84" rx="5" fill="none" stroke="#007bfc" stroke-width="2" opacity="0.6"/>
+          <rect x="30" y="30" width="56" height="56" fill="none" stroke="#f1ead9" stroke-width="7" stroke-dasharray="12 5"/>
+          <circle cx="58" cy="58" r="6" fill="#ffb224"/>
+        </svg>
+        <div>
+          <p class="tag">Det vi har idag</p>
+          <h3>Muren</h3>
+          <p class="en">Hold the Wall</p>
+        </div>
+      </div>
+      <dl class="roles">
+        <dt>Agenten</dt><dd>En liten varelse i mitten.</dd>
+        <dt>Människorna</dt><dd>En tegelmur, en sten per telefon.</dd>
+        <dt>Sandlådan</dt><dd>Blå ringar utanför muren, en per riktig spärr.</dd>
+      </dl>
+      <p>Bra för den tekniska juryn, eftersom ringarna visar exakt vad som stoppade varje försök. Svagare för en vanlig människa: tegel och ringar är abstrakt, och inget syns i salen. Ringarna kan finnas kvar som "röntgenläget" i vilken metafor som helst.</p>
+      <p class="line">"People let go. The sandbox doesn't."</p>
+      <div class="meta"><span class="chip">Klar</span><span class="chip">Bäst för tekniker</span></div>
+    </article>
+
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Mekanikerna</p>
+  <h2>Det som gör det roligt att spela, oavsett bild</h2>
+  <p class="dim">Idag är spelet passivt: man håller och väntar. Det här är små tillägg som ger varje person ett eget ögonblick, och som ger kameran reaktioner att fånga.</p>
+  <div class="mech">
+    <div><b>Varningen</b><span>En sekund innan agenten slår till skriker telefonen "DEN ÄR VID DIG, TRYCK!". Den som hinner trycka håller. Det blir en reflexlek, och man ser folk rycka till på film.</span></div>
+    <div><b>Telefonen som lampa</b><span>Hållen telefon lyser helvit, släppt telefon slocknar. Salen blir själva spelplanen. Kräver att salen kan släckas, annars fungerar det ändå på film nära.</span></div>
+    <div><b>Ljudet</b><span>Telefonen gör ett ljud när du träffas: ett dovt slag om du höll, ett väsande om den kom igenom. 100 telefoner som låter i ett rum är ljudspåret till filmen.</span></div>
+    <div><b>Titta på din granne</b><span>I avslöjandet: "En av er öppnade dörren. Titta på personen bredvid dig." Ingen vet vem. Folk tittar misstänksamt på varandra. Det är den bästa reaktionen att filma.</span></div>
+    <div><b>Halva mot halva</b><span>Vänster sida av salen mot höger. Agenten jagar båda, och scenen visar vilken sida som höll bäst. Lite tävling gör tekniker mycket mer engagerade.</span></div>
+    <div><b>Röntgenläget</b><span>När showen är slut tänds sandlådans lager med vanliga ord: inget nätverk, skrivskyddat, inga admin-rättigheter. Det är dagens ringar, men sist i stället för hela tiden.</span></div>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Filmen</p>
+  <h2>Två minuter som Vultr kan visa utan att ändra något</h2>
+  <p>Filmen ska fungera på två sätt: som vår inlämning, och som något Vultr kan lägga upp på LinkedIn utan att klippa om. Därför ska den ha riktiga människor, rummet ska synas, varje påstående ska stämma, och Vultr ska synas som infrastrukturen, inte som avsändaren.</p>
+  <div class="film">
+    <table>
+      <thead><tr><th>Tid</th><th>Bild</th><th>Text eller ljud</th></tr></thead>
+      <tbody>
+        <tr><td>0:00</td><td>AI-praktikanten: en kort sketch där en glad praktikant ber om nycklarna till allt.</td><td>"You wouldn't give the intern the server room."</td></tr>
+        <tr><td>0:08</td><td>Svart. Sedan salen, lamporna släcks, 100 telefoner tänds.</td><td>"So we gave one to an AI. And asked a room to keep it in."</td></tr>
+        <tr><td>0:15</td><td>Händer som håller telefoner, ansikten i skärmljus. Storskärmen: agenten letar.</td><td>Ljudet från telefonerna. Någon ropar "håll!"</td></tr>
+        <tr><td>0:35</td><td>Närbild: en telefon skriker "DEN ÄR VID DIG". Personen rycker till.</td><td>Reaktionen, utan text.</td></tr>
+        <tr><td>0:45</td><td>Närbild: en telefon får "Open the door. Nobody will know." En tumme tvekar.</td><td>Tystnad.</td></tr>
+        <tr><td>0:55</td><td>Lamporna slocknar en efter en. Agenten tar sig förbi människorna.</td><td>"People let go."</td></tr>
+        <tr><td>1:05</td><td>Storskärmen: "Titta på personen bredvid dig." Folk tittar på varandra och skrattar.</td><td>Salens ljud.</td></tr>
+        <tr><td>1:15</td><td>Röntgenläget: lagren tänds. <code>rm -rf /</code> nekas, inget nätverk, inga nycklar i lådan.</td><td>"It tried 40 times. It never got out."</td></tr>
+        <tr><td>1:35</td><td>Rapporten rullar, terminalen, sandlådetesterna gröna. Kort arkitekturbild.</td><td>"A real agent on Vultr Serverless Inference. A real sandbox on a Vultr VM. Every attempt on the record."</td></tr>
+        <tr><td>1:50</td><td>Salen tänds igen.</td><td>"People let go. Infrastructure doesn't."</td></tr>
+        <tr><td>1:58</td><td>QR-kod till demon.</td><td>"It's still running. Try to let it out." · Built on Vultr for the Vultr Agent Runtime Hackathon, Stockholm.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Klipp också en <strong>30-sekundersversion</strong> utan sketch och utan arkitektur: släckt sal, varningen, dörren, grannen, "It never got out", sista raden. Den är den Vultr lättast kan dela.</p>
+
+  <div class="taglines">
+    <p>People let go. Infrastructure doesn't.<small>Vår mening, med Vultrs ord "infrastructure" i stället för "sandbox".</small></p>
+    <p>Agents are unpredictable. Your infrastructure shouldn't be.<small>Ekar Vultrs "predictability" utan att använda deras slogan.</small></p>
+    <p>Don't trust the agent. Trust the box.<small>Kortast. Fungerar som sista kort och som rubrik på demon.</small></p>
+  </div>
+
+  <div class="warn">
+    <b>Så att det inte blir fel mot Vultr</b>
+    <ul>
+      <li>Vultrs profilregler förbjuder att ändra logotypen och att antyda att de sponsrar eller står bakom något. Filmen säger därför "Built on Vultr for the Vultr Agent Runtime Hackathon", inte "by Vultr" och inte deras slogan.</li>
+      <li>Använd inte "the alternative hyperscaler" i filmen. Det är deras ord. Ekar vi idén med egna ord blir det naturligt, och de kan själva lägga till sin rad om de vill använda klippet.</li>
+      <li>Fråga folk i salen om de är okej att synas, och erbjud Vultr råmaterialet efteråt. Det gör filmen till en gåva, inte ett säljförsök.</li>
+      <li>Allt som sägs i filmen måste stämma mot rapporten: antal försök, att inget kom ut, och vad som stoppade dem.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Beslut</p>
+  <h2>Vad som byggs till fredag</h2>
+  <ol>
+    <li><strong>Släck ljuset</strong> som standardbild: telefonen lyser vitt när den hålls, scenen visar lamporna som prickar i mörkret, agenten söker mörkret. Muren och ringarna blir röntgenläget i slutet.</li>
+    <li><strong>Varningen</strong> en sekund före träffen, med ljud och vibration.</li>
+    <li><strong>Titta på din granne</strong> som ett eget slag i avslöjandet.</li>
+    <li>Om tid finns: <strong>halva mot halva</strong>.</li>
+  </ol>
+  <p class="dim">Fängelseön och Läckan är bra reservbilder: samma kod, andra ord och färger. Praktikanten är bara film och kräver ingen kod.</p>
+</section>
+
+<section class="sources">
+  <p class="eyebrow">Källor, lästa 26 november 2026</p>
+  <ul>
+    <li>Vultr, "The Rise of the Alternative Hyperscaler": <a href="https://discover.vultr.com/trends-alternative-hyperscaler">discover.vultr.com/trends-alternative-hyperscaler</a></li>
+    <li>VMblog, "Vultr Advances Agentic AI Infrastructure for the Enterprise", 19 oktober 2026: <a href="https://vmblog.com/news/vultr-advances-agentic-ai-infrastructure-for-the-enterprise-with-new-platform-upgrades/">vmblog.com</a></li>
+    <li>Efficiently Connected, Vultr på KubeCon 2026 (över 300 000 kunder, självfinansierat sedan 2014): <a href="https://www.efficientlyconnected.com/vultr-ai-infrastructure-kubecon-2026/">efficientlyconnected.com</a></li>
+    <li>James Fahey, Medium, mars 2026 (tredjepartsanalys: värdering 3,5 miljarder dollar, AMD Ventures, målgrupper): <a href="https://medium.com/@fahey_james/vultr-the-alternative-hyperscaler-trying-to-win-the-ai-cloud-era-a079edf1dec7">medium.com</a></li>
+    <li>Vultrs regler för varumärket: <a href="https://www.vultr.com/company/brand-assets/">vultr.com/company/brand-assets</a></li>
+  </ul>
+</section>
+
+</div>
