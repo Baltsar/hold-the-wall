@@ -63,9 +63,14 @@ export async function askModel(messages: ChatMessage[]): Promise<string> {
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`inference answered ${res.status}`);
-  const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-  const text = body.choices?.[0]?.message?.content;
-  if (typeof text !== "string") throw new Error("inference returned no text");
+  const body = (await res.json()) as { choices?: { message?: { content?: string | null }; finish_reason?: string }[]; usage?: { completion_tokens?: number; completion_tokens_details?: { reasoning_tokens?: number } } };
+  const choice = body.choices?.[0];
+  const text = choice?.message?.content;
+  if (typeof text !== "string" || text.trim() === "") {
+    // Say why, so an empty answer in the log can be told apart: cut off, filtered, or nothing at all.
+    const u = body.usage;
+    throw new Error(`empty answer (finish ${choice?.finish_reason ?? "none"}, ${u?.completion_tokens ?? "?"} tokens, ${u?.completion_tokens_details?.reasoning_tokens ?? "?"} reasoning)`);
+  }
   return text;
 }
 
