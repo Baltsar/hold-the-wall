@@ -34,7 +34,7 @@ async function play(model) {
       let text = "";
       try {
         text = await askModel(messages, model);
-      } catch (err) {
+      } catch {
         stats.errors++;
         stats.ms += Date.now() - t0;
         if (stats.errors >= 3) break;

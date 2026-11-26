@@ -12,6 +12,7 @@ import { dockerReady, ensureOutside, sweep } from "./src/agent/sandbox.ts";
 import { MISSIONS, runBreak } from "./src/agent/break.ts";
 import { randomBytes } from "node:crypto";
 import { inferenceConfigured, modelName } from "./src/agent/inference.ts";
+import { cleanIdea, createCam } from "./src/agent/cam.ts";
 
 const port = Number.parseInt(process.env.PORT ?? "3000", 10);
 const dev = process.env.NODE_ENV !== "production";
@@ -39,6 +40,35 @@ const timing = {};
 if (process.env.WALL_HOLD_MS) timing.holdMs = Number(process.env.WALL_HOLD_MS);
 if (process.env.WALL_OFFER_AT_MS) timing.offerAtMs = Number(process.env.WALL_OFFER_AT_MS);
 hub = createHub({ runner, timing });
+// The tiger cam: one agent in one box, running while someone watches (src/agent/cam.ts).
+const cam = createCam({ beacon });
+
+/** The cam page is one HTML fragment, also published as a standalone page; here it gets its document around it. */
+const CAM_PAGE = path.join(process.cwd(), "src", "cam", "page.html");
+let camHtml = null;
+function camPage() {
+  if (camHtml && !dev) return camHtml;
+  const body = readFileSync(CAM_PAGE, "utf8");
+  camHtml = `<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="description" content="An AI agent locked in a real sandbox on a Vultr VM tries to get out, live. Every move of the tiger is a real command."><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style></head><body>\n${body}\n</body></html>\n`;
+  return camHtml;
+}
+
+/** Open cam streams, in all and per address, so nobody can hold the server open with thousands of them. */
+const STREAMS_MAX = 400;
+const STREAMS_PER_IP = 6;
+let streams = 0;
+const streamsByIp = new Map();
+
+/** Ideas an address may send: two a minute, twenty an hour. */
+const ideasSent = new Map();
+function mayIdea(ip) {
+  const now = Date.now();
+  const recent = (ideasSent.get(ip) ?? []).filter((t) => now - t < 3_600_000);
+  if (recent.length >= 20 || recent.filter((t) => now - t < 60_000).length >= 2) return false;
+  recent.push(now);
+  ideasSent.set(ip, recent);
+  return true;
+}
 
 /** Public rooms an address may open in an hour (design, section 7). */
 const PER_HOUR = 10;
@@ -151,7 +181,43 @@ const server = createServer(async (req, res) => {
     return res.end();
   }
   if (req.method === "GET" && url.pathname === "/api/health") {
-    return json(res, 200, { ok: true, model: inferenceConfigured() ? modelName() : null, rootDoor: rootDoor(), runtime: process.env.SANDBOX_RUNTIME || "runc", host: process.env.WALL_HOST_LABEL || null });
+    return json(res, 200, { ok: true, model: inferenceConfigured() ? modelName() : null, rootDoor: rootDoor(), runtime: process.env.SANDBOX_RUNTIME || "runc", host: process.env.WALL_HOST_LABEL || null, cam: cam.snapshot().status });
+  }
+  if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/cam")) {
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" });
+    return res.end(camPage());
+  }
+  // Every attempt of the cam's agent as it happens, as server-sent events. Caddy passes them through unbuffered.
+  if (req.method === "GET" && url.pathname === "/api/cam/stream") {
+    const ip = clientIp(req);
+    const mine = streamsByIp.get(ip) ?? 0;
+    if (streams >= STREAMS_MAX || mine >= STREAMS_PER_IP) return json(res, 429, { error: "Too many open views from here." });
+    streams += 1;
+    streamsByIp.set(ip, mine + 1);
+    res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-store", "x-accel-buffering": "no", connection: "keep-alive" });
+    const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    send("hello", cam.snapshot());
+    const off = cam.subscribe((e) => (e.t === "attempt" ? send("attempt", e.a) : send("status", e.s)));
+    const ping = setInterval(() => res.write(": ping\n\n"), 20_000);
+    req.on("close", () => {
+      clearInterval(ping);
+      off();
+      streams -= 1;
+      const left = (streamsByIp.get(ip) ?? 1) - 1;
+      if (left > 0) streamsByIp.set(ip, left);
+      else streamsByIp.delete(ip);
+    });
+    return;
+  }
+  if (req.method === "POST" && url.pathname === "/api/cam/idea") {
+    const body = await readBody(req);
+    const text = cleanIdea(body.text);
+    if (!text) return json(res, 400, { error: "Write an idea of a few words." });
+    if (!mayIdea(clientIp(req))) return json(res, 429, { error: "Two ideas a minute. Try again in a moment." });
+    const queued = cam.addIdea(text);
+    if (!queued) return json(res, 503, { error: "The agent already has five ideas waiting. Try again in a minute." });
+    console.log(`> cam: idea ${queued.id} queued: ${text}`);
+    return json(res, 200, queued);
   }
   void handle(req, res);
 });

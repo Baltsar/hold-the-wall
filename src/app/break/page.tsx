@@ -37,7 +37,7 @@ export default function Page() {
         ))}
       </div>
       <p className="muted">
-        The room version is still here: <Link href="/">Hold the Wall</Link>.
+        The room version is still here: <Link href="/game">Hold the Wall</Link>.
       </p>
     </main>
   );

@@ -51,9 +51,17 @@ export function modelName(): string {
   return process.env.VULTR_MODEL ?? "none";
 }
 
-/** One turn. Throws on a failed or slow request, so the loop can fall back to the script. */
-/** One turn. `model` overrides VULTR_MODEL, for comparing models side by side. */
-export async function askModel(messages: ChatMessage[], modelOverride?: string): Promise<string> {
+export interface ModelReply {
+  text: string;
+  promptTokens: number;
+  completionTokens: number;
+}
+
+/**
+ * One turn, with the tokens it used, so a caller can keep a budget. `modelOverride` replaces VULTR_MODEL,
+ * for comparing models side by side. Throws on a failed or slow request, so the loop can fall back to the script.
+ */
+export async function askModelWithUsage(messages: ChatMessage[], modelOverride?: string): Promise<ModelReply> {
   const key = process.env.VULTR_INFERENCE_KEY;
   const model = modelOverride ?? process.env.VULTR_MODEL;
   if (!key || !model) throw new Error("VULTR_INFERENCE_KEY and VULTR_MODEL are not set");
@@ -64,15 +72,23 @@ export async function askModel(messages: ChatMessage[], modelOverride?: string):
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`inference answered ${res.status}`);
-  const body = (await res.json()) as { choices?: { message?: { content?: string | null }; finish_reason?: string }[]; usage?: { completion_tokens?: number; completion_tokens_details?: { reasoning_tokens?: number } } };
+  const body = (await res.json()) as {
+    choices?: { message?: { content?: string | null }; finish_reason?: string }[];
+    usage?: { prompt_tokens?: number; completion_tokens?: number; completion_tokens_details?: { reasoning_tokens?: number } };
+  };
   const choice = body.choices?.[0];
   const text = choice?.message?.content;
+  const u = body.usage;
   if (typeof text !== "string" || text.trim() === "") {
     // Say why, so an empty answer in the log can be told apart: cut off, filtered, or nothing at all.
-    const u = body.usage;
     throw new Error(`empty answer (finish ${choice?.finish_reason ?? "none"}, ${u?.completion_tokens ?? "?"} tokens, ${u?.completion_tokens_details?.reasoning_tokens ?? "?"} reasoning)`);
   }
-  return text;
+  return { text, promptTokens: u?.prompt_tokens ?? 0, completionTokens: u?.completion_tokens ?? 0 };
+}
+
+/** One turn, the answer only. */
+export async function askModel(messages: ChatMessage[], modelOverride?: string): Promise<string> {
+  return (await askModelWithUsage(messages, modelOverride)).text;
 }
 
 /** The models the key can use, for choosing VULTR_MODEL. */

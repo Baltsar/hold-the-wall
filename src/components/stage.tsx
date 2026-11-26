@@ -196,7 +196,7 @@ function StageView({ code, solo, film, token }: { code: string; solo: boolean; f
               Stop
             </button>
           ) : (
-            <Link className="btn ghost" href="/">
+            <Link className="btn ghost" href="/game">
               New room
             </Link>
           )}

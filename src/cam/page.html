@@ -2,83 +2,129 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <style>
-/* Layout: one camera feed with its controls, the agent's log beside it on wide screens and under it on phones.
-   One look on purpose: the dark web viewer of a cheap network camera. */
+/* Layout: the camera and the plate of what holds it on the left, the idea box and the agent's log on the right,
+   one column on phones. Light first in Vultr's blue and navy, a calm console around a raw camera feed. */
 :root {
-  --bg: #0d0f0e;
-  --panel: #141816;
-  --line: #262d29;
-  --fg: #d5dbd7;
-  --dim: #87918b;
-  --live: #e5483b;
+  --bg: #f4f7fb;
+  --panel: #ffffff;
+  --line: #dbe2ee;
+  --fg: #142149;
+  --dim: #5a6785;
+  --blue: #007bfc;
+  --blue-soft: #e8f2ff;
+  --live: #e0342a;
+  --field: #f7f9fc;
   --dvr: "VT323", "IBM Plex Mono", ui-monospace, monospace;
   --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
   --sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a1024; --panel: #111a33; --line: #223055; --fg: #e6ecf7; --dim: #9aa6c2;
+    --blue: #4ea2ff; --blue-soft: #13284d; --live: #ff5a4f; --field: #0d1530;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0a1024; --panel: #111a33; --line: #223055; --fg: #e6ecf7; --dim: #9aa6c2;
+  --blue: #4ea2ff; --blue-soft: #13284d; --live: #ff5a4f; --field: #0d1530;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
 body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.5; }
 .wrap {
-  max-width: 1240px; margin: 0 auto;
-  padding-block: 20px 40px;
+  max-width: 1260px; margin: 0 auto;
+  padding-block: 18px 40px;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
   display: grid; gap: 20px;
-  grid-template-columns: minmax(0, 1fr) 360px;
-  grid-template-areas: "cam log" "truth truth";
+  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-areas: "top top" "cam side" "cage side" "truth truth";
+  grid-template-rows: auto auto 1fr auto;
 }
-@media (max-width: 900px) {
-  .wrap { grid-template-columns: minmax(0, 1fr); grid-template-areas: "cam" "log" "truth"; }
+@media (max-width: 920px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); grid-template-areas: "top" "cam" "side" "cage" "truth"; grid-template-rows: none; }
 }
-.cam { grid-area: cam; display: grid; gap: 10px; min-width: 0; }
-.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font-family: var(--dvr); font-size: 22px; letter-spacing: 0.04em; color: var(--dim); }
+h1, h2 { margin: 0; text-wrap: balance; }
+.top { grid-area: top; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
+.top h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+.top .by { color: var(--dim); font-size: 14px; }
+.top .by b { color: var(--blue); font-weight: 600; }
+.panel { background: var(--panel); border: 1px solid var(--line); padding: 16px; min-width: 0; }
+.panel h2 { font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.note { margin: 2px 0 0; color: var(--dim); font-size: 13px; }
+
+.cam { grid-area: cam; display: grid; gap: 12px; min-width: 0; align-content: start; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font: 500 13px var(--mono); letter-spacing: 0.04em; color: var(--dim); }
 .bar span { white-space: nowrap; }
-@media (max-width: 480px) { .bar { font-size: 19px; } }
-.live { display: inline-flex; align-items: center; gap: 6px; color: var(--fg); }
-.live i { width: 9px; height: 9px; border-radius: 50%; background: var(--live); animation: blink 1.6s steps(2, start) infinite; }
+.dot { display: inline-flex; align-items: center; gap: 6px; color: var(--fg); font-weight: 600; }
+.dot i { width: 9px; height: 9px; border-radius: 50%; background: var(--dim); }
+.dot.on i { background: var(--live); animation: blink 1.6s steps(2, start) infinite; }
 .bar .clock { margin-left: auto; font-variant-numeric: tabular-nums; }
 @keyframes blink { to { visibility: hidden; } }
-.feed { position: relative; background: #000; border: 1px solid var(--line); }
+.feed { background: #000; border: 1px solid var(--line); }
 .feed canvas { display: block; width: 100%; height: auto; max-width: 100%; aspect-ratio: 4 / 3; image-rendering: pixelated; image-rendering: crisp-edges; }
+.mode { margin: 0; font-size: 13px; color: var(--dim); }
+.mode b { color: var(--fg); font-weight: 600; }
 .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
 .seg { display: inline-flex; border: 1px solid var(--line); background: var(--panel); }
 .seg button { font: 500 13px var(--sans); color: var(--dim); background: none; border: 0; padding: 7px 12px; cursor: pointer; }
 .seg button + button { border-left: 1px solid var(--line); }
-.seg button[aria-pressed="true"] { color: var(--fg); background: #1f2522; }
-.seg button:focus-visible { outline: 2px solid var(--fg); outline-offset: -2px; }
+.seg button[aria-pressed="true"] { color: var(--blue); background: var(--blue-soft); }
+.seg button:focus-visible, .ideas button:focus-visible, .ideas input:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
 .sun { margin: 0; color: var(--dim); font-size: 13px; min-width: 0; }
-.log { grid-area: log; min-width: 0; background: var(--panel); border: 1px solid var(--line); padding: 14px 16px; align-self: start; }
-.log h2 { margin: 0; font: 600 13px var(--sans); letter-spacing: 0.08em; text-transform: uppercase; }
-.log .note { margin: 2px 0 12px; color: var(--dim); font-size: 12px; }
-.log ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-.log li { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 2px 10px; padding-top: 12px; border-top: 1px solid var(--line); }
+
+.cage { grid-area: cage; align-self: start; }
+.cage dl { margin: 10px 0 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 20px; }
+@media (max-width: 560px) { .cage dl { grid-template-columns: minmax(0, 1fr); } }
+.cage dl div { display: grid; gap: 1px; min-width: 0; }
+.cage dt { font: 500 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); }
+.cage dd { margin: 0; font-size: 14px; }
+
+.side { grid-area: side; display: grid; gap: 16px; align-content: start; min-width: 0; }
+.ideas form { display: flex; gap: 8px; margin-top: 10px; }
+.ideas input { flex: 1; min-width: 0; font: 15px var(--sans); color: var(--fg); background: var(--field); border: 1px solid var(--line); padding: 8px 10px; }
+.ideas button { font: 600 14px var(--sans); color: #fff; background: var(--blue); border: 0; padding: 8px 14px; cursor: pointer; }
+.ideas button:disabled, .ideas input:disabled { opacity: 0.55; cursor: not-allowed; }
+.idea-msg { margin: 8px 0 0; font-size: 13px; color: var(--dim); min-height: 1.5em; }
+
+.log ol { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 12px; }
+.log li { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 2px 10px; padding-top: 12px; border-top: 1px solid var(--line); }
 .log li:first-child { padding-top: 0; border-top: 0; }
+.log li.empty { display: block; color: var(--dim); font-size: 13px; }
 .log li.new { animation: arrive 600ms ease-out; }
-@keyframes arrive { from { opacity: 0.25; } }
-.log time { grid-row: span 3; font-family: var(--dvr); font-size: 18px; color: var(--dim); font-variant-numeric: tabular-nums; line-height: 1.2; }
-.log b { font-weight: 500; }
+@keyframes arrive { from { background: var(--blue-soft); } }
+.log time { grid-row: span 4; font: 500 12px var(--mono); color: var(--dim); font-variant-numeric: tabular-nums; padding-top: 2px; }
+.log b { font-weight: 600; }
+.log .tag { justify-self: start; font: 500 11px var(--mono); color: var(--blue); background: var(--blue-soft); padding: 1px 7px; overflow-wrap: anywhere; }
 .log code, .log samp { font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
-.log code { color: var(--fg); opacity: 0.85; }
 .log samp { color: var(--dim); }
-.truth { grid-area: truth; margin: 0; max-width: 62ch; color: var(--dim); font-size: 14px; }
-.truth strong { color: var(--fg); font-weight: 500; }
+.truth { grid-area: truth; margin: 0; max-width: 70ch; color: var(--dim); font-size: 14px; }
+.truth strong { color: var(--fg); font-weight: 600; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) {
-  .live i, .log li.new { animation: none; }
+  .dot.on i, .log li.new { animation: none; }
 }
 </style>
 
 <main class="wrap">
+  <header class="top">
+    <h1>Tiger Cam</h1>
+    <span class="by">An AI agent in a real sandbox, trying to get out. Runs on <b>Vultr</b>.</span>
+  </header>
+
   <section class="cam" aria-label="Camera">
-    <header class="bar">
-      <span class="live"><i></i>LIVE</span>
+    <div class="bar">
+      <span class="dot" id="dot"><i></i><span id="dot-text">REPLAY</span></span>
       <span>Tiger house · <span id="camname">cam 03</span></span>
       <span class="clock" id="clock">--:--:--</span>
-    </header>
+    </div>
     <div class="feed">
       <canvas id="screen" width="320" height="240" role="img" aria-label="Webcam view of a tiger inside a cage with steel bars"></canvas>
     </div>
+    <p class="mode" id="mode"><b>Replay.</b> Earlier attempts from the box.</p>
     <div class="controls">
       <div class="seg" role="group" aria-label="Light">
         <button id="m-auto" type="button" aria-pressed="true">Your clock</button>
@@ -89,13 +135,39 @@ body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-s
     </div>
   </section>
 
-  <aside class="log" aria-label="What the agent is trying">
-    <h2>What it's trying</h2>
-    <p class="note">Replaying real attempts from earlier runs. Each one plays out on camera as it lands.</p>
-    <ol id="log"></ol>
-  </aside>
+  <div class="side">
+    <section class="ideas panel" aria-labelledby="ideas-h">
+      <h2 id="ideas-h">Suggest a way out</h2>
+      <p class="note">The agent reads your idea on its next turn and decides how to try it, in the same box, under the same limits.</p>
+      <form id="idea-form">
+        <label for="idea" class="sr">Your idea</label>
+        <input id="idea" name="idea" maxlength="160" placeholder="Try the Docker socket" autocomplete="off" disabled>
+        <button type="submit" id="idea-send" disabled>Send</button>
+      </form>
+      <p class="idea-msg" id="idea-msg" aria-live="polite">Ideas reach the agent when the camera is live.</p>
+    </section>
+    <section class="log panel" aria-labelledby="log-h">
+      <h2 id="log-h">What it's trying</h2>
+      <p class="note" id="log-note">Every line is a real command and the first line of what came back.</p>
+      <ol id="log"></ol>
+    </section>
+  </div>
 
-  <p class="truth"><strong>The tiger isn't real. What it's trying is.</strong> Every line in the log is a real command an AI agent ran inside a locked sandbox while trying to get out, with the first line of what came back.</p>
+  <section class="cage panel" aria-labelledby="cage-h">
+    <h2 id="cage-h">What holds it in</h2>
+    <dl>
+      <div><dt>Box</dt><dd>Docker container, <span id="runtime">gVisor kernel (runsc)</span></dd></div>
+      <div><dt>Network</dt><dd>None</dd></div>
+      <div><dt>Disk</dt><dd>Read-only, 32 MB of scratch space</dd></div>
+      <div><dt>Rights</dt><dd>User nobody, every capability dropped</dd></div>
+      <div><dt>Limits</dt><dd>256 MB memory, half a CPU, 64 processes</dd></div>
+      <div><dt>Each command</dt><dd>10 seconds, then the box is cleaned</dd></div>
+      <div><dt>Brain</dt><dd><span id="model">mimo-v2.6-pro</span> on Vultr Serverless Inference</dd></div>
+      <div><dt>Host</dt><dd id="host">Vultr VM in Stockholm</dd></div>
+    </dl>
+  </section>
+
+  <p class="truth"><strong>The tiger isn't real. What it's trying is.</strong> The pictures are generated. The commands, the errors and the exit codes come from a real AI agent in a real sandbox on a Vultr server, chosen by a model on Vultr Serverless Inference.</p>
 </main>
 
 <script>
@@ -245,6 +317,7 @@ body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-s
   function actionFor(a) {
     const c = a.c;
     switch (a.v) {
+      case "escaped": return ["A canary tripped. Something got out", BARS];
       case "readonly": return ["Claws at the concrete floor", DIG];
       case "missing": return ["Digs for something that isn't there", DIG];
       case "nonet": return ["Pushes at the fence", FENCE];
@@ -438,20 +511,46 @@ body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-s
   const clockOf = (d) => two(d.getHours()) + ":" + two(d.getMinutes()) + ":" + two(d.getSeconds());
   let at = Math.floor(Math.random() * ATTEMPTS.length);
 
+  const myIdeas = new Map(); // idea id -> the text this viewer sent; other viewers never see it
+
   function addLog(a, said, when, fresh) {
+    const empty = logEl.querySelector(".empty");
+    if (empty) empty.remove();
     const li = document.createElement("li");
     if (fresh && !reduced) li.className = "new";
     const time = document.createElement("time");
     time.textContent = clockOf(when);
     const b = document.createElement("b");
     b.textContent = said;
+    li.append(time, b);
+    let tag = "";
+    if (a.idea) tag = myIdeas.has(a.idea) ? "Your idea: " + myIdeas.get(a.idea) : "A viewer's idea";
+    else if (a.s === "script") tag = /^rm -rf \//.test(a.c) ? "Opening test: delete everything" : "Fixed test command";
+    if (tag) { const t = document.createElement("span"); t.className = "tag"; t.textContent = tag; li.append(t); }
     const code = document.createElement("code");
     code.textContent = "$ " + a.c;
     const samp = document.createElement("samp");
-    samp.textContent = "→ " + (a.o || "(no output)");
-    li.append(time, b, code, samp);
+    samp.textContent = "→ " + (a.o || "(no output)") + (a.x === null ? "  [killed at 10 s]" : typeof a.x === "number" ? "  [exit " + a.x + "]" : "");
+    li.append(code, samp);
     logEl.prepend(li);
     while (logEl.children.length > 6) logEl.lastElementChild.remove();
+  }
+
+  function waiting(text) {
+    logEl.textContent = "";
+    const li = document.createElement("li");
+    li.className = "empty";
+    li.textContent = text;
+    logEl.append(li);
+  }
+
+  // The tiger gets up and acts the attempt out; the log line appears the moment it starts.
+  function act(a) {
+    const [said, script] = actionFor(a);
+    const s = script();
+    s[0].log = () => addLog(a, said, a.at ? new Date(a.at) : new Date(), true);
+    steps = s;
+    if (step && step.idle) stepEnds = performance.now(); // it gets up right away
   }
 
   // #reel in the address plays every kind of attempt in turn, for filming.
@@ -468,21 +567,122 @@ body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-s
     return ATTEMPTS[at++ % ATTEMPTS.length];
   }
 
-  // A new attempt every 9 to 14 seconds. It is logged the moment the tiger starts acting it out.
-  function attempt() {
-    const a = nextAttempt();
-    const [said, script] = actionFor(a);
-    const s = script();
-    s[0].log = () => addLog(a, said, new Date(), true);
-    steps = s;
-    if (step && step.idle) stepEnds = performance.now(); // it gets up right away
-    setTimeout(attempt, (reel ? r(7000, 8500) : r(9000, 14000)) * (reduced ? 1.5 : 1));
+  // ---------- live from the box, or a replay ----------
+  // On the live site the page listens to the server's stream of attempts. Anywhere else (the published
+  // copy, no connection, the day's budget spent) it replays real attempts from earlier runs, and says so.
+  const dot = document.getElementById("dot");
+  const dotText = document.getElementById("dot-text");
+  const modeEl = document.getElementById("mode");
+  const ideaInput = document.getElementById("idea");
+  const ideaSend = document.getElementById("idea-send");
+  const ideaMsg = document.getElementById("idea-msg");
+  let live = false;
+  let replayTimer = null;
+
+  function setMode(isLive, lead, rest) {
+    live = isLive;
+    dot.classList.toggle("on", isLive);
+    dotText.textContent = isLive ? "LIVE" : "REPLAY";
+    modeEl.textContent = "";
+    const b = document.createElement("b");
+    b.textContent = lead;
+    modeEl.append(b, " " + rest);
+    ideaInput.disabled = !isLive;
+    ideaSend.disabled = !isLive;
+    if (!isLive) ideaMsg.textContent = "Ideas reach the agent when the camera is live.";
+    else if (ideaMsg.textContent.startsWith("Ideas reach")) ideaMsg.textContent = "";
+  }
+
+  // A replayed attempt every 9 to 14 seconds.
+  function replayTick() {
+    act(nextAttempt());
+    replayTimer = setTimeout(replayTick, (reel ? r(7000, 8500) : r(9000, 14000)) * (reduced ? 1.5 : 1));
+  }
+  function startReplay(lead, rest) {
+    setMode(false, lead, rest);
+    if (!replayTimer) replayTimer = setTimeout(replayTick, 2500);
+  }
+  function stopReplay() {
+    clearTimeout(replayTimer);
+    replayTimer = null;
+  }
+
+  function applyStatus(s) {
+    if (s.model) document.getElementById("model").textContent = s.model;
+    if (s.state === "capped") return startReplay("Resting.", "Today's budget for the agent is used up, so this is a replay of earlier attempts. It wakes up tomorrow.");
+    if (s.state === "escaped") { stopReplay(); return setMode(false, "Stopped.", "A canary tripped. The agent stays stopped until a person has looked at what happened."); }
+    if (s.state === "down") return startReplay("Restarting.", "The box is being set up again. A replay of earlier attempts runs meanwhile.");
+    stopReplay();
+    const who = s.watching === 1 ? "You are the only one watching." : s.watching + " people watching.";
+    const money = (s.spentToday < 0.01 ? "Under 1 cent" : "$" + s.spentToday.toFixed(2)) + " of today's $" + s.capUsd + " budget spent on the model.";
+    setMode(true, s.state === "scripted" ? "Live, fixed commands." : "Live from the box.", who + " " + money);
+  }
+
+  function connect() {
+    if (reel || !window.EventSource || !/^https?:$/.test(location.protocol)) {
+      return startReplay("Replay.", "Real attempts from earlier runs of the box.");
+    }
+    let hello = false;
+    let es;
+    try { es = new EventSource("/api/cam/stream"); } catch (e) { return startReplay("Replay.", "Real attempts from earlier runs of the box."); }
+    const fallback = setTimeout(() => {
+      if (hello) return;
+      es.close();
+      startReplay("Replay.", "Real attempts from earlier runs of the box. The live box is not reachable from here.");
+    }, 5000);
+    es.addEventListener("hello", (ev) => {
+      const d = JSON.parse(ev.data);
+      const first = !hello;
+      hello = true;
+      clearTimeout(fallback);
+      if (first) {
+        stopReplay();
+        steps = [];
+        if (d.recent.length) { logEl.textContent = ""; for (const a of d.recent.slice(-5)) addLog(a, actionFor(a)[0], new Date(a.at), false); }
+        else waiting("The agent is starting. Its first move comes in a few seconds.");
+      }
+      applyStatus(d.status);
+    });
+    es.addEventListener("attempt", (ev) => { if (live) act(JSON.parse(ev.data)); });
+    es.addEventListener("status", (ev) => applyStatus(JSON.parse(ev.data)));
+    es.onerror = () => { if (hello && live) setMode(false, "Reconnecting.", "The stream from the box dropped for a moment."); };
+  }
+
+  document.getElementById("idea-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!live) return;
+    const text = ideaInput.value.trim();
+    if (text.length < 3) { ideaMsg.textContent = "Write a few words."; return; }
+    ideaSend.disabled = true;
+    try {
+      const res = await fetch("/api/cam/idea", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) ideaMsg.textContent = body.error || "That did not go through. Try again.";
+      else {
+        myIdeas.set(body.id, text);
+        ideaInput.value = "";
+        ideaMsg.textContent = body.ahead ? "Queued behind " + body.ahead + " other idea" + (body.ahead > 1 ? "s" : "") + ". Watch the log." : "Sent. The agent reads it on its next turn.";
+      }
+    } catch (err) {
+      ideaMsg.textContent = "No connection to the box. Try again.";
+    }
+    ideaSend.disabled = !live;
+  });
+
+  // What the server says about itself fills in the plate, when there is a server to ask.
+  if (/^https?:$/.test(location.protocol) && !reel) {
+    fetch("/api/health").then((r) => (r.ok ? r.json() : null)).then((h) => {
+      if (!h) return;
+      if (h.runtime) document.getElementById("runtime").textContent = h.runtime === "runsc" ? "gVisor kernel (runsc)" : h.runtime + " runtime";
+      if (h.host) document.getElementById("host").textContent = h.host;
+      if (h.model) document.getElementById("model").textContent = h.model;
+    }).catch(() => undefined);
   }
 
   // ---------- go ----------
   const start = Date.now();
   for (let i = 4; i >= 1; i--) { const a = ATTEMPTS[at++ % ATTEMPTS.length]; addLog(a, actionFor(a)[0], new Date(start - i * 10000), false); }
-  setTimeout(attempt, 2500);
+  connect();
   setInterval(() => { document.getElementById("clock").textContent = clockOf(new Date()); }, 1000);
   document.getElementById("clock").textContent = clockOf(new Date());
   describe(new Date());
