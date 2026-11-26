@@ -8,5 +8,7 @@ SSH="ssh -o StrictHostKeyChecking=accept-new root@$IP"
 rsync -az --delete -e "ssh -o StrictHostKeyChecking=accept-new" \
   --exclude node_modules --exclude .next --exclude var --exclude .env --exclude .git --exclude .claude \
   ./ "root@$IP:/root/hold-the-wall/"
-grep -v '^VULTR_API_KEY=' .env | $SSH 'umask 077; cat > /root/hold-the-wall/.env'
+# What the stage calls the host it runs on.
+HOST_LABEL="${HOST_LABEL:-vultr · sto · vc2-2c-4gb}"
+{ grep -vE '^(VULTR_API_KEY|WALL_HOST_LABEL)=' .env; echo "WALL_HOST_LABEL=$HOST_LABEL"; } | $SSH 'umask 077; cat > /root/hold-the-wall/.env'
 $SSH 'cd /root/hold-the-wall && bash deploy/setup.sh'
