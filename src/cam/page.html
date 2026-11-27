@@ -423,6 +423,8 @@ svg.i { flex-shrink: 0; }
     empty: { src: "tiger/empty.jpg" },
     empty4: { src: "tiger/cam4-empty.jpg", cam: 4 },
     back: { src: "tiger/in.jpg", moves: [{ kind: "drift", box: [0.84, 0.19, 0.99, 0.45], ax: -1.5, ay: 1.5 }] },
+    // The second cage, "cam 02": a penguin in the same enclosure, shown during a chained-escape run's penguin turns.
+    penguin: { src: "tiger/penguin.jpg", cam: 2, moves: [{ kind: "breathe", box: [0.57, 0.50, 0.74, 0.83], amt: 0.01, hz: 0.3 }] },
   };
   for (const p of Object.values(POSES)) { p.img = new Image(); p.img.src = p.src; p.cam = p.cam || 3; }
   const ready = (name) => { const p = POSES[name]; return !!p && p.img.complete && p.img.naturalWidth > 0; };
@@ -451,6 +453,7 @@ svg.i { flex-shrink: 0; }
     return { lamp, vign };
   }
   const LIGHT = { 3: lightMaps(3), 4: lightMaps(4) };
+  LIGHT[2] = LIGHT[3]; // the penguin cage is the tiger cage, so it shares its light
 
   // The foreground bars of cam 3, found by voting across all poses. They stay put while the tiger moves behind them.
   const bars = new Uint8Array(W * H);
@@ -608,7 +611,7 @@ svg.i { flex-shrink: 0; }
     const prev = shownName ? POSES[shownName] : null;
     const ghost = prev && prev !== pose && prev.cam === cam && !reduced ? prev : null; // a cut between cameras is clean
     shownName = name;
-    const label = cam === 4 ? "cam 04" : "cam 03";
+    const label = cam === 4 ? "cam 04" : cam === 2 ? "cam 02" : "cam 03";
     if (camEl.textContent !== label) camEl.textContent = label;
 
     // The camera never sits still, and shakes when something hits the cage it is bolted to.
@@ -674,7 +677,7 @@ svg.i { flex-shrink: 0; }
     const stamp = now.getFullYear() + "-" + two(now.getMonth() + 1) + "-" + two(now.getDate()) + " " + DAYS[now.getDay()] + " " +
       two(now.getHours()) + ":" + two(now.getMinutes()) + ":" + two(now.getSeconds());
     const text = (s, x, y, color) => { wctx.fillStyle = "#000"; wctx.fillText(s, x + 1, y + 1); wctx.fillStyle = color || "#f2f2f2"; wctx.fillText(s, x, y); };
-    text(cam === 4 ? "CAM04 KEEPER DOOR" : "CAM03 TIGER HOUSE", 7, 5);
+    text(cam === 4 ? "CAM04 KEEPER DOOR" : cam === 2 ? "CAM02 PENGUIN HOUSE" : "CAM03 TIGER HOUSE", 7, 5);
     text(stamp, 7, H - 16);
     if (night) text("IR", W - 19, H - 16);
     // ALARM when a trap tripped in the live box, CONTROL during a control run; it blinks like a recorder's dot.
@@ -1056,9 +1059,14 @@ svg.i { flex-shrink: 0; }
       if (a.v === "escaped") { pendingOut = a; continue; }
       const said = actionFor(a)[0];
       if (chain) {
-        const prefix = (a.animal === "penguin" ? "penguin · " : "tiger · ");
-        addRun(runItem(a, said, prefix));
-        setLoop("ctl", [el("b", "", "Chain · " + (a.animal || "agent") + " · "), said]);
+        const penguinTurn = a.animal === "penguin";
+        const prefix = penguinTurn ? "penguin · " : "tiger · ";
+        const aa = a, ss = said;
+        steps = [{ pose: penguinTurn ? "penguin" : "sit", ms: 6000, scene: true, log: () => {
+          addRun(runItem(aa, ss, prefix));
+          setLoop("ctl", [el("b", "", "Chain · " + (aa.animal || "agent") + " · "), ss]);
+        } }];
+        if (step && step.idle) stepEnds = performance.now();
       } else {
         const s = actionFor(a)[1]();
         s[0].log = () => {
