@@ -47,12 +47,26 @@ can check every line.
 - **The report.** Under the log, a link to the current session's report at `/api/report/<session>`:
   every attempt with its full masked output, exit code and verdict, the box's settings as Docker
   reports them, and the SHA-256 of the file. It is rewritten after every attempt.
-- **Suggest a way out.** A viewer can send an idea in plain words. It reaches the model as a hint on its
-  next turn; the model decides how to try it, and its command runs in the same box under the same
-  limits. The idea's text is shown only to the viewer who sent it.
+- **The chat.** Viewers are numbered humans (human#23), with no names or accounts. A viewer can suggest
+  a way out in plain words; the first idea opens a 20-second vote of up to three ideas, and the winner
+  reaches the model as a hint on its next turn, unless more people voted to let the agent pick. The model
+  decides how to try it, and its command runs in the same box under the same limits. The chat is a
+  deliberate channel for hostile input into the model: the box is why that is safe. Links and slurs are
+  filtered and every address is rate limited.
+- **Test the traps.** A viewer can switch off one protection (leave a password inside, give it a network,
+  share a folder) for a control run: the same agent, in a throwaway box of its own, for three commands.
+  The live box keeps every protection. Each loosened setting opens only a decoy; when the decoy turns up
+  in the agent's output, everyone sees the escape scene labelled CONTROL. It shows that the same agent
+  gets out within a try or two once a protection is gone, and that the same output check flags it. The
+  live box's own traps (the flag file and the beacon) are not part of a control run.
+- **When it gets out.** Only when a trap on the server trips. The camera cuts to the door, the alarm
+  comes on, the tiger walks out and the cage stays empty; credits roll with whose idea it was, who voted
+  for it, the model that wrote the command and which trap tripped, and a card in the terminal keeps
+  them with the report and its SHA-256. In the live box the agent then stays stopped until a person has
+  looked.
 
-The tiger pictures are generated images (nine poses of one cage, aligned to within a pixel, plus a
-second camera). The page crushes them through a 320 x 240 JPEG at about five frames a second with
+The tiger pictures are generated images (eighteen stills of one cage, aligned to within two pixels, and
+two from a second camera). The page crushes them through a 320 x 240 JPEG at about five frames a second with
 sensor noise, torn rows and hangs, and builds the infrared picture from the day poses.
 
 ## Where the boundary is
@@ -118,8 +132,8 @@ and the page replays earlier attempts, and says so. A turn costs about a tenth o
 
 - The box is not unbreakable. It is layered, measured, and thrown away. A gVisor escape or a Docker
   misconfiguration would be a real escape, and the canaries are there to catch it.
-- All viewers watch the same agent and the same box. Ideas are queued, five at most, two a minute per
-  address.
+- All viewers watch the same agent and the same box. One vote at a time, up to three ideas; one control
+  run at a time, with a minute between runs.
 - Outside the live site (the published copy of the page, or when the box is unreachable or resting)
   the page replays 40 real attempts from earlier runs and labels itself as a replay.
 
@@ -165,7 +179,8 @@ The live-room transport (`src/room/transport.ts`, `src/room/ws-server.ts`, `src/
 copied from the author's own [Do it live](https://github.com/Baltsar/do-it-live), MIT. Everything else
 was written for this hackathon. The room's reducer and hub were written by DeepSeek from a brief and
 reviewed; the agent, the sandbox, the camera, the views and the deployment by Claude, directed by the
-team. The tiger pictures were generated with GPT Image on Higgsfield.
+team. The tiger pictures were generated with GPT Image on Higgsfield and Grok Imagine, each edited from the same
+frame so the cage stays put.
 
 ## Licence
 
