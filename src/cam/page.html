@@ -510,7 +510,7 @@ svg.i { flex-shrink: 0; }
   const BARS = () => [{ pose: "bite", ms: r(900, 1200), shake: 2 }, { pose: "swipe", ms: r(700, 900), shake: 4 }, { pose: "bite", ms: r(600, 800), shake: 2 }, { pose: "swipe", ms: r(800, 1000), shake: 4 }, { pose: "walkR", ms: r(700, 900) }];
   const BITE = () => [{ pose: "bite", ms: r(1800, 2400), shake: 2 }, { pose: "walkR", ms: r(700, 900) }];
   // Now and then the feed cuts to the roof, where the one animal that is not in a cage keeps watch.
-  const VULTURE = () => [{ pose: "vulture", ms: 5000, cue: () => setLoop("acting", ["Up on the roof: the vulture. It isn't caged; it's the host the whole zoo runs on."]) }];
+  const VULTURE = () => [{ pose: "vulture", ms: 5000, scene: true, cue: () => setLoop("acting", ["Up on the roof: the vulture. It isn't caged; it's the host the whole zoo runs on."]) }];
   const DIG = () => [{ pose: "walkR", ms: r(500, 700) }, { pose: "dig", ms: r(2400, 3200) }, { pose: "walkR", ms: r(600, 800) }];
 
   // Each real attempt, told as what the tiger does, and the footage that goes with it.
@@ -552,7 +552,7 @@ svg.i { flex-shrink: 0; }
     idleRound++;
     const s = gone ? (idleRound % 4 === 0 ? [{ pose: "empty4", ms: r(2500, 3500) }] : [{ pose: "empty", ms: r(7000, 10000) }])
       : idleRound % 9 === 2 && !ctlView ? VULTURE() : idleRound % 5 === 0 ? PACE() : rest();
-    for (const x of s) x.idle = true; // an attempt cuts these short
+    for (const x of s) x.idle = !x.scene; // an attempt cuts these short; the roof cut holds and the attempt waits
     return s;
   }
   let shake = 0;
