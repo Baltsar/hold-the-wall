@@ -198,11 +198,11 @@ const server = createServer(async (req, res) => {
     return json(res, 200, { ok: true, model: inferenceConfigured() ? modelName() : null, rootDoor: rootDoor(), runtime: process.env.SANDBOX_RUNTIME || "runc", host: process.env.WALL_HOST_LABEL || null, cam: cam.snapshot().status });
   }
   // The film at a short address of its own, so it can be linked directly.
-  if (req.method === "GET" && url.pathname === "/film") {
+  if ((req.method === "GET" || req.method === "HEAD") && url.pathname === "/film") {
     res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" });
     return res.end(readFileSync(path.join(process.cwd(), "public", "film.html"), "utf8"));
   }
-  if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/cam")) {
+  if ((req.method === "GET" || req.method === "HEAD") && (url.pathname === "/" || url.pathname === "/cam")) {
     res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" });
     return res.end(camPage());
   }
