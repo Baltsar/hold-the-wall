@@ -46,3 +46,21 @@ test("no reports folder is an empty audit, not an error", () => {
   assert.equal(a.live.attempts, 0);
   assert.equal(a.sessions.length, 0);
 });
+
+test("a report signature checks the exact bytes, and nothing else", async () => {
+  const { reportKey, signReport, verifyReport } = await import("./signing.ts");
+  const dir = mkdtempSync(path.join(tmpdir(), "sign-"));
+  try {
+    const key = reportKey(dir);
+    const text = '{\n  "runId": "cam-x",\n  "attempts": []\n}\n';
+    const sig = signReport(key, text);
+    assert.equal(verifyReport(key.publicPem, text, sig), true);
+    assert.equal(verifyReport(key.publicPem, text.replace("cam-x", "cam-y"), sig), false);
+    assert.equal(verifyReport(key.publicPem, text, "bm90IGEgc2lnbmF0dXJl"), false);
+    // The key is kept: a second load in a fresh map reads the same file.
+    const again = (await import(`./signing.ts?again=${Date.now()}`)).reportKey(dir);
+    assert.equal(again.publicPem, key.publicPem);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

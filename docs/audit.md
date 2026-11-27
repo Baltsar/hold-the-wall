@@ -55,7 +55,14 @@ times. The key turned up in the second box's output, and the trap caught it, all
 
 ## Check it yourself
 
-Each session's report is public while the VM runs:
+The live totals are at https://70-34-199-15.sslip.io/audit. Every report is served with an Ed25519
+signature, checked against the public key in this repository ([report-key.pem](report-key.pem)):
+
+```bash
+node scripts/verify-report.mjs cam-8e2b5527
+```
+
+Or fetch a report and hash it yourself:
 
 ```bash
 curl -s https://70-34-199-15.sslip.io/api/report/cam-8e2b5527 -o cam-8e2b5527.json

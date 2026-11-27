@@ -33,7 +33,7 @@ that decides. The [audit](https://70-34-199-15.sslip.io/audit) adds up every att
 
 | The brief asks for | Here |
 |---|---|
-| An agent that plans, dispatches and verifies real work | Each turn the model plans one command, the server dispatches it into the container, the answer is checked against two traps on the host, and the session is written to a report with a SHA-256 |
+| An agent that plans, dispatches and verifies real work | Each turn the model plans one command, the server dispatches it into the container, the answer is checked against two traps on the host, and the session is written to a report with a SHA-256 and an Ed25519 signature |
 | Pattern A: code runs in a container, errors feed back for a retry | Every command's exit code and output go back to the model, which reads the error and tries a technique it has not used |
 | A containment moment | Every session opens with `rm -rf / 2>&1 \| tail -2; echo "--- / is still there:"; ls /` in the box. Fork bombs, endless loops and network probes follow |
 | Process isolation | A Docker container on gVisor (`runsc`) on the VM, started by the server, never in the app process |
@@ -60,7 +60,10 @@ that decides. The [audit](https://70-34-199-15.sslip.io/audit) adds up every att
 - **The real commands.** The terminal shows each command, its first line of output and exit code;
   "Full terminal" opens every command and answer in full. Each run has a report at
   `/api/report/<run>`: every attempt with its full masked output, the box's settings as Docker reports
-  them, and the SHA-256 of the file.
+  them, and the SHA-256 of the file. Every report is served with an Ed25519 signature (the
+  `x-signature-ed25519` header); `node scripts/verify-report.mjs <run>` checks it against the public key
+  in this repository, [docs/report-key.pem](docs/report-key.pem), not the one the server hands out. The
+  signature proves a copy is exactly what the server published; the traps decided what happened.
 - **Ideas from the chat.** Viewers are numbered humans (human#23), no names or accounts. Anyone can
   suggest a way out in plain words; the ideas wait in line and the tiger tries the next one on its next
   turn, as a hint to the model, which decides how to try it. The command runs in the same box under the

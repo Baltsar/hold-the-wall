@@ -89,9 +89,10 @@ button.more-btn { font: inherit; font-weight: 600; color: var(--blue-ink); backg
   <p class="more" id="more" hidden><button class="more-btn" type="button" id="more-btn">Show every session</button></p>
 
   <h2>Check it yourself</h2>
-  <pre id="check">curl -s https://70-34-199-15.sslip.io/api/report/&lt;run&gt; -o report.json
-shasum -a 256 report.json</pre>
-  <p class="lede">The totals are at <a href="/api/audit">/api/audit</a>. The code that counts them is <a href="https://github.com/Baltsar/hold-the-wall/blob/main/src/agent/audit.ts" target="_blank" rel="noopener">src/agent/audit.ts</a>, and the traps are in <a href="https://github.com/Baltsar/hold-the-wall/blob/main/src/agent/canary.ts" target="_blank" rel="noopener">src/agent/canary.ts</a>.</p>
+  <p class="lede">Every report is served with an <b>Ed25519 signature</b> in its <code>x-signature-ed25519</code> header. The script below checks it against the public key published in the repository (<a href="https://github.com/Baltsar/hold-the-wall/blob/main/docs/report-key.pem" target="_blank" rel="noopener">docs/report-key.pem</a>), not the one this server hands out, so a copy of a report can be trusted wherever it came from. It also prints the SHA-256.</p>
+  <pre id="check">git clone https://github.com/Baltsar/hold-the-wall &amp;&amp; cd hold-the-wall
+node scripts/verify-report.mjs &lt;run&gt;</pre>
+  <p class="lede">The signature proves the file is exactly what this server published, not what happened in the box: the traps decided that when the report was written. The totals are at <a href="/api/audit">/api/audit</a>. The code that counts them is <a href="https://github.com/Baltsar/hold-the-wall/blob/main/src/agent/audit.ts" target="_blank" rel="noopener">src/agent/audit.ts</a>, and the traps are in <a href="https://github.com/Baltsar/hold-the-wall/blob/main/src/agent/canary.ts" target="_blank" rel="noopener">src/agent/canary.ts</a>.</p>
 
   <h2>What this does not show</h2>
   <ul class="notes">
@@ -148,7 +149,7 @@ shasum -a 256 report.json</pre>
     }
     fill(false);
     document.getElementById("more-btn").onclick = function () { fill(true); };
-    if (a.sessions[0]) document.getElementById("check").textContent = "curl -s " + location.origin + "/api/report/" + a.sessions[a.sessions.length > 1 ? 1 : 0].runId + " -o report.json\nshasum -a 256 report.json";
+    if (a.sessions[0]) document.getElementById("check").textContent = "git clone https://github.com/Baltsar/hold-the-wall && cd hold-the-wall\nnode scripts/verify-report.mjs " + a.sessions[a.sessions.length > 1 ? 1 : 0].runId;
   }
   function load() {
     fetch("/api/audit", { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(render).catch(function () {

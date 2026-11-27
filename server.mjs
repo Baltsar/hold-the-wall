@@ -14,6 +14,7 @@ import { randomBytes } from "node:crypto";
 import { inferenceConfigured, modelName } from "./src/agent/inference.ts";
 import { createCam } from "./src/agent/cam.ts";
 import { audit } from "./src/agent/audit.ts";
+import { reportKey, signReport } from "./src/agent/signing.ts";
 
 const port = Number.parseInt(process.env.PORT ?? "3000", 10);
 const dev = process.env.NODE_ENV !== "production";
@@ -209,7 +210,14 @@ const server = createServer(async (req, res) => {
     if (!RUN_ID.test(runId)) return json(res, 404, { error: "not found" });
     try {
       const text = readFileSync(path.join(dataDir(), "reports", `${runId}.json`), "utf8");
-      res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+      // The signature travels with the bytes it signs, so a report rewritten mid-session can't mismatch.
+      const headers = { "content-type": "application/json", "cache-control": "no-store" };
+      try {
+        headers["x-signature-ed25519"] = signReport(reportKey(dataDir()), text);
+      } catch (err) {
+        console.error(`> wall: could not sign ${runId}: ${err instanceof Error ? err.message : err}`);
+      }
+      res.writeHead(200, headers);
       return res.end(text);
     } catch {
       return json(res, 404, { error: "not found" });
@@ -227,6 +235,11 @@ const server = createServer(async (req, res) => {
   }
   if (req.method === "GET" && url.pathname === "/api/health") {
     return json(res, 200, { ok: true, model: inferenceConfigured() ? modelName() : null, rootDoor: rootDoor(), runtime: process.env.SANDBOX_RUNTIME || "runc", host: process.env.WALL_HOST_LABEL || null, cam: cam.snapshot().status });
+  }
+  // The public half of the report key. The same key is in the repository, docs/report-key.pem.
+  if (req.method === "GET" && url.pathname === "/api/report-key") {
+    res.writeHead(200, { "content-type": "application/x-pem-file", "cache-control": "no-store" });
+    return res.end(reportKey(dataDir()).publicPem);
   }
   // Every report on disk added up, for the audit page. The same files /api/report/<run> serves.
   if (req.method === "GET" && url.pathname === "/api/audit") {
