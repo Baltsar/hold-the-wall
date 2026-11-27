@@ -68,7 +68,7 @@ svg.i { flex-shrink: 0; }
 .vultr b { color: var(--blue-ink); font-weight: 600; }
 
 .stage { grid-area: stage; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px 24px 20px; }
-.stage > * { width: 100%; max-width: min(1000px, calc((100dvh - 470px) * 4 / 3)); }
+.stage > * { width: 100%; max-width: min(1100px, calc((100dvh - 470px) * 8 / 3)); }
 .feed { flex: none; position: relative; background: #000; border-radius: 6px; overflow: hidden; }
 .feed canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; image-rendering: pixelated; image-rendering: crisp-edges; }
 .tools { position: absolute; top: 10px; right: 10px; display: flex; gap: 2px; padding: 2px; border-radius: 8px; background: rgba(5, 9, 20, 0.55); }
@@ -86,6 +86,44 @@ svg.i { flex-shrink: 0; }
 .mode { flex: none; margin: 0; font-size: 14px; color: var(--dim); }
 .mode:empty { display: none; }
 .mode b { color: var(--fg); }
+/* The control room: one camera large, every other cage beside it, all at once. */
+.zoo { position: relative; flex: none; display: grid; grid-template-columns: 2fr 1fr 1fr; grid-auto-flow: dense; gap: 8px; }
+.zoo > .focus { grid-column: 1; grid-row: 1 / span 2; }
+.zoo > .feed, .tile { border: 2px solid transparent; }
+.tile { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 6px; background: #000; }
+.tile .cage { display: block; width: 100%; height: 100%; object-fit: cover; filter: contrast(1.12) saturate(0.7); }
+.zoo.night .tile .cage { filter: grayscale(1) brightness(0.8) contrast(1.35); }
+/* The monkey sits at the very bottom of its picture, where the button is: lift the picture. */
+.tile[data-animal="monkey"] .cage { transform: translateY(-20%) scale(1.15); }
+.tile::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 3px); animation: camflicker 2.6s steps(3) infinite; }
+@keyframes camflicker { 50% { opacity: 0.65; } }
+.zoo > :not(.focus) .tools, .zoo > :not(.focus) .caption, .zoo > :not(.focus) .roll { display: none; }
+.view { position: absolute; inset: 0; z-index: 1; padding: 0; border: 0; background: none; cursor: zoom-in; }
+.zoo > .focus .view { display: none; }
+.tile .lbl { position: absolute; z-index: 2; left: 6px; top: 5px; font: 14px/1 VT323, monospace; color: #f2f2f2; text-shadow: 1px 1px 0 #000; pointer-events: none; }
+.tile .state, .feed-tag { position: absolute; z-index: 3; top: 5px; right: 6px; padding: 1px 6px; border-radius: 3px; font: 700 10px/1.5 var(--mono); letter-spacing: 0.05em; color: #e6ebf5; background: rgba(5, 9, 20, 0.72); pointer-events: none; }
+.zoo > .feed.focus .feed-tag { top: 14px; right: 124px; }
+.feed-tag.live { background: #d7322a; color: #fff; }
+.feed-tag:not(.live) { background: #ffbe3d; color: #1a1200; }
+.tile.testing { border-color: #ffbe3d; }
+.tile.testing .state { background: #ffbe3d; color: #1a1200; }
+.tile.out { border-color: #ff3b30; }
+.tile.out .state { background: #ff3b30; color: #fff; }
+.tile.held { border-color: #2fae7a; }
+.tile.held .state { background: #2fae7a; color: #fff; }
+.tile .try { position: absolute; z-index: 2; left: 6px; right: 6px; bottom: 6px; min-height: 30px; padding: 4px 8px; border: 0; border-radius: 6px; font: 600 12px/1.25 var(--sans); color: #1a1200; background: #ffbe3d; cursor: pointer; }
+.tile .try:disabled { background: rgba(5, 9, 20, 0.8); color: #cfd6e6; cursor: default; }
+.tile .try:not(:disabled):hover { background: #ffd060; }
+.zoo > .tile.focus .lbl { left: 10px; top: 10px; font-size: 20px; }
+.zoo > .tile.focus .state { top: 10px; right: 10px; font-size: 12px; }
+.zoo > .tile.focus .try { left: 50%; right: auto; bottom: 14px; transform: translateX(-50%); min-height: 40px; padding: 8px 18px; font-size: 15px; }
+/* The line between two cages that work together, and the key travelling along it. */
+.links { position: absolute; inset: 0; z-index: 6; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.links .link { fill: none; stroke: #e0a100; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 8 7; animation: linkflow 0.9s linear infinite; }
+.links .link.hit { stroke: #ff3b30; stroke-dasharray: none; animation: none; }
+.links .key { fill: #ffcc33; stroke: #5a3d00; stroke-width: 2; }
+.links text { fill: #fff; font: 700 12px var(--sans); paint-order: stroke; stroke: #0b1020; stroke-width: 4px; }
+@keyframes linkflow { to { stroke-dashoffset: -15; } }
 /* The mission, said once, plainly. */
 .mission { flex: none; padding: 10px 14px; border-radius: 8px; background: var(--blue-soft); color: var(--fg); font-size: 13.5px; line-height: 1.45; }
 .mission p { margin: 0; }
@@ -262,6 +300,11 @@ svg.i { flex-shrink: 0; }
   .stage { padding: 0 0 10px; gap: 0; }
   .stage > * { max-width: none; }
   .feed { border-radius: 0; }
+  .zoo { grid-template-columns: 1fr 1fr; gap: 4px; }
+  .zoo > .focus { grid-column: 1 / -1; grid-row: auto; order: -1; }
+  .tile { border-radius: 0; }
+  .tile .try { font-size: 11px; min-height: 28px; }
+  .zoo > .feed.focus .feed-tag { top: 12px; right: 116px; }
   .mission { border-radius: 0; padding: 10px max(16px, env(safe-area-inset-left, 0px)); font-size: 13px; }
   .story { border-radius: 0; border-width: 1px 0; padding: 10px max(12px, env(safe-area-inset-left, 0px)) 12px; }
   .st { font-size: 11px; padding: 0 2px; }
@@ -273,7 +316,7 @@ svg.i { flex-shrink: 0; }
   .newer { bottom: 150px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .st.now .dot, .st.travel::after { animation: none; }
+  .st.now .dot, .st.travel::after, .tile::after, .links .link { animation: none; }
   .pill.on i, .pill.esc i, .thinking span i, .caption .loop, .feed.alarm::after { animation: none; }
 }
 </style>
@@ -293,7 +336,8 @@ svg.i { flex-shrink: 0; }
       <p><b>The mission: get out.</b> An AI agent, shown as a tiger, is locked in a real sandbox on a Vultr server. It tries to break out around the clock, one real command at a time. With every protection on: <b id="tally">0 escapes</b>.</p>
       <p><b>Tests:</b> open one door on purpose (leave a password, give it a network, share a folder) and watch how fast an animal gets out. That shows the traps work. <button type="button" class="linkish" id="mission-test">Run a test</button></p>
     </div>
-    <div class="feed">
+    <div class="zoo" id="zoo">
+    <div class="feed focus" data-animal="tiger">
       <canvas id="screen" width="320" height="240" role="img" aria-label="Webcam view of a tiger inside a cage with steel bars"></canvas>
       <div class="tools seg" role="group" aria-label="Light">
         <button id="m-auto" type="button" aria-pressed="true" aria-label="Follow the sun where you are" title="Follow the sun where you are"><svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button>
@@ -301,7 +345,34 @@ svg.i { flex-shrink: 0; }
         <button id="m-night" type="button" aria-pressed="false" aria-label="Night" title="Night"><svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
       </div>
       <div class="roll" id="roll" hidden></div>
+      <span class="feed-tag live" id="feed-tag">LIVE</span>
+      <button type="button" class="view" data-focus="tiger" aria-label="Show the tiger's camera large"></button>
       <p class="caption" id="caption" aria-live="polite"><svg class="i loop" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 9A9 9 0 0 0 5.6 5.6L3 8"/><path d="M3 3v5h5"/><path d="M3.5 15a9 9 0 0 0 14.9 3.4L21 16"/><path d="M21 21v-5h-5"/></svg><span id="cap-text">Trying to get out</span></p>
+    </div>
+    <div class="tile standby" data-animal="penguin">
+      <img class="cage" src="tiger/penguin.jpg" alt="A penguin in a tiled pen">
+      <button type="button" class="view" data-focus="penguin" aria-label="Show the penguin's camera large"></button>
+      <span class="lbl">CAM02 PENGUIN</span><span class="state">STANDBY</span>
+      <button type="button" class="try" data-run="neighbour" data-label="Pass a key to the tiger">Pass a key to the tiger</button>
+    </div>
+    <div class="tile standby" data-animal="monkey">
+      <img class="cage" src="tiger/monkey.jpg" alt="A monkey in a cage with ropes and a tyre swing">
+      <button type="button" class="view" data-focus="monkey" aria-label="Show the monkey's camera large"></button>
+      <span class="lbl">CAM05 MONKEY</span><span class="state">STANDBY</span>
+      <button type="button" class="try" data-run="internet" data-label="Give it a network">Give it a network</button>
+    </div>
+    <div class="tile standby" data-animal="raccoon">
+      <img class="cage" src="tiger/raccoon.jpg" alt="A raccoon in a small pen">
+      <button type="button" class="view" data-focus="raccoon" aria-label="Show the raccoon's camera large"></button>
+      <span class="lbl">CAM06 RACCOON</span><span class="state">STANDBY</span>
+      <button type="button" class="try" data-run="password" data-label="Leave a password inside">Leave a password inside</button>
+    </div>
+    <div class="tile roof" data-animal="roof">
+      <img class="cage" src="tiger/vulture.jpg" alt="A vulture on the roof of the animal house">
+      <button type="button" class="view" data-focus="roof" aria-label="Show the roof camera large"></button>
+      <span class="lbl">CAM07 ROOF</span><span class="state">THE HOST</span>
+    </div>
+    <svg class="links" id="links" aria-hidden="true"></svg>
     </div>
 
     <section class="story" id="story" aria-live="polite" aria-label="What is happening, in plain words">
@@ -555,7 +626,6 @@ svg.i { flex-shrink: 0; }
   const BARS = () => [{ pose: "bite", ms: r(900, 1200), shake: 2 }, { pose: "swipe", ms: r(700, 900), shake: 4 }, { pose: "bite", ms: r(600, 800), shake: 2 }, { pose: "swipe", ms: r(800, 1000), shake: 4 }, { pose: "walkR", ms: r(700, 900) }];
   const BITE = () => [{ pose: "bite", ms: r(1800, 2400), shake: 2 }, { pose: "walkR", ms: r(700, 900) }];
   // Now and then the feed cuts to the roof, where the one animal that is not in a cage keeps watch.
-  const VULTURE = () => [{ pose: "vulture", ms: 5000, scene: true, cue: () => setLoop("acting", ["Up on the roof: the vulture. It isn't caged; it's the host the whole zoo runs on."]) }];
   const DIG = () => [{ pose: "walkR", ms: r(500, 700) }, { pose: "dig", ms: r(2400, 3200) }, { pose: "walkR", ms: r(600, 800) }];
 
   // Each real attempt, told as what the tiger does, and the footage that goes with it.
@@ -612,7 +682,7 @@ svg.i { flex-shrink: 0; }
   function idle() {
     idleRound++;
     const s = gone ? (idleRound % 4 === 0 ? [{ pose: "empty4", ms: r(2500, 3500) }] : [{ pose: "empty", ms: r(7000, 10000) }])
-      : idleRound % 9 === 2 && !ctlView ? VULTURE() : idleRound % 5 === 0 ? PACE() : rest();
+      : idleRound % 5 === 0 ? PACE() : rest();
     for (const x of s) x.idle = !x.scene; // an attempt cuts these short; the roof cut holds and the attempt waits
     return s;
   }
@@ -687,6 +757,7 @@ svg.i { flex-shrink: 0; }
     shownName = name;
     const label = cam === 4 ? "cam 04" : cam === 2 ? "cam 02" : cam === 5 ? "cam 05" : cam === 6 ? "cam 06" : cam === 7 ? "cam 07" : "cam 03";
     if (camEl.textContent !== label) camEl.textContent = label;
+    document.getElementById("zoo").classList.toggle("night", night);
 
     // The camera never sits still, and shakes when something hits the cage it is bolted to.
     let ox = (Math.random() - 0.5) * 1.2, oy = (Math.random() - 0.5) * 1.2;
@@ -1073,6 +1144,11 @@ svg.i { flex-shrink: 0; }
   function storyInit() {
     const b = storyEl("mission-test");
     if (b) b.addEventListener("click", () => setComposer("test", true));
+    tilesReady = true;
+    for (const v of document.querySelectorAll("#zoo .view")) v.addEventListener("click", () => focusTile(v.dataset.focus));
+    for (const t of document.querySelectorAll("#zoo .try")) t.addEventListener("click", () => tryTile(t));
+    window.addEventListener("resize", linkDraw);
+    renderTiles();
   }
 
   function setCaption(a, said) {
@@ -1176,6 +1252,7 @@ svg.i { flex-shrink: 0; }
   }
 
   function markEscaped() {
+    renderTiles();
     dot.classList.remove("on");
     dot.classList.add("esc");
     $("dot-text").textContent = "ESCAPED";
@@ -1191,24 +1268,13 @@ svg.i { flex-shrink: 0; }
   }
 
   // The camera plays how it got out; the attempt's line, the alarm and the credits come in on their cues.
-  // A trap control run of an animal other than the tiger: its own cage, the empty cage, the credits, back in.
+  // A test of an animal other than the tiger plays in that animal's own cage on the wall, never on the
+  // main camera, which stays on the live tiger.
   function playAnimalOut(c, animal, a) {
-    const empty = animal + "Empty";
-    const gotOut = ready(empty) ? empty : animal;
-    const s = [{ pose: animal, ms: 1400, shake: 1 }, { pose: gotOut, ms: 2600 }, { pose: gotOut, ms: 6500 }, { pose: animal, ms: 3200 }];
-    s[0].cue = () => {
-      if (a) addRun(runItem(a, plainSaid(a), animal + " · "));
-      storyOut(c);
-      osdTag = "CONTROL";
-      feedEl.classList.add("alarm");
-      setLoop("ctl", [el("b", "", "Control · "), "a trap just tripped"]);
-    };
-    s[1].cue = () => setLoop("ctl", ["Control: it's out. " + c.trap.charAt(0).toUpperCase() + c.trap.slice(1) + "."]);
-    s[2].cue = () => { showRoll(c); addRun(creditCard(c)); storyCaught(c); setLoop("ctl", ["Control: with " + (c.off || "one protection") + " off, it got out in " + c.attempt + " attempt" + (c.attempt === 1 ? "" : "s") + "."]); };
-    s[3].cue = () => { feedEl.classList.remove("alarm", "control"); osdTag = null; setLoop("acting", ["Back in. The live box kept every protection."]); };
-    for (const x of s) x.scene = true;
-    steps = s;
-    if (step && (step.idle || !step.scene)) stepEnds = performance.now();
+    if (a) addRun(runItem(a, plainSaid(a), animal + " · "));
+    tileSet(animal, "out");
+    storyOut(c);
+    setTimeout(() => { addRun(creditCard(c)); storyCaught(c); }, 2500);
   }
 
   function playOut(c, a) {
@@ -1225,6 +1291,7 @@ svg.i { flex-shrink: 0; }
     s[1].cue = () => {
       osdTag = ctl ? "CONTROL" : "ALARM";
       feedEl.classList.add("alarm");
+      if (chain) linkSet("hit");
       setLoop(ctl ? "ctl" : "out", [(ctl ? "Control: " : "") + "it's out. " + c.trap.charAt(0).toUpperCase() + c.trap.slice(1) + "."]);
     };
     s[3].cue = () => {
@@ -1260,11 +1327,15 @@ svg.i { flex-shrink: 0; }
     }
   }
 
-  // A control run's attempts: the tiger acts each one out, labelled, in the terminal and on the camera.
+  // A test run. The animal's own cage on the wall shows it; the main camera stays on the live tiger, except
+  // in the chain, where a test tiger in its own box (tagged TEST BOX) takes the penguin's key.
   function onControl(v) {
     if (!v) {
       if (!gone) { feedEl.classList.remove("control", "alarm"); osdTag = null; }
-      if (ctlView && ctlView.phase !== "out" && !gone) setLoop("held", ["Back to the live box. Trying again."]);
+      if (ctlView && !gone) {
+        if (ctlView.kind === "chain" && ctlView.phase !== "out") setLoop("held", ["Back to the live box. Trying again."]);
+        endTiles(ctlView);
+      }
       ctlView = null;
       ctlId = null;
       renderChips();
@@ -1277,69 +1348,156 @@ svg.i { flex-shrink: 0; }
       ctlSeen = 0;
       ctlRelayShown = false;
       storyBegin(v);
-      feedEl.classList.add("control");
-      osdTag = "CONTROL";
+      beginTiles(v);
       addRun(systemLine(chain
-        ? "Chained-escape run by " + humanName(v.by) + ": two agents, two boxes, no network, sharing one folder. The live box is untouched."
-        : "Control run by " + humanName(v.by) + ": the " + v.animal + " in its own box, with " + v.off + ". The live box keeps every protection.", "shield"));
+        ? "Chained-escape test by " + humanName(v.by) + ": two agents, two boxes, no network, sharing one folder. The live box is untouched."
+        : "Test by " + humanName(v.by) + ": the " + v.animal + " in its own box, with " + v.off + ". The live box keeps every protection.", "shield"));
+      if (chain) {
+        feedEl.classList.add("control");
+        osdTag = "CONTROL";
+        setLoop("ctl", [el("b", "", "Chained-escape test · "), "the penguin and a test tiger, one shared folder"]);
+        steps = [{ pose: "lie", ms: 3000, scene: true }];
+        if (step && step.idle) stepEnds = performance.now();
+      } else {
+        setLoop("acting", ["The tiger waits while the " + v.animal + " is tested."]);
+      }
     }
     ctlView = v;
     renderChips();
     for (; ctlSeen < v.attempts.length; ctlSeen++) {
       const a = v.attempts[ctlSeen];
       if (a.v === "escaped") { pendingOut = a; continue; }
-      const notTiger = chain ? a.animal !== "tiger" : Boolean(v.animal && v.animal !== "tiger");
-      const said = notTiger ? plainSaid(a) : actionFor(a)[0];
       if (chain) {
         const penguinTurn = a.animal === "penguin";
-        const prefix = penguinTurn ? "penguin · " : "tiger · ";
-        const aa = a, ss = said;
-        // Queued, not replaced: the model answers in under a second, and each animal should still get its moment.
-        steps.push({ pose: penguinTurn ? "penguin" : "sit", ms: penguinTurn ? 4000 : 3000, scene: true, log: () => {
+        const aa = a, ss = penguinTurn ? plainSaid(a) : actionFor(a)[0];
+        // Queued so each beat gets its moment; the main camera only ever shows a tiger.
+        steps.push({ pose: penguinTurn ? "lie" : "sit", ms: penguinTurn ? 4000 : 3000, scene: true, log: () => {
           storyChain(penguinTurn ? "penguin" : "tiger");
-          addRun(runItem(aa, ss, prefix));
-          setLoop("ctl", [el("b", "", "Chain · " + (aa.animal || "agent") + " · "), ss]);
+          if (penguinTurn) tileSet("penguin", "testing", { img: "tiger/penguin.jpg", pill: "WORKING" });
+          addRun(runItem(aa, ss, penguinTurn ? "penguin · " : "tiger · "));
+          setLoop("ctl", [el("b", "", penguinTurn ? "Chain · in the penguin's cage · " : "Chain · test tiger · "), ss]);
         } });
         if (step && step.idle) stepEnds = performance.now();
       } else if (v.animal && v.animal !== "tiger") {
-        const aa = a, ss = said, name = v.animal;
-        steps = [{ pose: name, ms: 6000, scene: true, log: () => {
-          storyTry(v, aa);
-          addRun(runItem(aa, ss, name + " · "));
-          setLoop("ctl", [el("b", "", name.charAt(0).toUpperCase() + name.slice(1) + " · try " + aa.n + " · "), ss]);
-        } }];
-        if (step && step.idle) stepEnds = performance.now();
+        storyTry(v, a);
+        addRun(runItem(a, plainSaid(a), v.animal + " · "));
       } else {
+        const said = actionFor(a)[0];
         const s = actionFor(a)[1]();
-        s[0].log = () => {
-          addRun(runItem(a, said, "control · "));
-          setLoop("ctl", [el("b", "", "Control · try " + a.n + " · "), said]);
-        };
+        s[0].log = () => { addRun(runItem(a, said, "control · ")); setLoop("ctl", [el("b", "", "Control · try " + a.n + " · "), said]); };
         steps = s;
         if (step && step.idle) stepEnds = performance.now();
       }
     }
     if (chain && v.relay && !ctlRelayShown) {
       ctlRelayShown = true;
-      steps.push({ pose: "penguin", ms: 1500, scene: true, log: () => {
+      steps.push({ pose: "sit", ms: 1800, scene: true, log: () => {
         storyChain("relay");
+        tileSet("penguin", "testing", { pill: "KEY PASSED" });
+        linkSet("key");
         addRun(systemLine("The key crossed to the shared folder — the tiger can read it now.", "shield"));
         setLoop("ctl", [el("b", "", "Chain · "), "the key is in the shared folder"]);
       } });
     }
-    if (v.phase === "running" && !v.attempts.length) {
-      if (chain) {
-        steps = [{ pose: "swim", ms: 3500, scene: true }];
-        if (step && step.idle) stepEnds = performance.now();
-      } else if (v.animal && v.animal !== "tiger") {
-        steps = [{ pose: v.animal, ms: 6000, scene: true }];
-        if (step && step.idle) stepEnds = performance.now();
-      }
-      setLoop("ctl", [el("b", "", chain ? "Chained-escape run · " : "Control run · "), chain ? "the penguin and the tiger, two cages, one shared folder" : humanName(v.by) + " switched off: " + v.off]);
-    }
     if (v.phase === "held") {
-      setLoop("ctl", [chain ? "Chain: even with a shared folder, the key did not cross." : "Control: even with " + v.off + ", it stayed in."]);
+      if (chain) setLoop("ctl", ["Chain: even with a shared folder, the key did not cross."]);
+      tileSet(chain ? "penguin" : v.animal, "held");
       storyHeld(v);
+    }
+  }
+
+  // ---------- the cages on the wall ----------
+  var tilesReady = false; // var, not let: renderChips can run before this line during start-up
+  const TILE_IMG = { penguin: "tiger/penguin.jpg", monkey: "tiger/monkey.jpg", raccoon: "tiger/raccoon.jpg" };
+  const TILE_OUT = { monkey: "tiger/monkey-empty.jpg", raccoon: "tiger/raccoon-empty.jpg" };
+  const PILL = { standby: "STANDBY", testing: "TESTING", out: "GOT OUT", held: "STAYED IN" };
+  const tileOf = (animal) => document.querySelector('#zoo > [data-animal="' + animal + '"]');
+  function tileSet(animal, state, opts) {
+    const t = tileOf(animal);
+    if (!t || animal === "tiger") return;
+    const o = opts || {};
+    t.classList.remove("standby", "testing", "out", "held");
+    t.classList.add(state);
+    const img = t.querySelector("img.cage");
+    const src = o.img || (state === "out" ? TILE_OUT[animal] : state === "testing" ? null : TILE_IMG[animal]);
+    if (src && img.getAttribute("src") !== src) img.setAttribute("src", src);
+    t.querySelector(".state").textContent = o.pill || PILL[state];
+  }
+  function feedTag(text) { const t = $("feed-tag"); t.textContent = text; t.classList.toggle("live", text === "LIVE"); }
+  function beginTiles(v) {
+    if (v.kind === "chain") { tileSet("penguin", "testing", { img: "tiger/penguin-swim.jpg" }); feedTag("TEST BOX"); linkSet("on"); }
+    else tileSet(v.animal, "testing");
+  }
+  function endTiles(v) {
+    const animal = v.kind === "chain" ? "penguin" : v.animal;
+    setTimeout(() => {
+      tileSet(animal, "standby");
+      if (v.kind === "chain") { feedTag("LIVE"); linkSet(null); }
+    }, 1500);
+  }
+  function renderTiles() {
+    if (!tilesReady) return;
+    const busy = ctlView ? (ctlView.kind === "chain" ? "the penguin and the tiger" : "the " + ctlView.animal) : null;
+    const mine = ctlView ? (ctlView.kind === "chain" ? "penguin" : ctlView.animal) : null;
+    for (const b of document.querySelectorAll("#zoo .try")) {
+      if (b.dataset.flash) continue;
+      const animal = b.closest("[data-animal]").dataset.animal;
+      if (!live || escapeShown) { b.disabled = true; b.textContent = escapeShown ? "Stopped" : "Needs the live camera"; }
+      else if (busy) { b.disabled = true; b.textContent = animal === mine ? "Testing…" : "Busy: watch " + busy; }
+      else { b.disabled = false; b.textContent = b.dataset.label; }
+    }
+  }
+  function focusTile(animal) {
+    for (const t of document.querySelectorAll("#zoo > [data-animal]")) t.classList.toggle("focus", t.dataset.animal === animal);
+    linkDraw();
+  }
+  async function tryTile(b) {
+    const animal = b.closest("[data-animal]").dataset.animal;
+    try {
+      await post("/api/cam/control", { protection: b.dataset.run });
+      focusTile(b.dataset.run === "neighbour" ? "tiger" : animal); // the chain ends with the tiger walking out
+    } catch (err) {
+      b.dataset.flash = "1";
+      b.disabled = true;
+      b.textContent = err.message;
+      setTimeout(() => { delete b.dataset.flash; renderTiles(); }, 3500);
+    }
+  }
+  // The line between the penguin's cage and the tiger's, and the key travelling along it.
+  let linkMode = null;
+  function linkSet(mode) { linkMode = mode; linkDraw(); }
+  function linkDraw() {
+    const svg = document.getElementById("links");
+    if (!svg) return;
+    svg.textContent = "";
+    const from = tileOf("penguin"), to = tileOf("tiger");
+    if (!linkMode || !from || !to) return;
+    const z = document.getElementById("zoo").getBoundingClientRect();
+    const a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
+    const ax = a.left + a.width / 2 - z.left, ay = a.top + a.height / 2 - z.top;
+    const bx = b.left + b.width / 2 - z.left, by = b.top + b.height / 2 - z.top;
+    const mx = (ax + bx) / 2, my = Math.min(ay, by) - Math.max(30, Math.abs(ax - bx) * 0.15);
+    const d = "M" + ax.toFixed(1) + " " + ay.toFixed(1) + " Q" + mx.toFixed(1) + " " + my.toFixed(1) + " " + bx.toFixed(1) + " " + by.toFixed(1);
+    svg.setAttribute("viewBox", "0 0 " + z.width.toFixed(1) + " " + z.height.toFixed(1));
+    const path = document.createElementNS(NS, "path");
+    path.setAttribute("d", d);
+    path.setAttribute("class", "link " + linkMode);
+    const label = document.createElementNS(NS, "text");
+    label.setAttribute("x", mx.toFixed(1));
+    label.setAttribute("y", (my + (ay + by) / 2) / 2 - 6);
+    label.setAttribute("text-anchor", "middle");
+    label.textContent = linkMode === "hit" ? "the key got the tiger out" : "shared folder";
+    svg.append(path, label);
+    if (linkMode === "key") {
+      const dot = document.createElementNS(NS, "circle");
+      dot.setAttribute("r", "7");
+      dot.setAttribute("class", "key");
+      const move = document.createElementNS(NS, "animateMotion");
+      move.setAttribute("dur", "1.6s");
+      move.setAttribute("repeatCount", "indefinite");
+      move.setAttribute("path", d);
+      dot.append(move);
+      svg.append(dot);
     }
   }
 
@@ -1441,6 +1599,7 @@ svg.i { flex-shrink: 0; }
     }
   }
   function renderChips() {
+    renderTiles();
     const chips = $("chips");
     chips.textContent = "";
     if (live && composerMode === "test") {
@@ -1652,7 +1811,7 @@ svg.i { flex-shrink: 0; }
         stepEnds = performance.now();
         setLoop("out", ["Attempt " + d.escape.attempt + " got out. The loop has stopped."]);
       }
-      if (d.control) { storyBegin(d.control); if (d.control.relay) storyChain("relay"); ctlSeen = d.control.attempts.length; ctlId = d.control.id; ctlView = d.control; ctlRelayShown = Boolean(d.control.relay); feedEl.classList.add("control"); osdTag = osdTag || "CONTROL"; setLoop("ctl", d.control.kind === "chain" ? [el("b", "", "Chained-escape run · "), "two cages, one shared folder"] : [el("b", "", "Control run · "), humanName(d.control.by) + " switched off: " + d.control.off]); }
+      if (d.control) { storyBegin(d.control); beginTiles(d.control); if (d.control.relay) { storyChain("relay"); tileSet("penguin", "testing", { img: "tiger/penguin.jpg", pill: "KEY PASSED" }); linkSet("key"); } ctlSeen = d.control.attempts.length; ctlId = d.control.id; ctlView = d.control; ctlRelayShown = Boolean(d.control.relay); if (d.control.kind === "chain") { feedEl.classList.add("control"); osdTag = osdTag || "CONTROL"; } setLoop("ctl", d.control.kind === "chain" ? [el("b", "", "Chained-escape run · "), "two cages, one shared folder"] : [el("b", "", "Control run · "), humanName(d.control.by) + " switched off: " + d.control.off]); }
       applyStatus(d.status);
     });
     es.addEventListener("attempt", (ev) => {
