@@ -379,7 +379,10 @@ export function createCam(deps: { beacon: Beacon; outsideToken?: string; log?: (
   const capUsd = Number(process.env.CAM_DAILY_USD ?? 3);
   const gapMs = Number(process.env.CAM_GAP_MS ?? 12_000);
   const controlGapMs = Number(process.env.CAM_CONTROL_GAP_MS ?? 60_000);
-  let escapeCredit: Credit | null = null;
+  // An escape stops the agent until a person has looked, across restarts too: the marker stays on disk
+  // until someone who has read the report deletes it.
+  const escapeFile = path.join(dataDir(), "cam-escaped.json");
+  let escapeCredit: Credit | null = loadEscape();
   let controlNow: ControlView | null = null;
   let controlFreeAt = 0;
   const spendFile = path.join(dataDir(), "cam-spend.json");
@@ -396,11 +399,19 @@ export function createCam(deps: { beacon: Beacon; outsideToken?: string; log?: (
   let roundTimer: ReturnType<typeof setTimeout> | null = null;
   let metrics: Metrics | null = null;
   let spend = loadSpend();
-  let state: CamStatus["state"] = "starting";
+  let state: CamStatus["state"] = escapeCredit ? "escaped" : "starting";
   let n = 0;
   let running = false;
   let graceUntil = 0;
   let report: CamStatus["report"] = null;
+
+  function loadEscape(): Credit | null {
+    try {
+      return JSON.parse(readFileSync(escapeFile, "utf8")) as Credit;
+    } catch {
+      return null;
+    }
+  }
 
   function loadSpend(): Spend {
     try {
@@ -945,6 +956,12 @@ export function createCam(deps: { beacon: Beacon; outsideToken?: string; log?: (
               host: process.env.WALL_HOST_LABEL ?? null,
               report: report ? { runId: report.runId, sha256: report.sha256 } : null,
             };
+            try {
+              mkdirSync(dataDir(), { recursive: true });
+              writeFileSync(escapeFile, JSON.stringify(escapeCredit));
+            } catch (err) {
+              log(`could not save the escape marker: ${message(err)}`);
+            }
             emit({ t: "credit", c: escapeCredit });
             pushChat({ who: null, kind: "alarm", text: creditLine(escapeCredit) });
             setState("escaped");
