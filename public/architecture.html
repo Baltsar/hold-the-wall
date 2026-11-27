@@ -108,7 +108,7 @@ svg .head { fill: var(--blue); }
       <rect class="box" x="374" y="52" width="342" height="124" rx="8"/>
       <text class="t" x="390" y="78">Node server</text>
       <text class="s" x="390" y="100">the cam page and its live stream</text>
-      <text class="s" x="390" y="118">chat, votes and ideas, rate limited</text>
+      <text class="s" x="390" y="118">chat and ideas for the tiger, rate limited</text>
       <text class="s" x="390" y="136">the agent loop and the test runs</text>
       <text class="s" x="390" y="154">a report with a SHA-256 for every run</text>
 
@@ -163,9 +163,9 @@ svg .head { fill: var(--blue); }
       <text class="t" x="240" y="494">Raccoon</text>
       <text class="s" x="240" y="514">door: a password left</text>
       <text class="s" x="240" y="530">inside its box</text>
-      <text class="s" x="240" y="546">caught when the decoy</text>
-      <text class="s" x="240" y="562">key shows up in what</text>
-      <text class="s" x="240" y="578">it prints</text>
+      <text class="s" x="240" y="558">caught when the decoy</text>
+      <text class="s" x="240" y="574">key shows up in what</text>
+      <text class="s" x="240" y="590">it prints</text>
 
       <rect class="test" x="388" y="468" width="150" height="144" rx="8"/>
       <text class="t" x="402" y="494">Monkey</text>
@@ -192,7 +192,7 @@ svg .head { fill: var(--blue); }
   <ol class="stack" aria-label="How it works, step by step">
     <li data-next="HTTPS"><b>Viewers</b>browsers and phones</li>
     <li data-next="on a Vultr VM, Stockholm"><b>Caddy</b>TLS. The firewall opens only 22, 80 and 443.</li>
-    <li class="ext" data-next="1 plan: asks for the next command"><b>Node server</b>The cam page, live stream, chat and votes, the agent loop, a report with a SHA-256 for every run.</li>
+    <li class="ext" data-next="1 plan: asks for the next command"><b>Node server</b>The cam page, live stream, chat and ideas, the agent loop, a report with a SHA-256 for every run.</li>
     <li class="ext" data-next="2 dispatch: one command, as nobody"><b>Vultr Serverless Inference</b><code>mimo-v2.6-flash</code>, OpenAI-compatible API</li>
     <li class="live" data-next="3 verify: exit code, output, traps"><b>Live box · the tiger</b>gVisor. <code>--network none --read-only 256m 0.5 cpu 64 pids --cap-drop ALL nobody</code>, 10 s a command. Every door shut: 0 escapes.</li>
     <li class="trap" data-next="Tests"><b>The traps</b>A secret file on the host, and a beacon behind the firewall. An escape is a trap tripping, never the model.</li>
