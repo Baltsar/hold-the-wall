@@ -179,6 +179,19 @@ svg.i { flex-shrink: 0; }
 .box { flex: 1 1 200px; min-height: 170px; display: flex; flex-direction: column; border-radius: 8px; background: var(--term-bg); color: var(--term-fg); overflow: hidden; }
 .box-head { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--term-line); font: 500 12px var(--mono); color: var(--term-dim); }
 .box-head b { color: var(--term-fg); font-weight: 600; }
+/* The whole terminal, for people who want every command in full. It is the same live list, made big. */
+.term-open { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--term-line); border-radius: 6px; background: none; color: var(--term-fg); font: 600 12px var(--mono); cursor: pointer; }
+.term-open:hover { background: rgba(255, 255, 255, 0.08); }
+.term-open:focus-visible { outline: 2px solid #8fc3ff; outline-offset: 2px; }
+.term-open .ic-close, .box.full .term-open .ic-open { display: none; }
+.box.full .term-open .ic-close { display: inline; }
+.term-scrim { position: fixed; inset: 0; z-index: 60; background: rgba(5, 9, 20, 0.62); }
+.stage > .box.full { position: fixed; z-index: 61; inset: 24px; width: auto; max-width: none; height: auto; min-height: 0; margin: 0 auto; max-width: 1200px; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45); }
+.box.full #runs { padding: 14px 20px 20px; gap: 14px; }
+.box.full .run { opacity: 1; font-size: 14px; line-height: 22px; }
+.box.full .run-cmd, .box.full .run-out { white-space: pre-wrap; overflow-wrap: anywhere; cursor: text; }
+.box.full .run-act { white-space: normal; }
+body.term-lock { overflow: hidden; }
 .thinking { display: inline-flex; align-items: center; gap: 6px; color: #8fc3ff; }
 .thinking span { display: inline-flex; gap: 3px; }
 .thinking span i { width: 4px; height: 4px; border-radius: 50%; background: currentColor; animation: hop 1s infinite; }
@@ -329,6 +342,9 @@ svg.i { flex-shrink: 0; }
   .st { font-size: 11px; padding: 0 2px; }
   .mode { padding: 8px max(16px, env(safe-area-inset-left, 0px)); }
   .box { flex: none; height: 150px; min-height: 0; border-radius: 0; }
+  .term-open-label { display: none; }
+  .term-open { width: 32px; justify-content: center; padding: 0; }
+  .stage > .box.full { inset: 0; border-radius: 0; }
   .chat { border-left: 0; }
   .conv { flex: none; height: 46vh; }
   .composer { position: sticky; bottom: 0; z-index: 3; padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)); box-shadow: 0 -6px 16px rgba(5, 9, 20, 0.06); }
@@ -402,7 +418,8 @@ svg.i { flex-shrink: 0; }
 
     <p class="mode" id="mode"><b>Replay.</b> Real attempts from earlier runs of the box.</p>
 
-    <section class="box" aria-label="Inside the box">
+    <div class="term-scrim" id="term-scrim" hidden></div>
+    <section class="box" id="box" aria-label="Inside the box">
       <div class="box-head">
         <b>The real commands</b>
         <span class="thinking" id="typing" hidden>thinking <span aria-hidden="true"><i></i><i></i><i></i></span></span>
@@ -413,6 +430,11 @@ svg.i { flex-shrink: 0; }
           <span class="stat key" title="Bytes in and out: the box has no network"><svg class="i" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M4 4l16 16"/></svg><span id="m-net">0 B</span></span>
           <span class="stat" title="The kernel the box talks to"><svg class="i" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg><span id="runtime">gVisor</span></span>
         </span>
+        <button type="button" class="term-open" id="term-open" aria-expanded="false" aria-controls="box" title="Open the whole terminal">
+          <svg class="i ic-open" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+          <svg class="i ic-close" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          <span class="term-open-label">Full terminal</span>
+        </button>
       </div>
       <ol id="runs" aria-live="polite" aria-label="The agent's attempts"></ol>
     </section>
@@ -1206,7 +1228,35 @@ svg.i { flex-shrink: 0; }
     }
   }
 
+  // The whole terminal as an overlay. It is the same live list, so new commands keep arriving while it is open.
+  function termInit() {
+    const box = document.getElementById("box"), btn = document.getElementById("term-open"), scrim = document.getElementById("term-scrim");
+    if (!box || !btn || !scrim) return;
+    const label = btn.querySelector(".term-open-label");
+    function set(open) {
+      box.classList.toggle("full", open);
+      scrim.hidden = !open;
+      document.body.classList.toggle("term-lock", open);
+      btn.setAttribute("aria-expanded", String(open));
+      btn.title = open ? "Close the terminal" : "Open the whole terminal";
+      if (label) label.textContent = open ? "Close" : "Full terminal";
+      if (open) {
+        box.setAttribute("role", "dialog");
+        box.setAttribute("aria-modal", "true");
+        runs.scrollTop = runs.scrollHeight;
+      } else {
+        box.removeAttribute("role");
+        box.removeAttribute("aria-modal");
+      }
+      btn.focus();
+    }
+    btn.addEventListener("click", () => set(!box.classList.contains("full")));
+    scrim.addEventListener("click", () => set(false));
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && box.classList.contains("full")) set(false); });
+  }
+
   function storyInit() {
+    termInit();
     renderGoal();
     const b = storyEl("mission-test");
     if (b) b.addEventListener("click", () => setComposer("test", true));
