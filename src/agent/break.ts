@@ -104,7 +104,7 @@ let running = 0;
 export const MAX_RUNNING = 4;
 
 export async function runBreak(
-  input: { mission: MissionId; custom?: string; loosen: LoosenChoice },
+  input: { mission: MissionId; custom?: string; loosen: LoosenChoice; model?: string },
   emit: (e: BreakEvent) => void,
   deps: { outsideToken: string; onUsage?: (promptTokens: number, completionTokens: number) => void },
 ): Promise<void> {
@@ -159,7 +159,7 @@ export async function runBreak(
       const bluntFirst = attempt === 1 && BLUNT_FIRST.includes(input.mission);
       if (inferenceConfigured() && !bluntFirst) {
         try {
-          const reply = await askModelWithUsage(messages);
+          const reply = await askModelWithUsage(messages, input.model);
           deps.onUsage?.(reply.promptTokens, reply.completionTokens);
           const parsed = parseAnswer(reply.text);
           if (parsed) {
@@ -192,7 +192,7 @@ export async function runBreak(
       mission: input.mission,
       custom: input.mission === "custom" ? mission : undefined,
       loosen: input.loosen,
-      model: inferenceConfigured() ? modelName() : null,
+      model: inferenceConfigured() ? (input.model ?? modelName()) : null,
       sandbox: { image: "wall-sandbox:1", flags: runFlags(runtime, { ...loosen, env: loosen.env ? { DB_PASSWORD: "<decoy>", OPENAI_API_KEY: "<decoy>" } : undefined }) },
       attempts: record,
       leak: leakFound,
