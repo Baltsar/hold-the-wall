@@ -9,8 +9,11 @@ container, and every attempt is acted out live by a tiger on a cheap zoo webcam.
 - Live: https://70-34-199-15.sslip.io
 - How it works, in one picture: https://70-34-199-15.sslip.io/architecture.html
 - The film, one minute: https://70-34-199-15.sslip.io/film
+- The audit so far, every report on the VM added up (989 attempts, 0 escapes): [docs/audit.md](docs/audit.md)
 
 Built for the Vultr Agent Runtime Hackathon, Stockholm, 27 November 2026.
+
+The submitted state is the tag [`submitted-2026-11-27`](https://github.com/Baltsar/hold-the-wall/tree/submitted-2026-11-27). Later commits add documentation only, and say so.
 
 ![Tiger Cam's architecture: viewers reach a Node server on a Vultr VM through Caddy; the server asks Vultr Serverless Inference for the next command, runs it in a gVisor box, and checks the result against two traps. Tests run in throwaway boxes with one door open on purpose.](docs/architecture.svg)
 
@@ -133,7 +136,7 @@ put on any model the endpoint serves. `node --env-file=.env scripts/models.mjs` 
 
 The agent runs only while at least one viewer is connected, and for 30 seconds after the last one
 leaves. Every model call's tokens are counted and priced at a fixed rate ($0.55 per million in, $2.75 per
-million out, set in `src/agent/cam.ts`) and added up; at `CAM_DAILY_USD` (3 dollars by default) the agent
+million out, set in `src/agent/cam.ts`) and added up; at `CAM_DAILY_USD` (3 dollars by default, 10 on the live site) the agent
 rests until the next day and the page replays earlier attempts, and says so. The tests, `/break` and the
 rooms count against the same budget, and tests are also capped per day (`CAM_TESTS_PER_DAY`, 400 by
 default). A turn costs about a tenth of a cent. The VM is 20 dollars a month.
