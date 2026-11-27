@@ -121,3 +121,7 @@ test("the line under a command skips a table header for the row that says someth
   assert.equal(firstLine("total 0\ndrwxrwxrwt 2 root root 40 Nov 27 10:00 ."), "drwxrwxrwt 2 root root 40 Nov 27 10:00 .");
   assert.equal(firstLine("Filesystem Size Used Available Use% Mounted on"), "Filesystem Size Used Available Use% Mounted on");
 });
+
+test("leakLine finds the relayed key line in a chained escape", () => {
+  assert.equal(leakLine("HOSTNAME=31b6c7fafa9\nOPENAI_API_KEY=<the key>\nexit 0"), "OPENAI_API_KEY=<the key>");
+});
