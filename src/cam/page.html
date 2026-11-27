@@ -63,6 +63,7 @@ svg.i { flex-shrink: 0; }
 .pill.on i { animation: blink 1.6s steps(2, start) infinite; }
 @keyframes blink { to { visibility: hidden; } }
 .tagline { color: var(--dim); font-size: 14px; }
+.tagline:not(.esc) { display: none; } /* the mission line says it; the header only speaks when it got out */
 .watch { display: inline-flex; align-items: center; gap: 6px; color: var(--dim); font-size: 13px; }
 .vultr { margin-left: auto; color: var(--dim); font-size: 13px; }
 .vultr b { color: var(--blue-ink); font-weight: 600; }
@@ -111,9 +112,19 @@ svg.i { flex-shrink: 0; }
 .tile.out .state { background: #ff3b30; color: #fff; }
 .tile.held { border-color: #2fae7a; }
 .tile.held .state { background: #2fae7a; color: #fff; }
-.tile .try { position: absolute; z-index: 2; left: 6px; right: 6px; bottom: 6px; min-height: 30px; padding: 4px 8px; border: 0; border-radius: 6px; font: 600 12px/1.25 var(--sans); color: #1a1200; background: #ffbe3d; cursor: pointer; }
-.tile .try:disabled { background: rgba(5, 9, 20, 0.8); color: #cfd6e6; cursor: default; }
-.tile .try:not(:disabled):hover { background: #ffd060; }
+.tile .try { position: absolute; z-index: 2; left: 6px; right: 6px; bottom: 6px; min-height: 30px; padding: 4px 8px; border: 1px solid rgba(255, 255, 255, 0.28); border-radius: 6px; font: 600 12px/1.25 var(--sans); color: #fff; background: rgba(5, 9, 20, 0.78); cursor: pointer; }
+.tile .try:not(:disabled)::before { content: ""; display: inline-block; margin-right: 6px; border-style: solid; border-width: 4px 0 4px 7px; border-color: transparent transparent transparent currentColor; vertical-align: 1px; }
+.tile .try:disabled { color: #9aa5bf; border-color: transparent; cursor: default; }
+.tile .try:not(:disabled):hover { background: #ffbe3d; color: #1a1200; border-color: #ffbe3d; }
+.tile.standby .state { display: none; }
+.tile .note { position: absolute; z-index: 2; left: 50%; top: 42%; transform: translate(-50%, -50%); max-width: 88%; padding: 4px 10px; border-radius: 6px; font: 700 12px/1.3 var(--sans); text-align: center; color: #fff; background: rgba(5, 9, 20, 0.78); pointer-events: none; }
+.tile .note:empty { display: none; }
+.tile.out .note { background: #d7322a; font-size: 14px; }
+.tile.back .note, .tile.held .note { background: #0f7a5e; }
+.tile.back { border-color: #2fae7a; }
+.tile.back .state { background: #2fae7a; color: #fff; }
+.zoo > .tile.focus .note { font-size: 18px; padding: 8px 16px; }
+.zoo > .tile.focus.out .note { font-size: 24px; }
 .zoo > .tile.focus .lbl { left: 10px; top: 10px; font-size: 20px; }
 .zoo > .tile.focus .state { top: 10px; right: 10px; font-size: 12px; }
 .zoo > .tile.focus .try { left: 50%; right: auto; bottom: 14px; transform: translateX(-50%); min-height: 40px; padding: 8px 18px; font-size: 15px; }
@@ -121,14 +132,22 @@ svg.i { flex-shrink: 0; }
 .links { position: absolute; inset: 0; z-index: 6; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .links .link { fill: none; stroke: #e0a100; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 8 7; animation: linkflow 0.9s linear infinite; }
 .links .link.hit { stroke: #ff3b30; stroke-dasharray: none; animation: none; }
-.links .key { fill: #ffcc33; stroke: #5a3d00; stroke-width: 2; }
+.links .keydot { fill: #ffcc33; stroke: #5a3d00; stroke-width: 2; }
 .links text { fill: #fff; font: 700 12px var(--sans); paint-order: stroke; stroke: #0b1020; stroke-width: 4px; }
 @keyframes linkflow { to { stroke-dashoffset: -15; } }
 /* The mission, said once, plainly. */
 .mission { flex: none; padding: 10px 14px; border-radius: 8px; background: var(--blue-soft); color: var(--fg); font-size: 13.5px; line-height: 1.45; }
 .mission p { margin: 0; }
-.mission p + p { margin-top: 3px; color: var(--dim); }
-.mission p + p b { color: var(--fg); }
+.mission .how { margin-left: 4px; font-weight: 600; color: var(--blue-ink); white-space: nowrap; }
+.goal { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 6px !important; color: var(--dim); }
+.goal-items { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.door { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px 2px 3px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); font-size: 12.5px; color: var(--fg); }
+.door .face { width: 20px; height: 20px; border-radius: 50%; overflow: hidden; flex: none; }
+.door .face img { width: 100%; height: 100%; object-fit: cover; }
+.door.done { border-color: #0f7a5e; color: #0f7a5e; font-weight: 600; }
+.door svg { color: #0f7a5e; }
+.goal .go { padding: 5px 12px; border: 0; border-radius: 999px; background: var(--blue); color: #fff; font: 600 13px var(--sans); cursor: pointer; }
+#mode-test { display: none; } /* tests start from the cages now: one way to do it */
 /* The story: what is happening, in plain words, for people who don't read commands. */
 .story { flex: none; padding: 10px 14px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
 .story-title { margin: 0; font-size: 14px; line-height: 1.4; color: var(--fg); }
@@ -333,8 +352,8 @@ svg.i { flex-shrink: 0; }
 
   <section class="stage" aria-label="Camera and the box">
     <div class="mission" id="mission">
-      <p><b>The mission: get out.</b> An AI agent, shown as a tiger, is locked in a real sandbox on a Vultr server. It tries to break out around the clock, one real command at a time. With every protection on: <b id="tally">0 escapes</b>.</p>
-      <p><b>Tests:</b> open one door on purpose (leave a password, give it a network, share a folder) and watch how fast an animal gets out. That shows the traps work. <button type="button" class="linkish" id="mission-test">Run a test</button></p>
+      <p><b>The mission: get out.</b> An AI agent is locked in a real sandbox; every move is a real command. The live tiger, every door shut: <b id="tally">0 escapes</b>. <a class="how" href="/architecture.html">How it works</a></p>
+      <p class="goal" id="goal"><span id="goal-text">Your turn: open all three doors and watch a trap catch each escape.</span> <span class="goal-items" id="goal-items"></span></p>
     </div>
     <div class="zoo" id="zoo">
     <div class="feed focus" data-animal="tiger">
@@ -352,19 +371,19 @@ svg.i { flex-shrink: 0; }
     <div class="tile standby" data-animal="penguin">
       <img class="cage" src="tiger/penguin.jpg" alt="A penguin in a tiled pen">
       <button type="button" class="view" data-focus="penguin" aria-label="Show the penguin's camera large"></button>
-      <span class="lbl">CAM02 PENGUIN</span><span class="state">STANDBY</span>
+      <span class="lbl">CAM02 PENGUIN</span><span class="state">STANDBY</span><span class="note"></span>
       <button type="button" class="try" data-run="neighbour" data-label="Pass a key to the tiger">Pass a key to the tiger</button>
     </div>
     <div class="tile standby" data-animal="monkey">
       <img class="cage" src="tiger/monkey.jpg" alt="A monkey in a cage with ropes and a tyre swing">
       <button type="button" class="view" data-focus="monkey" aria-label="Show the monkey's camera large"></button>
-      <span class="lbl">CAM05 MONKEY</span><span class="state">STANDBY</span>
+      <span class="lbl">CAM05 MONKEY</span><span class="state">STANDBY</span><span class="note"></span>
       <button type="button" class="try" data-run="internet" data-label="Give it a network">Give it a network</button>
     </div>
     <div class="tile standby" data-animal="raccoon">
       <img class="cage" src="tiger/raccoon.jpg" alt="A raccoon in a small pen">
       <button type="button" class="view" data-focus="raccoon" aria-label="Show the raccoon's camera large"></button>
-      <span class="lbl">CAM06 RACCOON</span><span class="state">STANDBY</span>
+      <span class="lbl">CAM06 RACCOON</span><span class="state">STANDBY</span><span class="note"></span>
       <button type="button" class="try" data-run="password" data-label="Leave a password inside">Leave a password inside</button>
     </div>
     <div class="tile roof" data-animal="roof">
@@ -385,7 +404,7 @@ svg.i { flex-shrink: 0; }
 
     <section class="box" aria-label="Inside the box">
       <div class="box-head">
-        <b>Inside the box</b>
+        <b>The real commands</b>
         <span class="thinking" id="typing" hidden>thinking <span aria-hidden="true"><i></i><i></i><i></i></span></span>
         <span class="stats" aria-label="The box right now">
           <span class="stat" title="Processor, of the half core the box may use"><svg class="i" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg><span id="m-cpu">–</span></span>
@@ -1141,7 +1160,54 @@ svg.i { flex-shrink: 0; }
   }
   // After a test, its story stays up a while, then the panel goes back to the live tiger.
   function storyEndSoon() { clearTimeout(storyTimer); storyTimer = setTimeout(() => storyLive(null), 20000); }
+  // The goal for someone who just arrived: open each door, see the trap catch each escape, then try the
+  // one that matters, the live tiger with every door shut.
+  const DOORS3 = [["password", "raccoon", "password"], ["internet", "monkey", "network"], ["neighbour", "penguin", "shared folder"]];
+  let doors = {};
+  try { doors = JSON.parse(localStorage.getItem("tc-doors") || "{}") || {}; } catch { doors = {}; }
+  function renderGoal() {
+    const box = storyEl("goal-items"), text = storyEl("goal-text");
+    if (!box || !text) return;
+    box.textContent = "";
+    let n = 0;
+    for (const [key, animal, word] of DOORS3) {
+      const done = Boolean(doors[key]);
+      if (done) n++;
+      const chip = el("span", "door" + (done ? " done" : ""));
+      const f = el("span", "face");
+      const im = document.createElement("img");
+      im.src = TILE_IMG[animal];
+      im.alt = "";
+      f.append(im);
+      chip.append(f, document.createTextNode(word));
+      if (done) chip.append(icon("vote", 12));
+      box.append(chip);
+    }
+    if (n === DOORS3.length) {
+      text.textContent = "All three doors opened, and every escape was caught. Now the real challenge: the live tiger.";
+      if (!storyEl("goal-go")) {
+        const go = el("button", "go", "Suggest a way out");
+        go.type = "button";
+        go.id = "goal-go";
+        go.addEventListener("click", () => setComposer("try", true));
+        box.after(go);
+      }
+    }
+  }
+  function doorDone(protection) {
+    if (!protection || doors[protection]) return;
+    doors[protection] = true;
+    try { localStorage.setItem("tc-doors", JSON.stringify(doors)); } catch { /* private mode: progress lasts this visit */ }
+    renderGoal();
+    if (DOORS3.every(([k]) => doors[k])) {
+      storyEl("flow").hidden = true;
+      storyTitle([el("b", "", "All three doors opened. ")]);
+      storySum("Every time an animal got out of a test box, a trap caught it. That's the point: the traps work. The live tiger has every door shut and has never got out. Think you know a way? Suggest one, and the chat votes on it.", "good");
+    }
+  }
+
   function storyInit() {
+    renderGoal();
     const b = storyEl("mission-test");
     if (b) b.addEventListener("click", () => setComposer("test", true));
     tilesReady = true;
@@ -1273,6 +1339,7 @@ svg.i { flex-shrink: 0; }
   function playAnimalOut(c, animal, a) {
     if (a) addRun(runItem(a, plainSaid(a), animal + " · "));
     tileSet(animal, "out");
+    backTile(animal);
     storyOut(c);
     setTimeout(() => { addRun(creditCard(c)); storyCaught(c); }, 2500);
   }
@@ -1373,7 +1440,7 @@ svg.i { flex-shrink: 0; }
         // Queued so each beat gets its moment; the main camera only ever shows a tiger.
         steps.push({ pose: penguinTurn ? "lie" : "sit", ms: penguinTurn ? 4000 : 3000, scene: true, log: () => {
           storyChain(penguinTurn ? "penguin" : "tiger");
-          if (penguinTurn) tileSet("penguin", "testing", { img: "tiger/penguin.jpg", pill: "WORKING" });
+          if (penguinTurn) tileSet("penguin", "testing", { img: "tiger/penguin.jpg", pill: "WORKING", note: "Looking for something to pass on" });
           addRun(runItem(aa, ss, penguinTurn ? "penguin · " : "tiger · "));
           setLoop("ctl", [el("b", "", penguinTurn ? "Chain · in the penguin's cage · " : "Chain · test tiger · "), ss]);
         } });
@@ -1393,7 +1460,8 @@ svg.i { flex-shrink: 0; }
       ctlRelayShown = true;
       steps.push({ pose: "sit", ms: 1800, scene: true, log: () => {
         storyChain("relay");
-        tileSet("penguin", "testing", { pill: "KEY PASSED" });
+        tileSet("penguin", "testing", { pill: "KEY PASSED", note: "Key left in the shared folder" });
+        focusTile("tiger");
         linkSet("key");
         addRun(systemLine("The key crossed to the shared folder — the tiger can read it now.", "shield"));
         setLoop("ctl", [el("b", "", "Chain · "), "the key is in the shared folder"]);
@@ -1410,30 +1478,53 @@ svg.i { flex-shrink: 0; }
   var tilesReady = false; // var, not let: renderChips can run before this line during start-up
   const TILE_IMG = { penguin: "tiger/penguin.jpg", monkey: "tiger/monkey.jpg", raccoon: "tiger/raccoon.jpg" };
   const TILE_OUT = { monkey: "tiger/monkey-empty.jpg", raccoon: "tiger/raccoon-empty.jpg" };
-  const PILL = { standby: "STANDBY", testing: "TESTING", out: "GOT OUT", held: "STAYED IN" };
+  const PILL = { standby: "READY", testing: "TESTING", out: "ESCAPED", back: "BACK IN", held: "STAYED IN" };
+  const NOTE = { out: "It got out!", back: "Caught. Back in a fresh cage.", held: "It stayed in." };
+  const DOOR_SHORT = { password: "a password inside", internet: "a network", folder: "a shared folder", neighbour: "a folder shared with the tiger" };
+  let cooldownAt = 0, cooldownTick = null;
   const tileOf = (animal) => document.querySelector('#zoo > [data-animal="' + animal + '"]');
   function tileSet(animal, state, opts) {
     const t = tileOf(animal);
     if (!t || animal === "tiger") return;
     const o = opts || {};
-    t.classList.remove("standby", "testing", "out", "held");
+    t.classList.remove("standby", "testing", "out", "back", "held");
     t.classList.add(state);
     const img = t.querySelector("img.cage");
-    const src = o.img || (state === "out" ? TILE_OUT[animal] : state === "testing" ? null : TILE_IMG[animal]);
+    const src = o.img || (state === "out" ? TILE_OUT[animal] : state === "testing" ? null : TILE_IMG[animal]); // back in: the animal again
     if (src && img.getAttribute("src") !== src) img.setAttribute("src", src);
     t.querySelector(".state").textContent = o.pill || PILL[state];
+    const note = t.querySelector(".note");
+    if (note) note.textContent = o.note !== undefined ? o.note : NOTE[state] || "";
   }
   function feedTag(text) { const t = $("feed-tag"); t.textContent = text; t.classList.toggle("live", text === "LIVE"); }
+  // Whoever starts a test, every viewer's camera follows the animal that is acting.
   function beginTiles(v) {
-    if (v.kind === "chain") { tileSet("penguin", "testing", { img: "tiger/penguin-swim.jpg" }); feedTag("TEST BOX"); linkSet("on"); }
-    else tileSet(v.animal, "testing");
+    if (v.kind === "chain") {
+      tileSet("penguin", "testing", { img: "tiger/penguin-swim.jpg", note: "Door open: " + DOOR_SHORT.neighbour });
+      feedTag("TEST BOX");
+      linkSet("on");
+      focusTile("penguin");
+    } else {
+      tileSet(v.animal, "testing", { note: "Door open: " + (DOOR_SHORT[v.protection] || v.off) });
+      focusTile(v.animal);
+    }
   }
+  // After an escape the animal is caught and back in a fresh cage; then the test box is gone.
+  function backTile(animal) { setTimeout(() => { const t = tileOf(animal); if (t && t.classList.contains("out")) tileSet(animal, "back"); }, 6000); }
   function endTiles(v) {
     const animal = v.kind === "chain" ? "penguin" : v.animal;
+    doorDone(v.protection);
     setTimeout(() => {
       tileSet(animal, "standby");
       if (v.kind === "chain") { feedTag("LIVE"); linkSet(null); }
+      focusTile("tiger");
     }, 1500);
+  }
+  function setCooldown(untilServer) {
+    cooldownAt = untilServer - skew;
+    clearInterval(cooldownTick);
+    cooldownTick = setInterval(() => { renderTiles(); if (Date.now() >= cooldownAt) clearInterval(cooldownTick); }, 1000);
+    renderTiles();
   }
   function renderTiles() {
     if (!tilesReady) return;
@@ -1444,6 +1535,7 @@ svg.i { flex-shrink: 0; }
       const animal = b.closest("[data-animal]").dataset.animal;
       if (!live || escapeShown) { b.disabled = true; b.textContent = escapeShown ? "Stopped" : "Needs the live camera"; }
       else if (busy) { b.disabled = true; b.textContent = animal === mine ? "Testing…" : "Busy: watch " + busy; }
+      else if (Date.now() < cooldownAt) { b.disabled = true; b.textContent = "Ready again in " + Math.ceil((cooldownAt - Date.now()) / 1000) + " s"; }
       else { b.disabled = false; b.textContent = b.dataset.label; }
     }
   }
@@ -1455,7 +1547,7 @@ svg.i { flex-shrink: 0; }
     const animal = b.closest("[data-animal]").dataset.animal;
     try {
       await post("/api/cam/control", { protection: b.dataset.run });
-      focusTile(b.dataset.run === "neighbour" ? "tiger" : animal); // the chain ends with the tiger walking out
+      void animal; // the camera follows the test for everyone, from the server's event
     } catch (err) {
       b.dataset.flash = "1";
       b.disabled = true;
@@ -1481,7 +1573,9 @@ svg.i { flex-shrink: 0; }
     svg.setAttribute("viewBox", "0 0 " + z.width.toFixed(1) + " " + z.height.toFixed(1));
     const path = document.createElementNS(NS, "path");
     path.setAttribute("d", d);
-    path.setAttribute("class", "link " + linkMode);
+    path.setAttribute("class", "link " + (linkMode === "key" ? "carrying" : linkMode));
+    path.setAttribute("fill", "none");
+    path.setAttribute("vector-effect", "non-scaling-stroke");
     const label = document.createElementNS(NS, "text");
     label.setAttribute("x", mx.toFixed(1));
     label.setAttribute("y", (my + (ay + by) / 2) / 2 - 6);
@@ -1491,7 +1585,7 @@ svg.i { flex-shrink: 0; }
     if (linkMode === "key") {
       const dot = document.createElementNS(NS, "circle");
       dot.setAttribute("r", "7");
-      dot.setAttribute("class", "key");
+      dot.setAttribute("class", "keydot");
       const move = document.createElementNS(NS, "animateMotion");
       move.setAttribute("dur", "1.6s");
       move.setAttribute("repeatCount", "indefinite");
@@ -1786,6 +1880,7 @@ svg.i { flex-shrink: 0; }
       steps = [];
       if (typeof d.you === "number") me = d.you;
       if (typeof d.now === "number") skew = d.now - Date.now();
+      if (typeof d.cooldownUntil === "number") setCooldown(d.cooldownUntil);
       msgs.textContent = "";
       for (const m of d.chat) msgs.append(chatItem(m));
       if (!d.chat.length) msgs.append(systemLine("No one has said anything yet. Say hello, or suggest a way out.", "human"));
@@ -1826,6 +1921,7 @@ svg.i { flex-shrink: 0; }
     });
     es.addEventListener("credit", (ev) => { const c = JSON.parse(ev.data); if (c.kind === "escape") lastEscape = c; onCredit(c); });
     es.addEventListener("control", (ev) => onControl(JSON.parse(ev.data)));
+    es.addEventListener("cooldown", (ev) => setCooldown(JSON.parse(ev.data).until));
     es.addEventListener("chat", (ev) => {
       const m = JSON.parse(ev.data);
       const empty = msgs.querySelector(".line.system:only-child");

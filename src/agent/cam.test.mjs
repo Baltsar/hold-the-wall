@@ -82,7 +82,9 @@ test("a real escape credits the winning idea and its voters, and says the agent 
 
 test("a control run says which protection was off and who picked it", () => {
   const line = creditLine({ ...base, kind: "control", attempt: 1, idea: null, by: 9, off: PROTECTIONS.password.off, trap: LEAK_TRAP.password });
-  assert.equal(line, "Control run: with a password left in its environment (human#9's pick), it got out in 1 attempt. How we know: the decoy key turned up in its output.");
+  assert.equal(line, "Test result: with a password left in its environment, it got out in 1 try. The trap caught it; the live tiger keeps every protection.");
+  const three = creditLine({ ...base, kind: "control", attempt: 3, idea: null, by: 9, off: PROTECTIONS.password.off, trap: LEAK_TRAP.password });
+  assert.match(three, /got out in 3 tries\./);
 });
 
 test("a control run's decoys never show as keys on the page", () => {

@@ -222,6 +222,7 @@ const server = createServer(async (req, res) => {
       else if (e.t === "metrics") send("metrics", e.m);
       else if (e.t === "credit") send("credit", e.c);
       else if (e.t === "control") send("control", e.c);
+      else if (e.t === "cooldown") send("cooldown", { until: e.until });
     });
     const ping = setInterval(() => res.write(": ping\n\n"), 20_000);
     req.on("close", () => {

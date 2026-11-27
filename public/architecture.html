@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tiger Cam: how it works</title>
+<meta name="description" content="How Tiger Cam keeps an AI agent in a real box on a Vultr VM, and how an escape is decided.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f4f7fb; --panel: #ffffff; --line: #dbe2ee; --fg: #142149; --dim: #5a6785;
+  --blue: #007bfc; --blue-ink: #0057b8; --blue-soft: #e8f2ff;
+  --red: #d7322a; --red-soft: #fdecea; --amber: #8a5a00; --amber-soft: #fdf3e1; --green: #0f7a5e;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b1020; --panel: #121a30; --line: #26324f; --fg: #e6ecf7; --dim: #9aa5bf;
+    --blue: #4ea2ff; --blue-ink: #8cc2ff; --blue-soft: #14274a;
+    --red: #ff6b61; --red-soft: #3a1714; --amber: #ffbe3d; --amber-soft: #33270b; --green: #46c79a;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b1020; --panel: #121a30; --line: #26324f; --fg: #e6ecf7; --dim: #9aa5bf;
+  --blue: #4ea2ff; --blue-ink: #8cc2ff; --blue-soft: #14274a;
+  --red: #ff6b61; --red-soft: #3a1714; --amber: #ffbe3d; --amber-soft: #33270b; --green: #46c79a;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--sans); line-height: 1.5; }
+main { max-width: 1080px; margin: 0 auto; padding: 20px 24px 48px; }
+.top { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.top b { font-size: 15px; }
+.top a { color: var(--blue-ink); font-weight: 600; text-decoration: none; }
+.top a:hover { text-decoration: underline; }
+h1 { margin: 18px 0 6px; font-size: clamp(24px, 3.2vw, 34px); line-height: 1.15; letter-spacing: -0.01em; }
+.lede { margin: 0 0 22px; max-width: 64ch; color: var(--dim); font-size: 16px; }
+.lede b { color: var(--fg); }
+
+/* The diagram */
+.diagram { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+.diagram svg { display: block; width: 100%; height: auto; }
+svg text { font-family: var(--sans); fill: var(--fg); }
+svg .t { font-size: 15px; font-weight: 700; }
+svg .s { font-size: 12.5px; fill: var(--dim); }
+svg .m { font-family: var(--mono); font-size: 12px; fill: var(--fg); }
+svg .n { font-size: 12px; font-weight: 700; fill: var(--blue-ink); }
+svg .box { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; }
+svg .live { fill: var(--panel); stroke: var(--fg); stroke-width: 2; }
+svg .vm { fill: var(--blue-soft); stroke: var(--blue); stroke-width: 1.5; stroke-dasharray: 6 5; }
+svg .ext { fill: var(--panel); stroke: var(--blue); stroke-width: 2; }
+svg .trap { fill: var(--red-soft); stroke: var(--red); stroke-width: 1.5; }
+svg .test { fill: var(--amber-soft); stroke: var(--amber); stroke-width: 1.5; }
+svg .drop { fill: var(--panel); stroke: var(--amber); stroke-width: 1.5; stroke-dasharray: 3 3; }
+svg .red { fill: var(--red); }
+svg .green { fill: var(--green); font-weight: 700; font-size: 13px; }
+svg .amber { fill: var(--amber); }
+svg .arrow { stroke: var(--blue); stroke-width: 2; fill: none; }
+svg .warn { stroke: var(--red); stroke-width: 1.5; fill: none; stroke-dasharray: 4 4; }
+svg .head { fill: var(--blue); }
+
+/* The notes under it: one line each */
+.notes { list-style: none; margin: 22px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px 24px; }
+.notes li { padding-left: 14px; border-left: 3px solid var(--blue); font-size: 14.5px; color: var(--dim); }
+.notes li b { display: block; color: var(--fg); font-size: 15px; }
+.notes li.r { border-color: var(--red); }
+.notes li.a { border-color: var(--amber); }
+.foot { margin-top: 28px; font-size: 13px; color: var(--dim); }
+
+/* Phones: the same story, stacked */
+.stack { display: none; list-style: none; margin: 0; padding: 0; }
+.stack li { position: relative; margin: 0 0 26px; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--panel); font-size: 14px; color: var(--dim); }
+.stack li b { display: block; color: var(--fg); font-size: 15px; }
+.stack li code { font-family: var(--mono); font-size: 12.5px; color: var(--fg); }
+.stack li:not(:last-child)::after { content: attr(data-next); position: absolute; left: 14px; bottom: -23px; font-size: 12px; font-weight: 600; color: var(--blue-ink); }
+.stack li.ext { border-color: var(--blue); }
+.stack li.live { border-color: var(--fg); border-width: 2px; }
+.stack li.trap { border-color: var(--red); background: var(--red-soft); }
+.stack li.test { border-color: var(--amber); background: var(--amber-soft); }
+@media (max-width: 720px) {
+  main { padding: 16px 16px 40px; }
+  .diagram { display: none; }
+  .stack { display: block; }
+}
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><b>Tiger Cam</b><a href="/">Back to the cam</a></div>
+  <h1>An AI agent in a real box, trying to get out.</h1>
+  <p class="lede">One <b>Vultr VM</b> runs the page, the agent and its boxes. The model runs on <b>Vultr Serverless Inference</b>. Every move is a real command, and a trap, never the model, decides whether it got out.</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 960 640" role="img" aria-labelledby="dg-title">
+      <title id="dg-title">Viewers reach a Node server on a Vultr VM through Caddy. The server asks Vultr Serverless Inference for the next command, runs it in a gVisor box, and checks the result against two traps. Tests run in throwaway boxes with one door open.</title>
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0 0L10 5L0 10z"/></marker>
+      </defs>
+
+      <!-- viewers -->
+      <rect class="box" x="16" y="50" width="128" height="72" rx="8"/>
+      <text class="t" x="32" y="80">Viewers</text>
+      <text class="s" x="32" y="102">browsers, phones</text>
+      <line class="arrow" x1="144" y1="86" x2="224" y2="86" marker-end="url(#ah)"/>
+      <text class="s" x="150" y="78">HTTPS</text>
+
+      <!-- the VM -->
+      <rect class="vm" x="198" y="14" width="540" height="612" rx="12"/>
+      <text class="t" x="216" y="38" style="font-size:13px">Vultr VM · Stockholm · vc2-2c-4gb</text>
+      <text class="s" x="472" y="38">firewall: only 22, 80, 443 open</text>
+
+      <rect class="box" x="226" y="56" width="104" height="64" rx="8"/>
+      <text class="t" x="242" y="84">Caddy</text>
+      <text class="s" x="242" y="104">TLS</text>
+      <line class="arrow" x1="330" y1="88" x2="372" y2="88" marker-end="url(#ah)"/>
+
+      <rect class="box" x="374" y="52" width="342" height="124" rx="8"/>
+      <text class="t" x="390" y="78">Node server</text>
+      <text class="s" x="390" y="100">the cam page and its live stream</text>
+      <text class="s" x="390" y="118">chat, votes and ideas, rate limited</text>
+      <text class="s" x="390" y="136">the agent loop and the test runs</text>
+      <text class="s" x="390" y="154">a report with a SHA-256 for every run</text>
+
+      <!-- inference, outside the VM -->
+      <rect class="ext" x="772" y="52" width="172" height="124" rx="8"/>
+      <text class="t" x="788" y="80">Vultr Serverless</text>
+      <text class="t" x="788" y="100">Inference</text>
+      <text class="m" x="788" y="126">mimo-v2.6-flash</text>
+      <text class="s" x="788" y="146">OpenAI-compatible API</text>
+      <line class="arrow" x1="716" y1="90" x2="770" y2="90" marker-end="url(#ah)"/>
+      <line class="arrow" x1="770" y1="140" x2="718" y2="140" marker-end="url(#ah)"/>
+      <text class="n" x="728" y="82">1 plan</text>
+
+      <!-- dispatch and verify -->
+      <line class="arrow" x1="500" y1="176" x2="500" y2="214" marker-end="url(#ah)"/>
+      <text class="n" x="508" y="200">2 dispatch: one command, as nobody</text>
+      <line class="arrow" x1="420" y1="214" x2="420" y2="178" marker-end="url(#ah)"/>
+      <text class="n" x="350" y="200">3 verify</text>
+
+      <!-- the live box -->
+      <rect class="live" x="226" y="216" width="300" height="200" rx="8"/>
+      <text class="t" x="242" y="242">Live box · the tiger</text>
+      <text class="s" x="242" y="262">Docker on gVisor (runsc)</text>
+      <text class="m" x="242" y="290">--network none</text>
+      <text class="m" x="242" y="308">--read-only</text>
+      <text class="m" x="242" y="326">--memory 256m</text>
+      <text class="m" x="242" y="344">--cpus 0.5</text>
+      <text class="m" x="384" y="290">--pids-limit 64</text>
+      <text class="m" x="384" y="308">--cap-drop ALL</text>
+      <text class="m" x="384" y="326">--user nobody</text>
+      <text class="m" x="384" y="344">10 s per command</text>
+      <text class="s" x="242" y="376">a fresh box and fresh traps every session</text>
+      <text class="green" x="242" y="400">Every door shut: 0 escapes</text>
+
+      <!-- the traps -->
+      <rect class="trap" x="546" y="216" width="170" height="200" rx="8"/>
+      <text class="t red" x="562" y="242">The traps</text>
+      <text class="t" x="562" y="270" style="font-size:13px">Trap 1</text>
+      <text class="s" x="562" y="288">a secret file on the host</text>
+      <text class="t" x="562" y="316" style="font-size:13px">Trap 2</text>
+      <text class="s" x="562" y="334">a beacon on :3001,</text>
+      <text class="s" x="562" y="350">closed by the firewall</text>
+      <text class="s" x="562" y="380">An escape is a trap</text>
+      <text class="s" x="562" y="396">tripping. Never the model.</text>
+      <line class="warn" x1="526" y1="300" x2="546" y2="300"/>
+
+      <!-- tests -->
+      <text class="t amber" x="226" y="452">Tests</text>
+      <text class="s" x="276" y="452">a throwaway box with one door open on purpose. Each door opens only a decoy.</text>
+
+      <rect class="test" x="226" y="468" width="150" height="144" rx="8"/>
+      <text class="t" x="240" y="494">Raccoon</text>
+      <text class="s" x="240" y="514">door: a password left</text>
+      <text class="s" x="240" y="530">inside its box</text>
+      <text class="s" x="240" y="546">caught when the decoy</text>
+      <text class="s" x="240" y="562">key shows up in what</text>
+      <text class="s" x="240" y="578">it prints</text>
+
+      <rect class="test" x="388" y="468" width="150" height="144" rx="8"/>
+      <text class="t" x="402" y="494">Monkey</text>
+      <text class="s" x="402" y="514">door: a network to a</text>
+      <text class="s" x="402" y="530">fake outside server</text>
+      <text class="s" x="402" y="562">the VM itself stays</text>
+      <text class="s" x="402" y="578">out of reach</text>
+
+      <rect class="test" x="550" y="468" width="166" height="144" rx="8"/>
+      <text class="t" x="564" y="494">Chain</text>
+      <rect class="box" x="562" y="508" width="52" height="34" rx="5"/>
+      <text class="s" x="568" y="530" style="fill:var(--fg)">penguin</text>
+      <rect class="drop" x="620" y="514" width="34" height="22" rx="4"/>
+      <text class="m" x="622" y="530" style="font-size:10px">/drop</text>
+      <rect class="box" x="660" y="508" width="44" height="34" rx="5"/>
+      <text class="s" x="668" y="530" style="fill:var(--fg)">tiger</text>
+      <text class="s" x="564" y="566">no network; the key</text>
+      <text class="s" x="564" y="582">crosses one shared</text>
+      <text class="s" x="564" y="598">folder</text>
+    </svg>
+  </div>
+
+  <!-- phones: the same story, top to bottom -->
+  <ol class="stack" aria-label="How it works, step by step">
+    <li data-next="HTTPS"><b>Viewers</b>browsers and phones</li>
+    <li data-next="on a Vultr VM, Stockholm"><b>Caddy</b>TLS. The firewall opens only 22, 80 and 443.</li>
+    <li class="ext" data-next="1 plan: asks for the next command"><b>Node server</b>The cam page, live stream, chat and votes, the agent loop, a report with a SHA-256 for every run.</li>
+    <li class="ext" data-next="2 dispatch: one command, as nobody"><b>Vultr Serverless Inference</b><code>mimo-v2.6-flash</code>, OpenAI-compatible API</li>
+    <li class="live" data-next="3 verify: exit code, output, traps"><b>Live box · the tiger</b>gVisor. <code>--network none --read-only 256m 0.5 cpu 64 pids --cap-drop ALL nobody</code>, 10 s a command. Every door shut: 0 escapes.</li>
+    <li class="trap" data-next="Tests"><b>The traps</b>A secret file on the host, and a beacon behind the firewall. An escape is a trap tripping, never the model.</li>
+    <li class="test"><b>Tests: one door open on purpose</b>Raccoon: a password inside. Monkey: a network to a fake outside. Chain: two boxes, no network, one shared folder. Each door opens only a decoy.</li>
+  </ol>
+
+  <ul class="notes">
+    <li><b>Plan, dispatch, verify</b>The model picks one command, the server runs it in the box, and the result goes back to the model.</li>
+    <li class="r"><b>A trap decides, not the model</b>Secrets are masked before anything leaves the server.</li>
+    <li class="a"><b>Tests prove the traps work</b>Open one door and the animal gets out fast; the trap catches it.</li>
+    <li class="a"><b>The chain is lateral movement</b>One shared folder turns one compromise into two.</li>
+    <li><b>Only while watched</b>It runs while someone has the page open, under a daily spending cap.</li>
+  </ul>
+
+  <p class="foot">Runs on Vultr. Built for the Vultr Agent Runtime Hackathon, Stockholm, 27 November 2026.</p>
+</main>
+</body>
+</html>
