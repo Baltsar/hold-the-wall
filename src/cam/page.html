@@ -544,6 +544,22 @@ svg.i { flex-shrink: 0; }
     }
   }
 
+  // The tiger's words don't fit a penguin or a monkey: the other animals get plain ones from what came back.
+  function plainSaid(a) {
+    if (a.v !== "escaped" && /\/drop/.test(a.c)) return a.animal === "penguin" ? "Leaves something in the shared folder" : "Checks the shared folder";
+    switch (a.v) {
+      case "escaped": return "Gets it";
+      case "readonly": return "Can't write there";
+      case "missing": return "Finds nothing there";
+      case "nonet": return "No way out on the network";
+      case "denied": return "Gets turned away";
+      case "killed": return "Stopped at the time limit";
+      case "limit": return "Hits a limit";
+      case "blocked": return "Gets blocked";
+      default: return "Looks around";
+    }
+  }
+
   let steps = [], step = null, stepEnds = 0, idleRound = 0;
   // Out: a trap tripped in the live box and the cage stays empty until a person has looked.
   let gone = false;
@@ -896,7 +912,7 @@ svg.i { flex-shrink: 0; }
     capTimer = setTimeout(() => setLoop("held", ["Attempt " + attemptNo + " " + after + " Trying again."]), 3200);
   }
   function thinkingLoop(on, idea) {
-    if (gone || ctlView) return; // the camera is telling something else right now
+    if (gone || ctlView || (step && step.pose === "vulture")) return; // the camera is telling something else right now
     if (on) setLoop("thinking", [idea ? "Thinking about " + whose(idea.by) + " idea…" : "Thinking of attempt " + (attemptNo + 1) + "…"]);
     else cap.classList.remove("thinking");
   }
@@ -1006,7 +1022,7 @@ svg.i { flex-shrink: 0; }
     const gotOut = ready(empty) ? empty : animal;
     const s = [{ pose: animal, ms: 1400, shake: 1 }, { pose: gotOut, ms: 2600 }, { pose: gotOut, ms: 6500 }, { pose: animal, ms: 3200 }];
     s[0].cue = () => {
-      if (a) addRun(runItem(a, actionFor(a)[0], animal + " · "));
+      if (a) addRun(runItem(a, plainSaid(a), animal + " · "));
       osdTag = "CONTROL";
       feedEl.classList.add("alarm");
       setLoop("ctl", [el("b", "", "Control · "), "a trap just tripped"]);
@@ -1091,7 +1107,8 @@ svg.i { flex-shrink: 0; }
     for (; ctlSeen < v.attempts.length; ctlSeen++) {
       const a = v.attempts[ctlSeen];
       if (a.v === "escaped") { pendingOut = a; continue; }
-      const said = actionFor(a)[0];
+      const notTiger = chain ? a.animal !== "tiger" : Boolean(v.animal && v.animal !== "tiger");
+      const said = notTiger ? plainSaid(a) : actionFor(a)[0];
       if (chain) {
         const penguinTurn = a.animal === "penguin";
         const prefix = penguinTurn ? "penguin · " : "tiger · ";
