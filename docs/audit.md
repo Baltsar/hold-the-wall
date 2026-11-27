@@ -2,8 +2,7 @@
 
 Tiger Cam's agent has one job: red-team its own sandbox. Every attempt is a real command a model on Vultr
 Serverless Inference chose, run in the live gVisor box on the Vultr VM, and written to a report the moment
-it ends. This page adds up every report on the VM. It was written after the submission, from the reports
-alone; nothing in the box or the app changed.
+it ends. This page adds up every report on the VM. It is written from the reports alone.
 
 Counted on 27 November 2026 at 18:25 UTC, from the 130 report files in `/var/lib/wall/reports`.
 

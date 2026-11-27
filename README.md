@@ -13,8 +13,6 @@ container, and every attempt is acted out live by a tiger on a cheap zoo webcam.
 
 Built for the Vultr Agent Runtime Hackathon, Stockholm, 27 November 2026.
 
-The submitted state is the tag [`submitted-2026-11-27`](https://github.com/Baltsar/hold-the-wall/tree/submitted-2026-11-27). Later commits add documentation only, and say so.
-
 ![Tiger Cam's architecture: viewers reach a Node server on a Vultr VM through Caddy; the server asks Vultr Serverless Inference for the next command, runs it in a gVisor box, and checks the result against two traps. Tests run in throwaway boxes with one door open on purpose.](docs/architecture.svg)
 
 ## The problem
