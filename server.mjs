@@ -13,6 +13,7 @@ import { MISSIONS, runBreak } from "./src/agent/break.ts";
 import { randomBytes } from "node:crypto";
 import { inferenceConfigured, modelName } from "./src/agent/inference.ts";
 import { createCam } from "./src/agent/cam.ts";
+import { audit } from "./src/agent/audit.ts";
 
 const port = Number.parseInt(process.env.PORT ?? "3000", 10);
 const dev = process.env.NODE_ENV !== "production";
@@ -226,6 +227,14 @@ const server = createServer(async (req, res) => {
   }
   if (req.method === "GET" && url.pathname === "/api/health") {
     return json(res, 200, { ok: true, model: inferenceConfigured() ? modelName() : null, rootDoor: rootDoor(), runtime: process.env.SANDBOX_RUNTIME || "runc", host: process.env.WALL_HOST_LABEL || null, cam: cam.snapshot().status });
+  }
+  // Every report on disk added up, for the audit page. The same files /api/report/<run> serves.
+  if (req.method === "GET" && url.pathname === "/api/audit") {
+    return json(res, 200, audit(dataDir()));
+  }
+  if ((req.method === "GET" || req.method === "HEAD") && url.pathname === "/audit") {
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" });
+    return res.end(readFileSync(path.join(process.cwd(), "public", "audit.html"), "utf8"));
   }
   // The film at a short address of its own, so it can be linked directly.
   if ((req.method === "GET" || req.method === "HEAD") && url.pathname === "/film") {

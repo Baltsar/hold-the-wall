@@ -9,7 +9,7 @@ container, and every attempt is acted out live by a tiger on a cheap zoo webcam.
 - Live: https://70-34-199-15.sslip.io
 - How it works, in one picture: https://70-34-199-15.sslip.io/architecture.html
 - The film, one minute: https://70-34-199-15.sslip.io/film
-- The audit so far, every report on the VM added up (989 attempts, 0 escapes): [docs/audit.md](docs/audit.md)
+- The audit, every report on the VM added up live: https://70-34-199-15.sslip.io/audit (a snapshot: [docs/audit.md](docs/audit.md))
 
 Built for the Vultr Agent Runtime Hackathon, Stockholm, 27 November 2026.
 

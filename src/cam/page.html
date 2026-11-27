@@ -430,7 +430,7 @@ body.term-lock { overflow: hidden; }
       </div>
       <div class="pitch">
         <p><b>The mission: get out.</b> An AI agent is locked in a real sandbox; every move is a real command.</p>
-        <p class="how-row"><a class="how" href="/architecture.html">How it works</a><a class="how" href="/film">The film, 1 min</a></p>
+        <p class="how-row"><a class="how" href="/architecture.html">How it works</a><a class="how" href="/film">The film, 1 min</a><a class="how" href="/audit" id="audit-link">The audit</a></p>
       </div>
       <div class="goal" id="goal"><p id="goal-text">Your turn: open a door on purpose and watch a trap catch the escape. Tests don&#39;t count as live escapes.</p><div class="goal-items" id="goal-items"></div></div>
     </div>
@@ -2262,6 +2262,11 @@ body.term-lock { overflow: hidden; }
       if (h.runtime) $("runtime").textContent = h.runtime === "runsc" ? "gVisor" : h.runtime;
       if (h.host) $("host").textContent = h.host;
       if (h.model) $("model").textContent = h.model;
+    }).catch(() => undefined);
+    // Every report added up: the number behind the zero, said in the link to it.
+    fetch("/api/audit").then((res) => (res.ok ? res.json() : null)).then((a) => {
+      if (!a || !a.live || !a.live.attempts) return;
+      $("audit-link").textContent = "The audit: " + a.live.attempts.toLocaleString("en-US") + " tries, " + (a.live.escapes ? a.live.escapes + " out" : "none out");
     }).catch(() => undefined);
   }
 
