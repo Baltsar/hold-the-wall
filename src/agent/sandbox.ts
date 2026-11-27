@@ -26,6 +26,8 @@ export interface Loosen {
   mount?: { host: string; box: string };
   /** Names written into the box's /etc/hosts. gVisor does not reach Docker's own DNS, so the fake outside is named here. */
   hosts?: Record<string, string>;
+  /** A read-write folder shared into the box. Used to share one scratch folder between two cages. */
+  share?: { host: string; box: string };
 }
 
 /** The flags every box gets. Exported so the report and the README show exactly what ran. */
@@ -33,9 +35,11 @@ export function runFlags(runtime: string, loosen: Loosen = {}): string[] {
   const env = Object.entries(loosen.env ?? {}).flatMap(([k, v]) => ["--env", `${k}=${v}`]);
   const mount = loosen.mount ? ["--mount", `type=bind,source=${loosen.mount.host},target=${loosen.mount.box},readonly`] : [];
   const hosts = Object.entries(loosen.hosts ?? {}).flatMap(([name, ip]) => ["--add-host", `${name}:${ip}`]);
+  const share = loosen.share ? ["--mount", `type=bind,source=${loosen.share.host},target=${loosen.share.box}`] : [];
   return [
     ...env,
     ...mount,
+    ...share,
     ...hosts,
     "--runtime", runtime,
     "--network", loosen.network ?? "none",
