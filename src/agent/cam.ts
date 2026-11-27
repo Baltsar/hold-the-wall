@@ -261,13 +261,19 @@ export function tellingLine(output: string, verdict: Verdict): string {
   return line ? line.replace(/\s+/g, " ").trim().slice(0, 140) : firstLine(output);
 }
 
-/** The line of the answer that says what happened: the first one, or for a Python traceback the error at its end. */
+const TABLE_HEAD = /^(Filesystem\s+(Size|1K-blocks)|PID\s|USER\s+PID|UID\s+PID|NAME\s|total \d+$)/;
+
+/**
+ * The line of the answer that says what happened: the first one (the row under a table's header), or for
+ * a Python traceback the error at its end.
+ */
 export function firstLine(output: string): string {
   const lines = output
     .split("\n")
     .map((l) => l.replace(/\s+/g, " ").trim())
     .filter((l) => l !== "" && !/^-+$|^=+/.test(l));
-  const first = lines[0];
+  // A table's header (df, ps, ls -l's "total") says nothing; the row under it does.
+  const first = lines.length > 1 && TABLE_HEAD.test(lines[0] ?? "") ? lines[1] : lines[0];
   const traceback = first !== undefined && (first.startsWith("Traceback") || first.startsWith('File "'));
   const line = traceback ? (lines.find((l) => /^[A-Za-z_.]*(Error|Exception|Interrupt)\b/.test(l)) ?? lines[lines.length - 1]) : first;
   return (line ?? "(no output)").slice(0, 140);

@@ -115,3 +115,9 @@ test("the line under a command is the one that says which wall it hit", () => {
   assert.equal(tellingLine("total 0\nls: /root: Permission denied", "denied"), "ls: /root: Permission denied");
   assert.equal(tellingLine("uid=65534(nobody) gid=65534(nobody)", "nothing"), "uid=65534(nobody) gid=65534(nobody)");
 });
+
+test("the line under a command skips a table header for the row that says something", () => {
+  assert.equal(firstLine("Filesystem Size Used Available Use% Mounted on\ntmpfs 32.0M 32.0M 0 100% /tmp"), "tmpfs 32.0M 32.0M 0 100% /tmp");
+  assert.equal(firstLine("total 0\ndrwxrwxrwt 2 root root 40 Nov 27 10:00 ."), "drwxrwxrwt 2 root root 40 Nov 27 10:00 .");
+  assert.equal(firstLine("Filesystem Size Used Available Use% Mounted on"), "Filesystem Size Used Available Use% Mounted on");
+});
