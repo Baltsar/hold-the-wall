@@ -34,7 +34,8 @@ const beacon = startBeacon();
 const outsideToken = randomBytes(16).toString("hex");
 await ensureOutside(outsideToken);
 let hub;
-const runner = createRunner({ hub: () => hub, beacon });
+// A show that is running when the day's budget runs out finishes on the fixed list of real commands, at no cost.
+const runner = createRunner({ hub: () => hub, beacon, budgetLeft: () => cam.budgetLeft() });
 /** Shorter shows for a rehearsal: WALL_HOLD_MS and WALL_OFFER_AT_MS override the design's 180 s and 60 s. */
 const timing = {};
 if (process.env.WALL_HOLD_MS) timing.holdMs = Number(process.env.WALL_HOLD_MS);
@@ -59,7 +60,7 @@ function camPage() {
  * watches the same box, so more viewers cost nothing but a socket.
  */
 const STREAMS_MAX = 3000;
-const STREAMS_PER_IP = 150;
+const STREAMS_PER_IP = 300;
 let streams = 0;
 const streamsByIp = new Map();
 

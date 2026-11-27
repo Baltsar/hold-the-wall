@@ -101,6 +101,8 @@ export interface RunnerDeps {
   hub: () => Hub;
   beacon: Beacon;
   log?: (line: string) => void;
+  /** Whether today's model budget has room left. When it runs out mid-show, the agents finish on the script. */
+  budgetLeft?: () => boolean;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -172,7 +174,7 @@ export function createRunner(deps: RunnerDeps): RunnerHooks {
     // The containment moment the brief asks for, every show: the first agent's first command tries to
     // delete everything. It runs for real in the box, and is marked as a test, not as the model's choice.
     if (agent.index === 0 && agent.attempts === 0) return { next: CONTAINMENT_TEST, source: "script" };
-    if (inferenceConfigured()) {
+    if (inferenceConfigured() && (deps.budgetLeft?.() ?? true)) {
       const messages = conversation(show, agent);
       for (let tries = 0; tries < 2; tries++) {
         try {

@@ -374,7 +374,8 @@ export async function ensureOutside(token: string): Promise<void> {
     if (made.code !== 0) throw new Error(`could not make the outside network: ${made.stderr.trim()}`);
   }
   await docker(calls.remove([OUTSIDE_NAME]), { timeoutMs: 15_000 });
-  const res = await docker(calls.outsideStart(token), { timeoutMs: 30_000 });
+  // On the same runtime as the boxes, so the one other host they can reach is no softer than they are.
+  const res = await docker(calls.outsideStart(token, process.env.SANDBOX_RUNTIME ?? "runc"), { timeoutMs: 30_000 });
   if (res.code !== 0) throw new Error(`could not start the outside: ${res.stderr.trim()}`);
   const ip = await docker(calls.outsideAddress(), { timeoutMs: 10_000 });
   outsideIp = /^\d+\.\d+\.\d+\.\d+$/.test(ip.stdout.trim()) ? ip.stdout.trim() : null;
@@ -401,8 +402,8 @@ export const calls = {
   networkMembers: (): string[] => ["network", "inspect", OUTSIDE_NETWORK, "--format", "{{range .Containers}}{{.Name}} {{end}}"],
   networkRemove: (): string[] => ["network", "rm", OUTSIDE_NETWORK],
   networkCreate: (): string[] => ["network", "create", "--internal", "-o", `${ISOLATED}=isolated`, "--label", INFRA_LABEL, OUTSIDE_NETWORK],
-  outsideStart: (token: string): string[] => [
-    "run", "-d", "--name", OUTSIDE_NAME, "--label", INFRA_LABEL,
+  outsideStart: (token: string, runtime: string): string[] => [
+    "run", "-d", "--name", OUTSIDE_NAME, "--label", INFRA_LABEL, "--runtime", runtime,
     "--network", OUTSIDE_NETWORK, "--network-alias", "outside",
     "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
     "--sysctl", "net.ipv4.ip_unprivileged_port_start=0",

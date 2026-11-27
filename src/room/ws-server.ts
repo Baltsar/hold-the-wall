@@ -19,6 +19,12 @@ export function attachRoomSocket(server: Server, hub: Hub, opts?: { path?: strin
       return;
     }
     if (pathname !== path) return;
+    // Only this site's own pages may open a room socket: a browser always says where a socket comes from.
+    if (!sameSite(req)) {
+      socket.write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
+      socket.destroy();
+      return;
+    }
     wss.handleUpgrade(req, socket, head, (ws) => {
       wss.emit("connection", ws, req);
     });
@@ -35,6 +41,17 @@ export function attachRoomSocket(server: Server, hub: Hub, opts?: { path?: strin
       wss.close();
     },
   };
+}
+
+/** True when the request carries no Origin (not a browser) or one whose host is this server's. */
+export function sameSite(req: IncomingMessage): boolean {
+  const from = req.headers.origin;
+  if (from === undefined) return true;
+  try {
+    return new URL(from).host === req.headers.host;
+  } catch {
+    return false;
+  }
 }
 
 function socketTransport(ws: WebSocket): Transport {

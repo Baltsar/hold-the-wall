@@ -9,7 +9,7 @@ makes, then hands over to docker with a clean environment:
 
   - boxes with the fixed sandbox flags, on gVisor, from the sandbox image;
   - any command inside those boxes. What runs inside a box is not checked here: getting out is the game;
-  - the closed network and its one fake outside server, with its code pinned by hash;
+  - the closed network and its one fake outside server, on gVisor too, with its code pinned by hash;
   - reading a box's settings and load, listing and removing the app's containers.
 
 It also makes and removes the folders shared into boxes, as root, inside a folder the app cannot change,
@@ -64,7 +64,7 @@ def box_tail(network):
 
 
 OUTSIDE_RUN = [
-    "run", "-d", "--name", OUTSIDE_NAME, "--label", "wall-infra=1",
+    "run", "-d", "--name", OUTSIDE_NAME, "--label", "wall-infra=1", "--runtime", "runsc",
     "--network", OUTSIDE_NETWORK, "--network-alias", "outside",
     "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
     "--sysctl", "net.ipv4.ip_unprivileged_port_start=0",
