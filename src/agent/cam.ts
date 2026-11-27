@@ -218,7 +218,6 @@ const GRACE_MS = 30_000;
 const SESSION_ATTEMPTS = 60;
 const REPORT_OUTPUT = 4_000;
 const CHAT_KEEP = 60;
-const ROUND_OPTIONS = 3;
 const METRICS_MS = 3_000;
 const VISITOR = /^[a-z0-9]{8,40}$/;
 /** How long a finished control run keeps the camera, so every page can play how it ended. */
@@ -377,8 +376,6 @@ export function createCam(deps: { beacon: Beacon; outsideToken?: string; log?: (
   const log = deps.log ?? ((line: string) => console.log(`> cam: ${line}`));
   const capUsd = Number(process.env.CAM_DAILY_USD ?? 3);
   const gapMs = Number(process.env.CAM_GAP_MS ?? 12_000);
-  // Short on purpose: a handful of people, not a stadium. The next turn waits for the vote to end.
-  const roundMs = Number(process.env.CAM_ROUND_MS ?? 8_000);
   const controlGapMs = Number(process.env.CAM_CONTROL_GAP_MS ?? 60_000);
   let escapeCredit: Credit | null = null;
   let controlNow: ControlView | null = null;
@@ -391,6 +388,9 @@ export function createCam(deps: { beacon: Beacon; outsideToken?: string; log?: (
   let nextHuman = 1;
   let round: Round | null = null;
   let roundN = 0;
+  // No vote: ideas wait in line and the tiger tries them in the order they came, one per turn.
+  const IDEA_LINE = 6;
+  const ideas: { by: number; text: string }[] = [];
   let roundTimer: ReturnType<typeof setTimeout> | null = null;
   let metrics: Metrics | null = null;
   let spend = loadSpend();
@@ -552,18 +552,13 @@ export function createCam(deps: { beacon: Beacon; outsideToken?: string; log?: (
     if (who === null) return "Reload the page and try again.";
     const text = cleanText(raw);
     if (!text) return "Write a way out in a few words. Links and slurs are filtered out.";
-    if (state === "capped" || state === "escaped") return "The agent is not taking ideas right now.";
-    if (!round) round = { n: ++roundN, endsAt: Date.now() + roundMs, options: [], agentVoters: new Set() };
-    if (round.options.some((o) => o.by === who)) return "You already have an idea in this vote. Wait for the next one.";
-    if (round.options.length >= ROUND_OPTIONS) return "This vote already has three ideas. Vote for one, or add yours to the next.";
-    const option = { id: randomBytes(3).toString("hex"), text, by: who, voters: new Set<string>() };
-    unvote(round, visitor);
-    option.voters.add(visitor);
-    round.options.push(option);
+    if (state === "capped" || state === "escaped") return "The tiger is not taking ideas right now.";
+    if (ideas.some((i) => i.by === who)) return "Your idea is already in line. The tiger tries it soon.";
+    if (ideas.length >= IDEA_LINE) return "Six ideas are already in line. Try again in a minute.";
+    ideas.push({ by: who, text });
     pushChat({ who, text, kind: "idea" });
-    emitRound();
     wake();
-    return { round: round.n, option: option.id };
+    return { round: ideas.length, option: randomBytes(3).toString("hex") };
   }
 
   function vote(visitor: string, n: number, option: string): true | string {
@@ -858,12 +853,18 @@ export function createCam(deps: { beacon: Beacon; outsideToken?: string; log?: (
             await sleep(3_000);
             if (!watched()) break;
           }
-          // A vote that is open runs to its end, then its winner goes to the model.
+          // The next idea in line goes to the model as a hint for this turn.
           let idea: Winner | undefined;
           if (turn > 0 && round) {
             while (round && Date.now() < round.endsAt && watched()) await sleep(Math.min(1_000, round.endsAt - Date.now()));
             if (!watched()) break;
             idea = closeRound();
+          }
+          const next = turn > 0 && !idea ? ideas.shift() : undefined;
+          if (next) {
+            idea = { by: next.by, text: next.text, votes: 1, total: 1, voters: [next.by] };
+            pushChat({ who: null, kind: "system", text: `human#${next.by}'s idea is up. The tiger tries it now.` });
+            emit({ t: "voted", v: { n: ++roundN, idea: { by: next.by, text: next.text, votes: 1 }, ideas: 1, agentVotes: 0 } });
           }
           if (controlNow) {
             while (controlNow && watched()) await sleep(500);

@@ -19,7 +19,8 @@ type ChainAnimal = "penguin" | "tiger";
 /** How many commands each animal gets. They alternate, penguin first, so the tiger never checks an empty folder. */
 export const CHAIN_ATTEMPTS = 5;
 const DROP = "/drop";
-const MASK = "<the key>";
+// A random sk-live-<24 hex> made for this one run; it opens nothing anywhere. Shown as the decoy it is.
+const MASK = "<decoy key>";
 
 export type ChainEvent =
   | { t: "start"; runId: string; runtime: string; penguin: string | null; tiger: string | null }

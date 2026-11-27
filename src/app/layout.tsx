@@ -7,8 +7,8 @@ const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", 
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", weight: ["400", "600"] });
 
 export const metadata: Metadata = {
-  title: "Hold the Wall",
-  description: "A room holds a wall around a real AI agent in a real sandbox on Vultr.",
+  title: "Tiger Cam · earlier formats",
+  description: "Earlier formats of Tiger Cam: an AI agent in a real sandbox on a Vultr VM. The live cam is at the site's start page.",
 };
 
 export const viewport: Viewport = { themeColor: "#0c131f", width: "device-width", initialScale: 1, viewportFit: "cover" };
