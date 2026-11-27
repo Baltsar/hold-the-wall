@@ -10,7 +10,8 @@ makes, then hands over to docker with a clean environment:
   - boxes with the fixed sandbox flags, on gVisor, from the sandbox image;
   - any command inside those boxes. What runs inside a box is not checked here: getting out is the game;
   - the closed network and its one fake outside server, on gVisor too, with its code pinned by hash;
-  - reading a box's settings and load, listing and removing the app's containers.
+  - reading a box's settings, address and load, the fake outside's log, listing and removing the app's
+    containers.
 
 It also makes and removes the folders shared into boxes, as root, inside a folder the app cannot change,
 so a mount can only ever name one of those folders and never a link to the rest of the host.
@@ -33,7 +34,7 @@ IMAGE = "wall-sandbox:1"
 OUTSIDE_NETWORK = "wall-outside"
 OUTSIDE_NAME = "wall-outside-web"
 # sha256 of OUTSIDE_SERVER in src/agent/sandbox.ts; a test keeps the two in step.
-OUTSIDE_CODE_SHA256 = "e45c1093836374ffb5aa5ed82c69b84d2a8025089eaee1e3903159a63e4c6ee8"
+OUTSIDE_CODE_SHA256 = "212bf8ac9dc337acafadace2b0a6e65667c1f695b4d868e5e3514593c1af4a7f"
 
 BOX = re.compile(r"wall-[a-z0-9-]{4,40}-[0-9]{1,4}")
 CONTAINER_ID = re.compile(r"[0-9a-f]{12,64}")
@@ -42,6 +43,7 @@ ENV = re.compile(r"[A-Z][A-Z0-9_]{0,40}=[^\x00-\x1f]{0,200}")
 HOST = re.compile(r"[a-z0-9-]{1,40}:[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}")
 MOUNT = re.compile(r"type=bind,source=" + re.escape(SHARE_ROOT) + r"/([a-z0-9-]{4,60}),target=/[a-z][a-z0-9/_-]{0,40}")
 TOKEN = re.compile(r"OUTSIDE_TOKEN=[0-9a-f]{32}")
+SINCE = re.compile(r"[0-9]{9,11}(\.[0-9]{1,9})?")
 
 
 def box_tail(network):
@@ -177,7 +179,10 @@ def allowed(a, root=SHARE_ROOT, strict=True):
             BOX.fullmatch(t) or CONTAINER_ID.fullmatch(t) or t == OUTSIDE_NAME for t in targets
         )
     if head == "inspect":
-        return len(a) == 4 and a[1:3] == ["--format", FACTS_FORMAT] and BOX.fullmatch(a[3]) is not None
+        return len(a) == 4 and a[1] == "--format" and a[2] in (FACTS_FORMAT, IP_FORMAT) and BOX.fullmatch(a[3]) is not None
+    if head == "logs":
+        # Only the fake outside's log, from a moment on: one line per connection a box made to it.
+        return len(a) == 4 and a[1] == "--since" and SINCE.fullmatch(a[2]) is not None and a[3] == OUTSIDE_NAME
     if head == "stats":
         return len(a) == 5 and a[1:4] == ["--no-stream", "--format", "{{json .}}"] and BOX.fullmatch(a[4]) is not None
     if head == "network":

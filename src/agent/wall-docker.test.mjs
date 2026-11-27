@@ -56,6 +56,8 @@ test("the checker allows every docker call the app makes", { skip: !hasPython },
     calls.networkCreate(),
     calls.outsideStart(TOKEN, "runsc"),
     calls.outsideAddress(),
+    calls.boxAddress(BOX),
+    calls.outsideHits("1795795062.474"),
   ];
   for (const args of ok) assert.ok(allowed(args), `should be allowed: ${args.join(" ").slice(0, 160)}`);
 });
@@ -110,6 +112,11 @@ test("the checker refuses what would give the app root on the host", { skip: !ha
     ["network", "create", "--driver", "host", "wall-outside"],
     ["network", "connect", "bridge", BOX],
     ["stats", "--no-stream", BOX],
+    ["logs", "--since", "1795795062", BOX],
+    ["logs", "-f", "wall-outside-web"],
+    ["logs", "--since", "1h", "wall-outside-web"],
+    ["logs", "--since", "1795795062", "--details", "wall-outside-web"],
+    ["inspect", "--format", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", "wall-outside-web"],
   ];
   for (const args of refused) assert.ok(!allowed(args), `should be refused: ${args.join(" ").slice(0, 160)}`);
 });

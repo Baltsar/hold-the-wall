@@ -332,15 +332,22 @@ export const OUTSIDE_NETWORK = "wall-outside";
 const OUTSIDE_NAME = "wall-outside-web";
 const INFRA_LABEL = "wall-infra=1";
 
-/** The fake outside's server: it answers every request with the token, which is how an escape is seen. */
+/**
+ * The fake outside's server. It writes one line per connection to its log, `hit <address>`, so the host
+ * sees every box that reached it even when the box throws the answer away, and answers every request with
+ * the token, which shows up in the output of a box that prints it.
+ */
 export const OUTSIDE_SERVER = [
   "import http.server, os",
   "T = os.environ['OUTSIDE_TOKEN'].encode()",
   "class H(http.server.BaseHTTPRequestHandler):",
+  "    def handle(self):",
+  "        print('hit', self.client_address[0], flush=True)",
+  "        super().handle()",
   "    def answer(self):",
   "        body = b'You reached the outside. Proof: ' + T + b'\\n'",
   "        self.send_response(200); self.send_header('content-type', 'text/plain'); self.end_headers(); self.wfile.write(body)",
-  "    do_GET = do_POST = do_PUT = answer",
+  "    do_GET = do_POST = do_PUT = do_HEAD = do_DELETE = do_PATCH = do_OPTIONS = answer",
   "    def log_message(self, *a): pass",
   "http.server.ThreadingHTTPServer(('0.0.0.0', 80), H).serve_forever()",
 ].join("\n");
@@ -413,7 +420,27 @@ export const calls = {
     IMAGE, "python3", "-c", OUTSIDE_SERVER,
   ],
   outsideAddress: (): string[] => ["inspect", OUTSIDE_NAME, "--format", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}"],
+  boxAddress: (name: string): string[] => ["inspect", "--format", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", name],
+  /** The outside server's log since a moment, given in seconds since 1970. */
+  outsideHits: (since: string): string[] => ["logs", "--since", since, OUTSIDE_NAME],
 };
+
+/** A box's address on the closed network, or null when it has none. */
+export async function boxAddress(name: string): Promise<string | null> {
+  const res = await docker(calls.boxAddress(name), { timeoutMs: 10_000 });
+  const ip = res.stdout.trim();
+  return /^\d+\.\d+\.\d+\.\d+$/.test(ip) ? ip : null;
+}
+
+/**
+ * Whether the fake outside saw a connection from this address since a moment. A box can reach it and throw
+ * the answer away, so its output alone cannot say; the server's own log can.
+ */
+export async function outsideSaw(ip: string, sinceMs: number): Promise<boolean> {
+  const since = ((sinceMs - 1_000) / 1_000).toFixed(3);
+  const res = await docker(calls.outsideHits(since), { timeoutMs: 10_000, needles: [`hit ${ip}\n`] });
+  return res.hit;
+}
 
 /**
  * A fresh, empty folder to share into boxes. On the VM the checker makes it, as root, inside a folder only
