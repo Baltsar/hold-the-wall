@@ -431,6 +431,8 @@ svg.i { flex-shrink: 0; }
     monkeyEmpty: { src: "tiger/monkey-empty.jpg", cam: 5 },
     raccoon: { src: "tiger/raccoon.jpg", cam: 6, moves: [{ kind: "wiggle", box: [0.40, 0.44, 0.58, 0.82], ax: 0.6, ay: 0.8, hz: 1.4 }] },
     raccoonEmpty: { src: "tiger/raccoon-empty.jpg", cam: 6 },
+    // Cam 07, the roof: the vulture. Not caged and never an agent; it is the host the zoo runs on.
+    vulture: { src: "tiger/vulture.jpg", cam: 7, moves: [{ kind: "wiggle", box: [0.48, 0.27, 0.71, 0.47], ax: 0.6, ay: 1.2, hz: 0.8 }] },
   };
   for (const p of Object.values(POSES)) { p.img = new Image(); p.img.src = p.src; p.cam = p.cam || 3; }
   const ready = (name) => { const p = POSES[name]; return !!p && p.img.complete && p.img.naturalWidth > 0; };
@@ -462,6 +464,7 @@ svg.i { flex-shrink: 0; }
   LIGHT[2] = LIGHT[3]; // the penguin cage is the tiger cage, so it shares its light
   LIGHT[5] = LIGHT[3];
   LIGHT[6] = LIGHT[3];
+  LIGHT[7] = LIGHT[3];
 
   // The foreground bars of cam 3, found by voting across all poses. They stay put while the tiger moves behind them.
   const bars = new Uint8Array(W * H);
@@ -506,6 +509,8 @@ svg.i { flex-shrink: 0; }
   const DOOR = () => [{ pose: "away", ms: r(600, 800) }, { pose: "door", ms: r(1300, 1700) }, { pose: "door4", ms: r(2200, 2800) }, { pose: "door", ms: r(900, 1200) }, { pose: "away", ms: r(600, 800) }];
   const BARS = () => [{ pose: "bite", ms: r(900, 1200), shake: 2 }, { pose: "swipe", ms: r(700, 900), shake: 4 }, { pose: "bite", ms: r(600, 800), shake: 2 }, { pose: "swipe", ms: r(800, 1000), shake: 4 }, { pose: "walkR", ms: r(700, 900) }];
   const BITE = () => [{ pose: "bite", ms: r(1800, 2400), shake: 2 }, { pose: "walkR", ms: r(700, 900) }];
+  // Now and then the feed cuts to the roof, where the one animal that is not in a cage keeps watch.
+  const VULTURE = () => [{ pose: "vulture", ms: 5000, cue: () => setLoop("acting", ["Up on the roof: the vulture. It isn't caged; it's the host the whole zoo runs on."]) }];
   const DIG = () => [{ pose: "walkR", ms: r(500, 700) }, { pose: "dig", ms: r(2400, 3200) }, { pose: "walkR", ms: r(600, 800) }];
 
   // Each real attempt, told as what the tiger does, and the footage that goes with it.
@@ -546,7 +551,7 @@ svg.i { flex-shrink: 0; }
   function idle() {
     idleRound++;
     const s = gone ? (idleRound % 4 === 0 ? [{ pose: "empty4", ms: r(2500, 3500) }] : [{ pose: "empty", ms: r(7000, 10000) }])
-      : idleRound % 5 === 0 ? PACE() : rest();
+      : idleRound % 9 === 2 && !ctlView ? VULTURE() : idleRound % 5 === 0 ? PACE() : rest();
     for (const x of s) x.idle = true; // an attempt cuts these short
     return s;
   }
@@ -619,7 +624,7 @@ svg.i { flex-shrink: 0; }
     const prev = shownName ? POSES[shownName] : null;
     const ghost = prev && prev !== pose && prev.cam === cam && !reduced ? prev : null; // a cut between cameras is clean
     shownName = name;
-    const label = cam === 4 ? "cam 04" : cam === 2 ? "cam 02" : cam === 5 ? "cam 05" : cam === 6 ? "cam 06" : "cam 03";
+    const label = cam === 4 ? "cam 04" : cam === 2 ? "cam 02" : cam === 5 ? "cam 05" : cam === 6 ? "cam 06" : cam === 7 ? "cam 07" : "cam 03";
     if (camEl.textContent !== label) camEl.textContent = label;
 
     // The camera never sits still, and shakes when something hits the cage it is bolted to.
@@ -685,7 +690,7 @@ svg.i { flex-shrink: 0; }
     const stamp = now.getFullYear() + "-" + two(now.getMonth() + 1) + "-" + two(now.getDate()) + " " + DAYS[now.getDay()] + " " +
       two(now.getHours()) + ":" + two(now.getMinutes()) + ":" + two(now.getSeconds());
     const text = (s, x, y, color) => { wctx.fillStyle = "#000"; wctx.fillText(s, x + 1, y + 1); wctx.fillStyle = color || "#f2f2f2"; wctx.fillText(s, x, y); };
-    text(cam === 4 ? "CAM04 KEEPER DOOR" : cam === 2 ? "CAM02 PENGUIN HOUSE" : cam === 5 ? "CAM05 PRIMATE HOUSE" : cam === 6 ? "CAM06 SMALL MAMMALS" : "CAM03 TIGER HOUSE", 7, 5);
+    text(cam === 4 ? "CAM04 KEEPER DOOR" : cam === 2 ? "CAM02 PENGUIN HOUSE" : cam === 5 ? "CAM05 PRIMATE HOUSE" : cam === 6 ? "CAM06 SMALL MAMMALS" : cam === 7 ? "CAM07 ROOF" : "CAM03 TIGER HOUSE", 7, 5);
     text(stamp, 7, H - 16);
     if (night) text("IR", W - 19, H - 16);
     // ALARM when a trap tripped in the live box, CONTROL during a control run; it blinks like a recorder's dot.

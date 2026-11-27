@@ -69,6 +69,9 @@ can check every line.
   it and prints it, and that crossing is the escape: real lateral movement, decided by the key turning up
   in the tiger's output, never by a model's words. The one weakness is the shared folder; remove it and
   the chain breaks. Two agents, one shared folder, and one compromise becomes two.
+- **The vulture.** Now and then the feed cuts to the roof, where a vulture keeps watch over the animal
+  house. It is the one animal that is never in a cage and never an agent: it stands for the host the
+  zoo runs on.
 - **When it gets out.** Only when a trap on the server trips. The camera cuts to the door, the alarm
   comes on, the tiger walks out and the cage stays empty; credits roll with whose idea it was, who voted
   for it, the model that wrote the command and which trap tripped, and a card in the terminal keeps
