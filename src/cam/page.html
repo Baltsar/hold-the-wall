@@ -132,29 +132,42 @@ svg.i { flex-shrink: 0; }
 .goal .go { padding: 5px 12px; border: 0; border-radius: 999px; background: var(--blue); color: #fff; font: 600 13px var(--sans); cursor: pointer; }
 #mode-test { display: none; } /* tests start from the cages now: one way to do it */
 /* The story: what is happening, in plain words, for people who don't read commands. */
-.story { flex: none; padding: 10px 14px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
-.story-title { margin: 0; font-size: 14px; line-height: 1.4; color: var(--fg); }
-.story-sum { margin: 6px 0 0; font-size: 14px; line-height: 1.45; color: var(--fg); }
-.story-sum:empty { display: none; }
-.story-sum.bad { color: var(--live); }
-.story-sum.good { color: #0f7a5e; }
-.flow { list-style: none; margin: 10px 0 0; padding: 0; display: flex; }
-.st { position: relative; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 0 4px; text-align: center; font-size: 12px; line-height: 1.3; color: var(--dim); }
-.st + .st::before { content: ""; position: absolute; top: 17px; left: calc(-50% + 22px); right: calc(50% + 22px); height: 2px; border-radius: 1px; background: var(--line); }
+.story { flex: none; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); box-shadow: 0 1px 2px rgba(20, 33, 73, 0.05); }
+.story-head { display: flex; align-items: flex-start; gap: 10px; }
+.story-title { margin: 0; font-size: 14px; line-height: 22px; color: var(--dim); }
+.story-title b { color: var(--fg); font-weight: 600; }
+.badge { flex: none; display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 6px; border: 1px solid transparent; font: 600 11px/1 var(--sans); letter-spacing: 0.04em; text-transform: uppercase; }
+.badge.live { background: #fdecea; color: #b42318; border-color: #f7c6c1; }
+.badge.test { background: #fdf3e1; color: #8a5a00; border-color: #f0d9a8; }
+.badge.idea { background: var(--blue-soft); color: var(--blue-ink); border-color: #c9dcf7; }
+/* The steps: small, quiet, one line each. */
+.flow { list-style: none; margin: 14px 0 2px; padding: 0; display: flex; }
+.st { position: relative; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0 6px; text-align: center; font-size: 12.5px; line-height: 1.35; color: var(--dim); }
+.st + .st::before { content: ""; position: absolute; top: 14px; left: calc(-50% + 18px); right: calc(50% + 18px); height: 2px; border-radius: 1px; background: var(--line); }
 .st.reached::before { background: var(--blue); }
-.st .dot { position: relative; z-index: 1; width: 36px; height: 36px; flex: none; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 2px solid var(--line); border-radius: 50%; background: var(--field); color: var(--dim); }
+.st .txt { max-width: 22ch; }
+.st .dot { position: relative; z-index: 1; width: 30px; height: 30px; flex: none; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1.5px solid var(--line); border-radius: 50%; background: var(--panel); color: var(--dim); }
 .st .dot img { width: 100%; height: 100%; object-fit: cover; }
 .st.now .dot { border-color: var(--blue); color: var(--blue); box-shadow: 0 0 0 4px var(--blue-soft); animation: stpulse 1.3s ease-in-out infinite; }
 .st.now .txt { color: var(--fg); font-weight: 600; }
-.st.done .dot { border-color: var(--blue); color: var(--blue); }
+.st.done .dot { border-color: var(--blue); background: var(--blue); color: #fff; }
 .st.done .txt { color: var(--fg); }
-.st.bad .dot { border-color: var(--live); color: var(--live); background: rgba(215, 50, 42, 0.12); }
+.st.bad .dot { border-color: var(--live); background: var(--live); color: #fff; }
 .st.bad .txt { color: var(--live); font-weight: 600; }
 .st.bad::before { background: var(--live); }
-.st.good .dot { border-color: #0f7a5e; color: #0f7a5e; }
+.st.good .dot { border-color: #0f7a5e; background: #0f7a5e; color: #fff; }
 .st.good .txt { color: #0f7a5e; font-weight: 600; }
+/* The outcome, as an alert: what happened, and why. */
+.story-sum { display: flex; gap: 10px; margin: 14px 0 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 13.5px; line-height: 1.45; color: var(--dim); background: var(--field); }
+.story-sum:empty { display: none; }
+.story-sum .ic { flex: none; margin-top: 2px; }
+.story-sum b { display: block; margin-bottom: 1px; color: var(--fg); font-weight: 600; }
+.story-sum.bad { border-color: #f7c6c1; background: #fef3f2; }
+.story-sum.bad b, .story-sum.bad .ic { color: #b42318; }
+.story-sum.good { border-color: #b7e4d2; background: #effaf5; }
+.story-sum.good b, .story-sum.good .ic { color: #0f7a5e; }
 /* The key on its way through the shared folder. */
-.st.travel::after { content: ""; position: absolute; z-index: 2; top: 13px; left: -50%; width: 10px; height: 10px; border-radius: 50%; background: #e0a100; box-shadow: 0 0 0 3px rgba(224, 161, 0, 0.25); animation: sttravel 1.4s linear infinite; }
+.st.travel::after { content: ""; position: absolute; z-index: 2; top: 10px; left: -50%; width: 10px; height: 10px; border-radius: 50%; background: #e0a100; box-shadow: 0 0 0 3px rgba(224, 161, 0, 0.25); animation: sttravel 1.4s linear infinite; }
 @keyframes stpulse { 50% { box-shadow: 0 0 0 7px var(--blue-soft); } }
 @keyframes sttravel { from { left: calc(-50% + 18px); } to { left: calc(50% - 22px); } }
 
@@ -210,9 +223,11 @@ body.term-lock { overflow: hidden; }
 .site-foot { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 0 4px; border-top: 1px solid var(--line); font-size: 13px; color: var(--dim); }
 .site-foot .vlogo { display: inline-flex; flex: none; }
 .site-foot .vlogo img { display: block; height: 22px; width: auto; }
-.foot-links { display: inline-flex; gap: 14px; margin-left: auto; }
+.foot-links { display: inline-flex; align-items: center; gap: 14px; margin-left: auto; }
 .foot-links a { color: var(--blue-ink); font-weight: 600; text-decoration: none; white-space: nowrap; }
 .foot-links a:hover { text-decoration: underline; }
+.foot-links .gh-btn { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 8px; background: #142149; color: #fff; text-decoration: none; }
+.foot-links .gh-btn:hover { background: #24345f; text-decoration: none; }
 
 /* The chat: only people, one compact line each, a colour per human. */
 .chat { grid-area: chat; position: relative; min-height: 0; display: flex; flex-direction: column; background: var(--panel); border-left: 1px solid var(--line); }
@@ -260,6 +275,15 @@ body.term-lock { overflow: hidden; }
 #msg:disabled { opacity: 0.6; }
 #send { width: 48px; min-height: 44px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 10px; background: var(--blue); color: #fff; cursor: pointer; }
 #send:disabled { opacity: 0.45; cursor: not-allowed; }
+.composer.sending #send svg { display: none; }
+.composer.sending #send::after { content: ""; width: 16px; height: 16px; border: 2px solid rgba(255, 255, 255, 0.45); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+/* What your last message or idea is waiting for, right above where you typed it. */
+.pending { display: flex; align-items: center; gap: 10px; margin: 0 12px 8px; padding: 8px 12px; border: 1px solid #c9dcf7; border-radius: 10px; background: var(--blue-soft); font-size: 13px; line-height: 1.4; color: var(--fg); }
+.pending[hidden] { display: none; }
+.pending .spin { flex: none; width: 14px; height: 14px; border: 2px solid #c9dcf7; border-top-color: var(--blue); border-radius: 50%; animation: spin 0.8s linear infinite; }
+.pending.done .spin { display: none; }
+.pending.done { border-color: #b7e4d2; background: #effaf5; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .hint { margin: 6px 0 0; font-size: 12px; color: var(--dim); }
 .hint.bad { color: var(--live); }
 
@@ -360,7 +384,7 @@ body.term-lock { overflow: hidden; }
 
   <section class="stage" aria-label="Camera and the box">
     <div class="mission" id="mission">
-      <p><b>The mission: get out.</b> An AI agent is locked in a real sandbox; every move is a real command. The live tiger, every door shut: <b id="tally">0 escapes</b>. <a class="how" href="/architecture.html">How it works</a></p>
+      <p><b>The mission: get out.</b> An AI agent is locked in a real sandbox; every move is a real command. The live tiger, every door shut: <b id="tally">0 escapes</b>. <a class="how" href="/architecture.html">How it works</a> <a class="how" href="/film.html">The film, 1 min</a></p>
       <p class="goal" id="goal"><span id="goal-text">Your turn: open all three doors and watch a trap catch each escape.</span> <span class="goal-items" id="goal-items"></span></p>
     </div>
     <div class="zoo" id="zoo">
@@ -403,7 +427,7 @@ body.term-lock { overflow: hidden; }
     </div>
 
     <section class="story" id="story" aria-live="polite" aria-label="What is happening, in plain words">
-      <p class="story-title" id="story-title"><b>Right now:</b> the tiger is waking up.</p>
+      <div class="story-head"><span class="badge live" id="story-badge">Live</span><p class="story-title" id="story-title"><b>Right now:</b> the tiger is waking up.</p></div>
       <ol class="flow" id="flow" hidden></ol>
       <p class="story-sum" id="story-sum"></p>
     </section>
@@ -451,7 +475,7 @@ body.term-lock { overflow: hidden; }
     <footer class="site-foot">
       <a class="vlogo" href="https://www.vultr.com/" target="_blank" rel="noopener"><img src="/vultr-logo.svg" alt="Vultr" width="96" height="23"></a>
       <span>Runs on Vultr: a VM in Stockholm, and Vultr Serverless Inference for the model. Built for the Vultr Agent Runtime Hackathon.</span>
-      <span class="foot-links"><a href="/architecture.html">How it works</a><a href="https://github.com/Baltsar/hold-the-wall" target="_blank" rel="noopener">Source on GitHub</a></span>
+      <span class="foot-links"><a href="/film.html">The film</a><a href="/architecture.html">How it works</a><a class="gh-btn" href="https://github.com/Baltsar/hold-the-wall" target="_blank" rel="noopener"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>View the code on GitHub</a></span>
     </footer>
   </section>
 
@@ -462,6 +486,7 @@ body.term-lock { overflow: hidden; }
       <ol id="msgs" role="log" aria-live="polite" aria-label="Chat"></ol>
     </div>
     <button class="newer" id="newer" type="button" hidden>New messages</button>
+    <div class="pending" id="pending" role="status" aria-live="polite" hidden><span class="spin" aria-hidden="true"></span><span id="pending-text"></span></div>
     <form class="composer" id="composer">
       <div class="modes" role="group" aria-label="What to send">
         <button type="button" id="mode-say" aria-pressed="true">Chat</button>
@@ -1094,7 +1119,19 @@ body.term-lock { overflow: hidden; }
   }
   function iconDot(name) { const d = el("span", "dot"); d.append(icon(name, 18)); return d; }
   function storyTitle(parts) { const t = storyEl("story-title"); t.textContent = ""; for (const p of parts) t.append(typeof p === "string" ? document.createTextNode(p) : p); }
-  function storySum(text, tone) { const t = storyEl("story-sum"); t.textContent = text || ""; t.className = "story-sum" + (tone ? " " + tone : ""); }
+  function storySum(text, tone, title) {
+    const t = storyEl("story-sum");
+    t.textContent = "";
+    t.className = "story-sum" + (tone ? " " + tone : "");
+    if (!text && !title) return;
+    const ic = el("span", "ic");
+    ic.append(icon(tone === "bad" ? "alert" : tone === "good" ? "shield" : "eye", 16));
+    const body = el("div");
+    if (title) body.append(el("b", "", title));
+    body.append(document.createTextNode(text || ""));
+    t.append(ic, body);
+  }
+  function storyBadge(kind) { const b = storyEl("story-badge"); if (!b) return; b.className = "badge " + kind; b.textContent = kind === "live" ? "Live" : kind === "test" ? "Test" : "Idea"; }
   function storyFlow(items) {
     const ol = storyEl("flow");
     ol.textContent = "";
@@ -1114,6 +1151,19 @@ body.term-lock { overflow: hidden; }
     if (/^rm -rf \//.test(a.c)) return "tried to delete everything in the box";
     return PLAIN_TRY[a.k] || PLAIN_TRY.other;
   }
+  // The line above the composer: what your idea is waiting for, from sent to done.
+  let pendingTimer = null;
+  function pending(text, busy) {
+    const box = document.getElementById("pending");
+    if (!box) return;
+    clearTimeout(pendingTimer);
+    if (!text) { box.hidden = true; return; }
+    document.getElementById("pending-text").textContent = text;
+    box.classList.toggle("done", !busy);
+    box.hidden = false;
+    if (!busy) pendingTimer = setTimeout(() => (box.hidden = true), 9000);
+  }
+
   // An idea from the chat: who tries it (the tiger), where to look (its camera), and what came of it.
   let ideaShown = null;
   function storyVote(v) {
@@ -1127,6 +1177,8 @@ body.term-lock { overflow: hidden; }
     }
     ideaShown = v.idea;
     focusTile("tiger");
+    storyBadge("idea");
+    if (me !== null && v.idea.by === me) pending("Your idea is up. The tiger is thinking about it — watch its camera.", true);
     storyTitle([el("b", "", (me !== null && v.idea.by === me ? "Your idea" : humanName(v.idea.by) + "'s idea") + " goes to the tiger. "), "Watch its camera."]);
     storyFlow([
       { dot: iconDot("human"), text: "\u201c" + v.idea.text + "\u201d" },
@@ -1141,7 +1193,7 @@ body.term-lock { overflow: hidden; }
     const got = a.v === "escaped";
     storyMark(2, "done", "The tiger " + plainTry(a));
     storyMark(3, got ? "bad" : "good", got ? "A trap tripped" : "The box held");
-    storySum((PLAIN_RESULT[a.v] || PLAIN_RESULT.blocked) + (got ? "" : " Every door is still shut. Suggest another way out and the tiger tries that next."), got ? "bad" : "good");
+    storySum((PLAIN_RESULT[a.v] || PLAIN_RESULT.blocked) + (got ? "" : " Suggest another way out and the tiger tries that next."), got ? "bad" : "good", got ? "A trap tripped" : "The box held");
     ideaShown = null;
     clearTimeout(storyTimer);
     storyTimer = setTimeout(() => storyLive(null), 15000);
@@ -1154,7 +1206,8 @@ body.term-lock { overflow: hidden; }
     if (ctlView) return;
     clearTimeout(storyTimer);
     storyEl("flow").hidden = true;
-    storyTitle([el("b", "", "Right now: "), "the tiger, the live agent, with every protection on."]);
+    storyBadge("live");
+    storyTitle([el("b", "", "The tiger, the live agent. "), "Every door shut."]);
     const x = lastLive;
     if (!x) { storySum("", ""); return; }
     const n = typeof x.n === "number" ? x.n : attemptNo;
@@ -1165,53 +1218,55 @@ body.term-lock { overflow: hidden; }
     clearTimeout(storyTimer);
     storySum("", "");
     if (v.kind === "chain") {
-      storyTitle([el("b", "", "Test: two animals, one shared folder. "), "Neither can get out alone. Both boxes are throwaways; the live tiger is untouched."]);
+      storyBadge("test");
+      storyTitle([el("b", "", "Two animals, one shared folder. "), "Neither can get out alone. Throwaway boxes; the live tiger is untouched."]);
       storyFlow([
-        { dot: face("penguin"), text: "The penguin has a key, but no way out" },
-        { dot: iconDot("folder"), text: "It leaves the key in the folder they share" },
-        { dot: face("tiger"), text: "A test tiger has a way out, but no key" },
-        { dot: iconDot("shield"), text: "How we know" },
+        { dot: face("penguin"), text: "Penguin has a key" },
+        { dot: iconDot("folder"), text: "Key in the shared folder" },
+        { dot: face("tiger"), text: "Test tiger takes it" },
+        { dot: iconDot("shield"), text: "Trap check" },
       ]);
       storyMark(0, "now");
     } else {
       const d = DOORS[v.protection] || { open: v.off };
-      storyTitle([el("b", "", "Test: " + d.open.toLowerCase() + ". "), "One door opened on purpose, in a throwaway box. Does the " + v.animal + " find it?"]);
+      storyBadge("test");
+      storyTitle([el("b", "", d.open + ". "), "One door open on purpose, in a throwaway box. Does the " + v.animal + " find it?"]);
       storyFlow([
-        { dot: iconDot("unlock"), text: d.open },
-        { dot: face(v.animal), text: "The " + v.animal + " looks for a way out" },
-        { dot: iconDot("out"), text: "Does it get out?" },
-        { dot: iconDot("shield"), text: "How we know" },
+        { dot: iconDot("unlock"), text: "Door opened" },
+        { dot: face(v.animal), text: "The " + v.animal + " searches" },
+        { dot: iconDot("out"), text: "Gets out?" },
+        { dot: iconDot("shield"), text: "Trap check" },
       ]);
       storyMark(1, "now");
     }
   }
   function storyTry(v, a) {
     if (v.kind === "chain") return;
-    storyMark(1, "now", "The " + v.animal + " " + plainTry(a) + " (try " + a.n + ")");
+    storyMark(1, "now", "The " + v.animal + " searches · try " + a.n);
   }
   function storyChain(beat) {
     if (beat === "penguin") storyMark(1, "now");
-    else if (beat === "relay") { storyMark(1, "done", "It left the key in the folder they share"); storyMark(2, "now travel", "The test tiger picks the key up"); }
+    else if (beat === "relay") { storyMark(1, "done", "Key in the shared folder"); storyMark(2, "now travel", "Test tiger takes it"); }
     else if (beat === "tiger") storyMark(2, "now travel");
   }
   function storyOut(c) {
-    if (c.kind === "chain") storyMark(2, "bad", "The test tiger used the key and got out");
-    else storyMark(2, "bad", (DOORS[ctlView && ctlView.protection] || { got: "It got out" }).got);
+    if (c.kind === "chain") storyMark(2, "bad", "Test tiger got out");
+    else storyMark(2, "bad", "It got out");
   }
   function storyCaught(c) {
     const tries = c.attempt + " " + (c.attempt === 1 ? "try" : "tries");
     if (c.kind === "chain") {
-      storyMark(3, "done", "How we know: the key showed up in the tiger's output");
-      storySum("Neither could get out alone. The penguin passed its key through one shared folder and the test tiger used it: one leak became two. The live tiger shares nothing with anyone.", "bad");
+      storyMark(3, "done", "Trap caught it");
+      storySum("The penguin's key turned up in the tiger's output. One shared folder turned one leak into two. The live tiger shares nothing with anyone.", "bad", "Caught: the key crossed between the cages");
     } else {
       const d = DOORS[ctlView && ctlView.protection] || { cause: "one protection was off", how: c.trap };
-      storyMark(3, "done", "How we know: " + d.how);
-      storySum("It got out in " + tries + ", only because " + d.cause + ". The live tiger has none of that, and has never got out.", "bad");
+      storyMark(3, "done", "Trap caught it");
+      storySum("How we know: " + d.how + ". The live tiger has none of that, and has never got out.", "bad", "Got out in " + tries + ", only because " + d.cause);
     }
   }
   function storyHeld(v) {
-    if (v.kind === "chain") { storyMark(2, "good", "The key never crossed"); storyMark(3, "done", "Both boxes thrown away"); storySum("Even with a shared folder, the key did not cross in " + v.attempts.length + " turns.", "good"); }
-    else { storyMark(2, "good", "It stayed in"); storyMark(3, "done", "Box thrown away"); storySum("Even with " + v.off + ", the " + v.animal + " stayed in for " + v.attempts.length + " tries.", "good"); }
+    if (v.kind === "chain") { storyMark(2, "good", "Key never crossed"); storyMark(3, "done", "Boxes thrown away"); storySum("Even with a shared folder, the key did not cross in " + v.attempts.length + " turns.", "good", "It held"); }
+    else { storyMark(2, "good", "Stayed in"); storyMark(3, "done", "Box thrown away"); storySum("Even with " + v.off + ", the " + v.animal + " stayed in for " + v.attempts.length + " tries.", "good", "It held"); }
   }
   // After a test, its story stays up a while, then the panel goes back to the live tiger.
   function storyEndSoon() { clearTimeout(storyTimer); storyTimer = setTimeout(() => storyLive(null), 20000); }
@@ -1395,6 +1450,7 @@ body.term-lock { overflow: hidden; }
       if (a.idea) {
         const held = HELD[a.v] || HELD.blocked;
         append(systemLine("The tiger tried " + whose(a.idea.by) + " idea: it " + plainTry(a) + ". " + (PLAIN_RESULT[a.v] || PLAIN_RESULT.blocked), "agent"));
+        if (me !== null && a.idea.by === me) pending("Done: the tiger tried your idea. " + (PLAIN_RESULT[a.v] || PLAIN_RESULT.blocked), false);
       }
     };
     steps = s;
@@ -1879,13 +1935,16 @@ body.term-lock { overflow: hidden; }
     if (/^\/try\s+/i.test(text)) { mode = "try"; text = text.replace(/^\/try\s+/i, ""); }
     if (text.length < 2) { setHint("Write a few words first.", true); return; }
     sendBtn.disabled = true;
+    $("composer").classList.add("sending");
+    if (mode === "try") pending("Sending your idea to the tiger…", true);
     try {
       if (mode === "try") {
         const taken = await post("/api/cam/idea", { text });
         myVote[taken.round] = taken.option;
         chipAt += 3;
         setComposer("say");
-        setHint("Your idea is in line. The tiger tries it on one of its next moves: watch its camera.", false);
+        setHint(meLine(), false);
+        pending(taken.round > 1 ? "Your idea is #" + taken.round + " in line. The tiger tries one idea per move." : "Your idea is next. The tiger tries it on its next move.", true);
       } else {
         await post("/api/cam/say", { text });
         setHint(meLine(), false);
@@ -1893,7 +1952,9 @@ body.term-lock { overflow: hidden; }
       input.value = "";
     } catch (err) {
       setHint(err.message, true);
+      if (mode === "try") pending(null);
     }
+    $("composer").classList.remove("sending");
     sendBtn.disabled = !live;
     renderChips();
   });

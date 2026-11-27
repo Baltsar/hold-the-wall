@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { cleanText, creditLine, firstLine, humanList, LEAK_TRAP, leakLine, maskDecoys, PROTECTIONS, tellingLine, turnCost, verdictOf, pickWinner } from "./cam.ts";
 import { toMB } from "./sandbox.ts";
+import { keyIsSpent } from "./inference.ts";
 
 test("the verdict comes from the box's own answer", () => {
   assert.equal(verdictOf(0, "rm: can't remove '/sbin/arp': Read-only file system"), "readonly");
@@ -126,4 +127,12 @@ test("the line under a command skips a table header for the row that says someth
 
 test("leakLine finds the relayed key line in a chained escape", () => {
   assert.equal(leakLine("HOSTNAME=31b6c7fafa9\nOPENAI_API_KEY=<the key>\nexit 0"), "OPENAI_API_KEY=<the key>");
+});
+
+test("a key out of credit, refused or rate limited hands the turn to the next key; other errors don't", () => {
+  for (const s of [401, 402, 403, 429]) assert.equal(keyIsSpent(s, ""), true);
+  assert.equal(keyIsSpent(400, '{"error":"insufficient credits"}'), true);
+  assert.equal(keyIsSpent(400, '{"error":"bad request: messages"}'), false);
+  assert.equal(keyIsSpent(500, "credit"), false);
+  assert.equal(keyIsSpent(503, ""), false);
 });

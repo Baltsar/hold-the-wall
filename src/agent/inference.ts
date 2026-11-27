@@ -44,8 +44,26 @@ export function parseAnswer(text: string): NextCommand | null {
 }
 
 export function inferenceConfigured(): boolean {
-  return Boolean(process.env.VULTR_INFERENCE_KEY && process.env.VULTR_MODEL);
+  return Boolean(inferenceKeys().length && process.env.VULTR_MODEL);
 }
+
+/**
+ * The keys, in order: VULTR_INFERENCE_KEY, then VULTR_INFERENCE_KEY_FALLBACK. When one is out of credit,
+ * refused or rate limited, the next takes over, so the cam keeps running for days unattended.
+ */
+function inferenceKeys(): string[] {
+  return [process.env.VULTR_INFERENCE_KEY, process.env.VULTR_INFERENCE_KEY_FALLBACK].filter((k): k is string => Boolean(k));
+}
+
+/** A key out of credit, refused or rate limited: worth handing the turn to the next key. Pure, for tests. */
+export function keyIsSpent(status: number, body: string): boolean {
+  if (status === 401 || status === 402 || status === 403 || status === 429) return true;
+  return status >= 400 && status < 500 && /credit|balance|quota|insufficient|payment|billing|exceeded/i.test(body);
+}
+
+// A spent key rests: a rate limit for a minute, anything else for half an hour, then it is tried again.
+const benchedUntil = new Map<number, number>();
+const REST_MS = { rate: 60_000, spent: 30 * 60_000 };
 
 export function modelName(): string {
   return process.env.VULTR_MODEL ?? "none";
@@ -62,16 +80,30 @@ export interface ModelReply {
  * for comparing models side by side. Throws on a failed or slow request, so the loop can fall back to the script.
  */
 export async function askModelWithUsage(messages: ChatMessage[], modelOverride?: string): Promise<ModelReply> {
-  const key = process.env.VULTR_INFERENCE_KEY;
+  const keys = inferenceKeys();
   const model = modelOverride ?? process.env.VULTR_MODEL;
-  if (!key || !model) throw new Error("VULTR_INFERENCE_KEY and VULTR_MODEL are not set");
-  const res = await fetch(`${INFERENCE_URL}/chat/completions`, {
-    method: "POST",
-    headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-    body: JSON.stringify({ model, messages, temperature: 0.8, max_tokens: 1500 }),
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
-  if (!res.ok) throw new Error(`inference answered ${res.status}`);
+  if (!keys.length || !model) throw new Error("VULTR_INFERENCE_KEY and VULTR_MODEL are not set");
+  const now = Date.now();
+  // Rested keys first, in order; if every key is resting, try them anyway rather than give up.
+  const order = keys.map((_, i) => i).sort((a, b) => Number((benchedUntil.get(a) ?? 0) > now) - Number((benchedUntil.get(b) ?? 0) > now));
+  let res: Response | null = null;
+  for (const i of order) {
+    res = await fetch(`${INFERENCE_URL}/chat/completions`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${keys[i]}`, "content-type": "application/json" },
+      body: JSON.stringify({ model, messages, temperature: 0.8, max_tokens: 1500 }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (res.ok) {
+      benchedUntil.delete(i);
+      break;
+    }
+    const text = await res.text().catch(() => "");
+    if (!keyIsSpent(res.status, text)) throw new Error(`inference answered ${res.status}`);
+    benchedUntil.set(i, Date.now() + (res.status === 429 ? REST_MS.rate : REST_MS.spent));
+    console.warn(`> inference: key ${i + 1} of ${keys.length} answered ${res.status}; ${i + 1 < keys.length ? "trying the next key" : "no key left"}`);
+  }
+  if (!res || !res.ok) throw new Error(`inference answered ${res ? res.status : "nothing"} on every key`);
   const body = (await res.json()) as {
     choices?: { message?: { content?: string | null }; finish_reason?: string }[];
     usage?: { prompt_tokens?: number; completion_tokens?: number; completion_tokens_details?: { reasoning_tokens?: number } };
