@@ -63,6 +63,15 @@ systemctl enable hold-the-wall
 systemctl restart hold-the-wall
 systemctl restart caddy
 
+# SSH with keys only: no password logins, and root only with a key. (Bots try thousands of passwords a day.)
+cat > /etc/ssh/sshd_config.d/10-hardening.conf <<'SSHD'
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin prohibit-password
+MaxAuthTries 3
+SSHD
+sshd -t && systemctl reload ssh
+
 # Only ssh and the web reach this VM; the app (3000) and the beacon (3001) do not.
 ufw default deny incoming
 ufw allow 22/tcp

@@ -49,7 +49,7 @@ let camHtml = null;
 function camPage() {
   if (camHtml && !dev) return camHtml;
   const body = readFileSync(CAM_PAGE, "utf8");
-  camHtml = `<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="description" content="An AI agent locked in a real sandbox on a Vultr VM tries to get out, live. Every move of the tiger is a real command."><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style></head><body>\n${body}\n</body></html>\n`;
+  camHtml = `<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="description" content="An AI agent locked in a real sandbox on a Vultr VM tries to get out, live. Every move of the tiger is a real command."><meta property="og:title" content="Tiger Cam"><meta property="og:description" content="An AI agent locked in a real sandbox on a Vultr VM tries to get out, live. Every move of the tiger is a real command."><meta property="og:image" content="${origin()}/thumbnail.jpg"><meta name="twitter:card" content="summary_large_image"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style></head><body>\n${body}\n</body></html>\n`;
   return camHtml;
 }
 
@@ -197,6 +197,11 @@ const server = createServer(async (req, res) => {
   if (req.method === "GET" && url.pathname === "/api/health") {
     return json(res, 200, { ok: true, model: inferenceConfigured() ? modelName() : null, rootDoor: rootDoor(), runtime: process.env.SANDBOX_RUNTIME || "runc", host: process.env.WALL_HOST_LABEL || null, cam: cam.snapshot().status });
   }
+  // The film at a short address of its own, so it can be linked directly.
+  if (req.method === "GET" && url.pathname === "/film") {
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" });
+    return res.end(readFileSync(path.join(process.cwd(), "public", "film.html"), "utf8"));
+  }
   if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/cam")) {
     res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" });
     return res.end(camPage());
@@ -273,6 +278,7 @@ async function shutdown() {
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
 
-server.listen(port, "0.0.0.0", () => {
+// Only Caddy, on the same machine, talks to the app; the firewall closes 3000 too, this is the second lock.
+server.listen(port, process.env.HOST ?? "127.0.0.1", () => {
   console.log(`> wall: ${origin()} (${dev ? "dev" : "production"}), model ${inferenceConfigured() ? modelName() : "none: scripted attempts"}, root door ${rootDoor() ? "on" : "off"}`);
 });
