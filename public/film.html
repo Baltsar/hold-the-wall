@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tiger Cam: the film</title>
+<meta name="description" content="One minute on Tiger Cam: an AI agent locked in a real gVisor sandbox on a Vultr VM tries to get out, live.">
+<link rel="canonical" href="https://70-34-199-15.sslip.io/film">
+<meta property="og:url" content="https://70-34-199-15.sslip.io/film">
+<meta property="og:title" content="Tiger Cam: the film">
+<meta property="og:description" content="An AI agent locked in a real sandbox on a Vultr VM tries to get out, live. Every move is a real command.">
+<meta property="og:image" content="https://70-34-199-15.sslip.io/thumbnail.jpg">
+<meta property="og:video" content="https://70-34-199-15.sslip.io/tiger-cam.mp4">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f4f7fb; --panel: #ffffff; --line: #dbe2ee; --fg: #142149; --dim: #5a6785;
+  --live: #d7322a; --navy-hover: #24345f;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+}
+:root { color-scheme: light; } /* always light, like the rest of the site */
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--sans); line-height: 1.5; }
+a { color: inherit; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+/* The same header as the cam: the name, where to go, and the one thing to do next. */
+.top { background: var(--panel); border-bottom: 1px solid var(--line); }
+.top .wrap { display: flex; align-items: center; gap: 24px; min-height: 60px; }
+.logo { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; text-decoration: none; }
+.nav { display: flex; gap: 20px; font-size: 14px; font-weight: 600; }
+.nav a { color: var(--dim); text-decoration: none; }
+.nav a:hover { color: var(--fg); }
+.nav a[aria-current="page"] { color: var(--fg); }
+.live { display: inline-flex; align-items: center; gap: 10px; height: 40px; padding: 0 16px; border-radius: 8px; background: var(--fg); color: #fff; font-size: 15px; font-weight: 600; text-decoration: none; white-space: nowrap; transition: background-color 0.15s cubic-bezier(0.2, 0.6, 0.2, 1); }
+.top .live { margin-left: auto; }
+.live:hover { background: var(--navy-hover); }
+.live:focus-visible, .nav a:focus-visible, .logo:focus-visible { outline: 2px solid #007bfc; outline-offset: 3px; }
+.live i { width: 8px; height: 8px; border-radius: 50%; background: var(--live); box-shadow: 0 0 0 3px rgba(215, 50, 42, 0.3); animation: blink 1.6s steps(2, start) infinite; }
+@keyframes blink { to { visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { .live i { animation: none; } }
+
+h1 { margin: 28px 0 6px; font-size: clamp(26px, 3.4vw, 36px); line-height: 1.15; letter-spacing: -0.015em; }
+.lede { margin: 0 0 20px; max-width: 62ch; color: var(--dim); font-size: 16px; }
+.lede b { color: var(--fg); }
+.film { background: #000; border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 9; }
+.film video { display: block; width: 100%; height: 100%; }
+
+/* After the film, the next step. */
+.next { display: flex; align-items: center; justify-content: space-between; gap: 16px 24px; flex-wrap: wrap; margin-top: 16px; padding: 18px 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+.next p { margin: 0; font-size: 17px; font-weight: 600; }
+.next p span { display: block; color: var(--dim); font-size: 15px; font-weight: 400; }
+
+.foot { margin-top: 32px; padding: 16px 0 40px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-size: 13px; color: var(--dim); }
+.foot img { display: block; height: 22px; width: auto; }
+.foot a { color: var(--fg); font-weight: 600; text-decoration: none; }
+.foot a:hover { text-decoration: underline; }
+
+@media (max-width: 640px) {
+  .wrap { padding: 0 16px; }
+  .top .wrap { gap: 12px; min-height: 56px; }
+  .nav { display: none; }
+  .live { height: 40px; padding: 0 14px; font-size: 15px; }
+  h1 { margin-top: 20px; }
+  .film { border-radius: 8px; }
+  .next .live { width: 100%; justify-content: center; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="logo" href="/">Tiger Cam</a>
+    <nav class="nav" aria-label="Pages">
+      <a href="/film" aria-current="page">The film</a>
+      <a href="/architecture.html">How it works</a>
+      <a href="https://github.com/Baltsar/hold-the-wall" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+    <a class="live" href="/"><i aria-hidden="true"></i>Watch it live <span aria-hidden="true">&rarr;</span></a>
+  </div>
+</header>
+
+<main class="wrap">
+  <h1>The film, one minute.</h1>
+  <p class="lede">An AI agent is locked in a real sandbox on a Vultr VM and tries to get out. Every move is a real command. <b>The animals aren't real. Their escape attempts are.</b></p>
+
+  <div class="film" id="film">
+    <video controls playsinline preload="metadata" poster="/thumbnail.jpg">
+      <source src="/tiger-cam.mp4" type="video/mp4">
+    </video>
+  </div>
+
+  <div class="next">
+    <p>It's running right now.<span>Watch the tiger try, suggest a way out, or open a door on purpose.</span></p>
+    <a class="live" href="/"><i aria-hidden="true"></i>Watch it live <span aria-hidden="true">&rarr;</span></a>
+  </div>
+
+  <footer class="foot">
+    <a href="https://www.vultr.com/" target="_blank" rel="noopener"><img src="/vultr-logo.svg" alt="Vultr" width="96" height="23"></a>
+    <span>Runs on Vultr: a VM in Stockholm, and Vultr Serverless Inference for the model. Built for the Vultr Agent Runtime Hackathon, Stockholm, 27 November 2026, by <a href="https://www.linkedin.com/in/gustafgarnow/" target="_blank" rel="noopener">Gustaf Garnow</a> and <a href="https://www.linkedin.com/in/alxtec/" target="_blank" rel="noopener">Alex Kotschack</a>, from the non-profit <a href="https://opensverige.se" target="_blank" rel="noopener">opensverige.se</a>.</span>
+  </footer>
+</main>
+</body>
+</html>
