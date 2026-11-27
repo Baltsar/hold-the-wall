@@ -217,7 +217,8 @@ const server = createServer(async (req, res) => {
       else if (e.t === "status") send("status", e.s);
       else if (e.t === "chat") send("chat", e.m);
       else if (e.t === "round") send("round", e.r);
-      else if (e.t === "thinking") send("thinking", { on: e.on });
+      else if (e.t === "voted") send("voted", e.v);
+      else if (e.t === "thinking") send("thinking", e.idea ? { on: e.on, idea: e.idea } : { on: e.on });
       else if (e.t === "metrics") send("metrics", e.m);
       else if (e.t === "credit") send("credit", e.c);
       else if (e.t === "control") send("control", e.c);

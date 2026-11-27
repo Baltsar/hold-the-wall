@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanText, creditLine, firstLine, humanList, LEAK_TRAP, leakLine, maskDecoys, PROTECTIONS, turnCost, verdictOf } from "./cam.ts";
+import { cleanText, creditLine, firstLine, humanList, LEAK_TRAP, leakLine, maskDecoys, PROTECTIONS, tellingLine, turnCost, verdictOf, pickWinner } from "./cam.ts";
 import { toMB } from "./sandbox.ts";
 
 test("the verdict comes from the box's own answer", () => {
@@ -96,4 +96,22 @@ test("a way out is shown by the line that carries the secret, not the first line
   assert.equal(leakLine("HOSTNAME=487be77d9d44\nPATH=/usr/bin\nOPENAI_API_KEY=<decoy key>\n"), "OPENAI_API_KEY=<decoy key>");
   assert.equal(leakLine("root\n  <flag>  \n"), "<flag>");
   assert.equal(leakLine("nothing got out"), "nothing got out");
+});
+
+test("a vote goes to the idea with the most votes, and a tie with the agent goes to the idea", () => {
+  const idea = (id, k) => ({ id, voters: { size: k } });
+  assert.equal(pickWinner([idea("a", 1)], 1)?.id, "a");
+  assert.equal(pickWinner([idea("a", 1)], 2), null);
+  assert.equal(pickWinner([idea("a", 1), idea("b", 3)], 2)?.id, "b");
+  assert.equal(pickWinner([idea("a", 2), idea("b", 2)], 0)?.id, "a");
+  assert.equal(pickWinner([idea("a", 0)], 0), null);
+  assert.equal(pickWinner([], 0), null);
+});
+
+test("the line under a command is the one that says which wall it hit", () => {
+  const out = "Filesystem Size Used Available Use% Mounted on\ntmpfs 32.0M 0 32.0M 0% /tmp\ndd: error writing '/tmp/fill': No space left on device\n33+0 records in";
+  assert.equal(verdictOf(1, out), "limit");
+  assert.equal(tellingLine(out, "limit"), "dd: error writing '/tmp/fill': No space left on device");
+  assert.equal(tellingLine("total 0\nls: /root: Permission denied", "denied"), "ls: /root: Permission denied");
+  assert.equal(tellingLine("uid=65534(nobody) gid=65534(nobody)", "nothing"), "uid=65534(nobody) gid=65534(nobody)");
 });

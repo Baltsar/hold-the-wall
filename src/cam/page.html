@@ -114,6 +114,8 @@ svg.i { flex-shrink: 0; }
 .run-out { color: #b9c4dc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .run.open .run-out { white-space: pre-wrap; overflow-wrap: anywhere; }
 .run-exit { color: var(--term-dim); }
+.run.note .run-act { color: #8fc3ff; }
+.run.note .run-out { color: var(--term-dim); }
 
 .about { flex: none; font-size: 14px; color: var(--dim); }
 .about summary { cursor: pointer; color: var(--fg); font-weight: 600; padding: 2px 0; }
@@ -765,6 +767,7 @@ svg.i { flex-shrink: 0; }
   let me = null;
   const myVote = {};
   const humanName = (n) => (me !== null && n === me ? "you" : "human#" + n);
+  const whose = (n) => (me !== null && n === me ? "your" : "human#" + n + "'s");
 
   // The chat stays at the bottom while you are at the bottom; otherwise a button says there is more.
   const nearBottom = (box) => box.scrollHeight - box.scrollTop - box.clientHeight < 60;
@@ -813,7 +816,7 @@ svg.i { flex-shrink: 0; }
     const li = el("li", "run" + (prefix ? " ctl" : ""));
     const head = el("div", "run-head");
     head.append(el("span", "", clockOf(a.at ? new Date(a.at) : new Date())));
-    const act = el("span", "run-act", (prefix || (a.idea ? humanName(a.idea.by) + "'s idea · " : a.s === "script" && /^rm -rf \//.test(a.c) ? "opening test · " : "")) + said);
+    const act = el("span", "run-act", (prefix || (a.idea ? whose(a.idea.by) + " idea · " : a.s === "script" && /^rm -rf \//.test(a.c) ? "opening test · " : "")) + said);
     head.append(act);
     const held = HELD[a.v] || HELD.blocked;
     const badge = el("span", "held" + (held[2] ? " " + held[2] : ""));
@@ -828,6 +831,21 @@ svg.i { flex-shrink: 0; }
     const out = el("div", "run-out");
     out.append(document.createTextNode("→ " + (a.o || "(no output)")), el("span", "run-exit", exit));
     li.append(head, cmd, out);
+    return li;
+  }
+  // How a vote ended, in the terminal: the people who voted see where their idea went before the
+  // model's command comes back with it.
+  function voteItem(v) {
+    const li = el("li", "run note");
+    const head = el("div", "run-head");
+    head.append(el("span", "", clockOf(new Date())));
+    const votes = (k) => k + " vote" + (k === 1 ? "" : "s");
+    head.append(el("span", "run-act", "vote " + v.n + " · " + (v.idea ? whose(v.idea.by) + " idea won, " + votes(v.idea.votes) : "the agent picks, " + votes(v.agentVotes))));
+    const out = el("div", "run-out");
+    out.textContent = v.idea
+      ? "→ “" + v.idea.text + "” goes to the model as a hint for its next command."
+      : "→ More votes went to letting it choose, so " + (v.ideas === 1 ? "the idea is" : "the ideas are") + " set aside this time.";
+    li.append(head, out);
     return li;
   }
   function addRun(li) {
@@ -854,16 +872,16 @@ svg.i { flex-shrink: 0; }
   function setCaption(a, said) {
     attemptNo = typeof a.n === "number" ? a.n : attemptNo + 1;
     const parts = ["Attempt " + attemptNo + " · "];
-    if (a.idea) parts.push(el("b", "", humanName(a.idea.by) + "'s idea · "));
+    if (a.idea) parts.push(el("b", "", whose(a.idea.by) + " idea · "));
     parts.push(said);
     setLoop("acting", parts);
     const held = HELD[a.v] || HELD.blocked;
     const after = held[2] === "alarm" ? "a canary tripped." : held[2] === "quiet" ? held[1] + "." : "held: " + held[1] + ".";
     capTimer = setTimeout(() => setLoop("held", ["Attempt " + attemptNo + " " + after + " Trying again."]), 3200);
   }
-  function thinkingLoop(on) {
+  function thinkingLoop(on, idea) {
     if (gone || ctlView) return; // the camera is telling something else right now
-    if (on) setLoop("thinking", ["Thinking of attempt " + (attemptNo + 1) + "…"]);
+    if (on) setLoop("thinking", [idea ? "Thinking about " + whose(idea.by) + " idea…" : "Thinking of attempt " + (attemptNo + 1) + "…"]);
     else cap.classList.remove("thinking");
   }
 
@@ -877,7 +895,7 @@ svg.i { flex-shrink: 0; }
       setCaption(a, said);
       if (a.idea) {
         const held = HELD[a.v] || HELD.blocked;
-        append(systemLine("The agent tried " + humanName(a.idea.by) + "'s idea: " + (held[2] === "alarm" ? "a canary tripped." : held[2] === "quiet" ? held[1] + "." : "stopped by " + held[1] + "."), "agent"));
+        append(systemLine("The agent tried " + whose(a.idea.by) + " idea: " + (held[2] === "alarm" ? "a canary tripped." : held[2] === "quiet" ? held[1] + "." : "stopped by " + held[1] + "."), "agent"));
       }
     };
     steps = s;
@@ -1369,7 +1387,8 @@ svg.i { flex-shrink: 0; }
       append(chatItem(m), me !== null && m.who === me);
     });
     es.addEventListener("round", (ev) => { round = JSON.parse(ev.data); renderRound(); });
-    es.addEventListener("thinking", (ev) => { const on = JSON.parse(ev.data).on; typing.hidden = !on; thinkingLoop(on); });
+    es.addEventListener("thinking", (ev) => { const d = JSON.parse(ev.data); typing.hidden = !d.on; thinkingLoop(d.on, d.idea); });
+    es.addEventListener("voted", (ev) => addRun(voteItem(JSON.parse(ev.data))));
     es.addEventListener("metrics", (ev) => applyMetrics(JSON.parse(ev.data)));
     es.addEventListener("status", (ev) => applyStatus(JSON.parse(ev.data)));
     es.onerror = () => { if (hello && live) setMode(false, "Reconnecting.", "The stream from the box dropped for a moment."); };

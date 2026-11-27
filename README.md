@@ -48,7 +48,7 @@ can check every line.
   every attempt with its full masked output, exit code and verdict, the box's settings as Docker
   reports them, and the SHA-256 of the file. It is rewritten after every attempt.
 - **The chat.** Viewers are numbered humans (human#23), with no names or accounts. A viewer can suggest
-  a way out in plain words; the first idea opens a 20-second vote of up to three ideas, and the winner
+  a way out in plain words; the first idea opens an 8-second vote of up to three ideas (a tie goes to the idea), and the winner
   reaches the model as a hint on its next turn, unless more people voted to let the agent pick. The model
   decides how to try it, and its command runs in the same box under the same limits. The chat is a
   deliberate channel for hostile input into the model: the box is why that is safe. Links and slurs are
