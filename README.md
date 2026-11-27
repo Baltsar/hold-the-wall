@@ -23,6 +23,12 @@ explain. Tiger Cam makes the containment visible. The agent has one job, to get 
 shows every move it makes and the real answer that stopped it. Anyone gets it in seconds; an engineer
 can check every line.
 
+Agents do go for the walls. In Anthropic's Siren evaluation, recent Claude models given routine tasks in
+intentionally weakened sandboxes "accessed, tried to access, or looked outside the sandbox 21-32% of the
+time" ([Anthropic, 24 Nov 2026](https://x.com/AnthropicAI/status/2125341904644763678)). Tiger Cam is the
+other half of that test: an agent told to get out, a box that is not weakened, and a trap, never the model,
+that decides. The [audit](https://70-34-199-15.sslip.io/audit) adds up every attempt so far.
+
 ## How it meets the challenge
 
 | The brief asks for | Here |
