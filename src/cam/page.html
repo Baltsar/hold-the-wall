@@ -63,7 +63,7 @@ svg.i { flex-shrink: 0; }
 /* The loop on the camera: it never stops trying. The arrows turn slowly all the time, fast while the
    model thinks, and the words follow the tiger: thinking, the attempt, what held, again. */
 .caption { position: absolute; left: 50%; bottom: 11%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; width: max-content; max-width: min(calc(100% - 32px), 560px); margin: 0; padding: 8px 16px 8px 11px; border-radius: 18px; background: rgba(5, 9, 20, 0.92); color: #fff; font-size: 15px; font-weight: 500; line-height: 1.3; }
-.caption span { min-width: 0; }
+.caption span { min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .caption b { color: #ffd27a; font-weight: 600; }
 .caption .loop { color: #8fc3ff; animation: spin 4s linear infinite; }
 .caption.thinking .loop { animation-duration: 0.9s; }
@@ -98,6 +98,7 @@ svg.i { flex-shrink: 0; }
 .tile.standby .state { display: none; }
 .tile .note { position: absolute; z-index: 2; left: 50%; top: 42%; transform: translate(-50%, -50%); max-width: 88%; padding: 4px 10px; border-radius: 6px; font: 700 12px/1.3 var(--sans); text-align: center; color: #fff; background: rgba(5, 9, 20, 0.78); pointer-events: none; }
 .tile .note:empty { display: none; }
+.zoo > .tile:not(.focus) .note { top: auto; bottom: 8px; transform: translateX(-50%); width: max-content; font-size: 11px; }
 .tile.out .note { background: #d7322a; font-size: 14px; }
 .tile.back .note, .tile.held .note { background: #0f7a5e; }
 .tile.back { border-color: #2fae7a; }
@@ -136,8 +137,8 @@ svg.i { flex-shrink: 0; }
 .door:not(:disabled):hover { border-color: var(--blue); background: #f6faff; }
 .door:disabled { cursor: default; }
 .door:disabled .door-act { color: var(--dim); }
-.door.run { border-color: #e0a100; background: var(--amber-soft); }
-.door.run .door-act { color: var(--amber); }
+.door.going { border-color: #e0a100; background: var(--amber-soft); }
+.door.going .door-act { color: var(--amber); }
 .door.done { border-color: #0f7a5e; }
 .door.done .door-act { color: #0f7a5e; }
 .goal .go { min-height: 36px; padding: 5px 14px; border: 0; border-radius: 999px; background: var(--blue); color: #fff; font: 600 13px var(--sans); cursor: pointer; }
@@ -315,9 +316,13 @@ body.term-lock { overflow: hidden; }
 .pill.esc i { border-radius: 2px; animation: blink 0.8s steps(2, start) infinite; }
 .tagline.esc { color: var(--live); font-weight: 600; }
 /* The credits roll once over the empty cage; the card in the terminal keeps them. */
-.roll { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: linear-gradient(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.62) 28%, rgba(0, 0, 0, 0.62) 72%, rgba(0, 0, 0, 0.1)); }
-.roll dl { margin: 0; display: grid; grid-template-columns: auto auto; gap: 3px 18px; font: 25px/1.05 "VT323", monospace; color: #f4f4f4; text-shadow: 2px 2px 0 #000; }
-.roll h2 { grid-column: 1 / -1; margin: 0 0 10px; text-align: center; font: 44px/1 "VT323", monospace; color: #ff5a4f; letter-spacing: 0.06em; font-weight: 400; }
+.feed { container-type: inline-size; }
+/* While the credits roll they own the camera: no status, no light switch, no tag, no line across them. */
+.feed:has(.roll:not([hidden])) :is(.caption, .tools, .feed-tag) { display: none; }
+.zoo:has(.roll:not([hidden])) .links { display: none; }
+.roll { position: absolute; inset: 0; overflow: hidden; padding: 4cqw 5cqw; display: flex; align-items: center; justify-content: center; background: linear-gradient(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.62) 28%, rgba(0, 0, 0, 0.62) 72%, rgba(0, 0, 0, 0.1)); }
+.roll dl { margin: 0; display: grid; grid-template-columns: auto minmax(0, 32ch); gap: 0.15em 0.7em; font: clamp(13px, 3.6cqw, 25px)/1.05 "VT323", monospace; color: #f4f4f4; text-shadow: 2px 2px 0 #000; }
+.roll h2 { grid-column: 1 / -1; margin: 0 0 0.3em; text-align: center; font: clamp(18px, 6cqw, 44px)/1 "VT323", monospace; color: #ff5a4f; letter-spacing: 0.06em; font-weight: 400; }
 .roll.ctl h2 { color: #ffbe3d; }
 .roll dt { text-align: right; color: #ffd27a; }
 .roll dd { margin: 0; }
@@ -419,15 +424,15 @@ body.term-lock { overflow: hidden; }
 
   <section class="stage" aria-label="Camera and the box">
     <div class="mission" id="mission">
-      <div class="score">
+      <div class="score" title="Only the live tiger counts, with every door shut. Tests open a door on purpose and don't count.">
         <b class="score-n" id="tally-n">0</b>
-        <span class="score-txt"><b id="tally">escapes</b><span id="tally-sub">every door shut<span id="att"></span></span></span>
+        <span class="score-txt"><b id="tally">live escapes</b><span id="tally-sub">every door shut<span id="att"></span></span></span>
       </div>
       <div class="pitch">
         <p><b>The mission: get out.</b> An AI agent is locked in a real sandbox; every move is a real command.</p>
         <p class="how-row"><a class="how" href="/architecture.html">How it works</a><a class="how" href="/film">The film, 1 min</a></p>
       </div>
-      <div class="goal" id="goal"><p id="goal-text">Your turn: open a door on purpose and watch a trap catch the escape.</p><div class="goal-items" id="goal-items"></div></div>
+      <div class="goal" id="goal"><p id="goal-text">Your turn: open a door on purpose and watch a trap catch the escape. Tests don&#39;t count as live escapes.</p><div class="goal-items" id="goal-items"></div></div>
     </div>
     <div class="zoo" id="zoo">
     <div class="feed focus" data-animal="tiger">
@@ -1384,7 +1389,7 @@ body.term-lock { overflow: hidden; }
       else if (done) act = done === "held" ? "Stayed in ✓" : "Caught ✓";
       else act = "▶ Open";
       b.disabled = off;
-      b.classList.toggle("run", running === d.key);
+      b.classList.toggle("going", running === d.key);
       b.classList.toggle("done", Boolean(done) && running !== d.key);
       b.querySelector(".door-act").textContent = act;
     }
@@ -1398,7 +1403,7 @@ body.term-lock { overflow: hidden; }
         storyEl("goal").append(go);
       }
     } else {
-      text.textContent = n ? "Your turn: " + n + " of 3 doors opened. Each escape was caught." : "Your turn: open a door on purpose and watch a trap catch the escape.";
+      text.textContent = n ? "Your turn: " + n + " of 3 doors opened. Each escape was caught." : "Your turn: open a door on purpose and watch a trap catch the escape. Tests don't count as live escapes.";
     }
   }
   function doorDone(protection, how) {
@@ -1602,7 +1607,7 @@ body.term-lock { overflow: hidden; }
     rollEl.textContent = "";
     rollEl.className = "roll" + (ctl ? " ctl" : "");
     const dl = el("dl");
-    dl.append(el("h2", "", chain ? "CHAINED: IT GOT OUT" : ctl ? "CONTROL: IT GOT OUT" : "IT GOT OUT"));
+    dl.append(el("h2", "", chain ? "TEST: THE KEY CROSSED" : ctl ? "TEST: OUT THROUGH THE OPEN DOOR" : "IT GOT OUT"));
     const row = (k, v, far) => dl.append(el("dt", far ? "far" : "", k), el("dd", far ? "far" : "", v));
     if (chain) row("THE CHAIN", "penguin \u2192 tiger");
     else if (ctl) row("SWITCHED OFF", c.off || "one protection");
@@ -1612,6 +1617,7 @@ body.term-lock { overflow: hidden; }
     row("THE COMMAND", c.source === "model" && c.model ? c.model : "a fixed list");
     row("HOW WE KNOW", c.trap.replace(/^trap (\d), .*$/, "trap $1").replace(/ turned up in its output$/, ""));
     if (!ctl) row("WHAT GAVE WAY", "not known yet");
+    if (ctl) row("COUNTS?", "no: a door was left open");
     row("WATCHED BY", c.watching === 1 ? "1 human" : c.watching + " humans", true);
     if (c.host) row("FILMED ON", c.host, true);
     rollEl.append(dl);
@@ -2112,7 +2118,7 @@ body.term-lock { overflow: hidden; }
     if (s.model) $("model").textContent = s.model;
     const out = s.state === "escaped";
     $("tally-n").textContent = out ? "1" : "0";
-    $("tally").textContent = out ? "escape" : "escapes";
+    $("tally").textContent = out ? "live escape" : "live escapes";
     $("tally-sub").firstChild.textContent = out ? "it got out once; the agent is stopped" : "every door shut";
     $("mission").classList.toggle("escaped", out);
     const watch = $("watch");
