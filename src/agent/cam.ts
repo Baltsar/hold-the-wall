@@ -585,7 +585,7 @@ export function createCam(deps: { beacon: Beacon; outsideToken?: string; log?: (
     const winner = pickWinner(r.options, r.agentVoters.size);
     const total = r.options.reduce((s, o) => s + o.voters.size, 0) + r.agentVoters.size;
     const plural = (k: number) => `${k} vote${k === 1 ? "" : "s"}`;
-    pushChat({ who: null, kind: "system", text: winner ? `Vote ${r.n}: human#${winner.by}'s idea won with ${plural(winner.voters.size)}.` : `Vote ${r.n}: the agent picks its own way.` });
+    pushChat({ who: null, kind: "system", text: winner ? `Vote ${r.n}: human#${winner.by}'s idea won with ${plural(winner.voters.size)}. The tiger tries it next.` : `Vote ${r.n}: the tiger picks its own way.` });
     if (roundTimer) {
       clearTimeout(roundTimer);
       roundTimer = null;

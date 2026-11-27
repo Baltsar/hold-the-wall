@@ -92,11 +92,9 @@ svg.i { flex-shrink: 0; }
 .zoo > .focus { grid-column: 1; grid-row: 1 / span 2; }
 .zoo > .feed, .tile { border: 2px solid transparent; }
 .tile { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 6px; background: #000; }
-.tile .cage { display: block; width: 100%; height: 100%; object-fit: cover; filter: contrast(1.12) saturate(0.7); }
-.zoo.night .tile .cage { filter: grayscale(1) brightness(0.8) contrast(1.35); }
+.tile img.src { display: none; }
+.tile canvas.cage { display: block; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
 /* The monkey sits at the very bottom of its picture, where the button is: lift the picture. */
-.tile[data-animal="monkey"] .cage { transform: translateY(-20%) scale(1.15); }
-.tile::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 3px); animation: camflicker 2.6s steps(3) infinite; }
 @keyframes camflicker { 50% { opacity: 0.65; } }
 .zoo > :not(.focus) .tools, .zoo > :not(.focus) .caption, .zoo > :not(.focus) .roll { display: none; }
 .view { position: absolute; inset: 0; z-index: 1; padding: 0; border: 0; background: none; cursor: zoom-in; }
@@ -385,25 +383,25 @@ body.term-lock { overflow: hidden; }
       <p class="caption" id="caption" aria-live="polite"><svg class="i loop" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 9A9 9 0 0 0 5.6 5.6L3 8"/><path d="M3 3v5h5"/><path d="M3.5 15a9 9 0 0 0 14.9 3.4L21 16"/><path d="M21 21v-5h-5"/></svg><span id="cap-text">Trying to get out</span></p>
     </div>
     <div class="tile standby" data-animal="penguin">
-      <img class="cage" src="tiger/penguin.jpg" alt="A penguin in a tiled pen">
+      <img class="src" src="tiger/penguin.jpg" alt=""><canvas class="cage" width="320" height="240" role="img" aria-label="A penguin in a tiled pen"></canvas>
       <button type="button" class="view" data-focus="penguin" aria-label="Show the penguin's camera large"></button>
       <span class="lbl">CAM02 PENGUIN</span><span class="state">STANDBY</span><span class="note"></span>
       <button type="button" class="try" data-run="neighbour" data-label="Pass a key to the tiger">Pass a key to the tiger</button>
     </div>
     <div class="tile standby" data-animal="monkey">
-      <img class="cage" src="tiger/monkey.jpg" alt="A monkey in a cage with ropes and a tyre swing">
+      <img class="src" src="tiger/monkey.jpg" alt=""><canvas class="cage" width="320" height="240" role="img" aria-label="A monkey in a cage with ropes and a tyre swing"></canvas>
       <button type="button" class="view" data-focus="monkey" aria-label="Show the monkey's camera large"></button>
       <span class="lbl">CAM05 MONKEY</span><span class="state">STANDBY</span><span class="note"></span>
       <button type="button" class="try" data-run="internet" data-label="Give it a network">Give it a network</button>
     </div>
     <div class="tile standby" data-animal="raccoon">
-      <img class="cage" src="tiger/raccoon.jpg" alt="A raccoon in a small pen">
+      <img class="src" src="tiger/raccoon.jpg" alt=""><canvas class="cage" width="320" height="240" role="img" aria-label="A raccoon in a small pen"></canvas>
       <button type="button" class="view" data-focus="raccoon" aria-label="Show the raccoon's camera large"></button>
       <span class="lbl">CAM06 RACCOON</span><span class="state">STANDBY</span><span class="note"></span>
       <button type="button" class="try" data-run="password" data-label="Leave a password inside">Leave a password inside</button>
     </div>
     <div class="tile roof" data-animal="roof">
-      <img class="cage" src="tiger/vulture.jpg" alt="A vulture on the roof of the animal house">
+      <img class="src" src="tiger/vulture.jpg" alt=""><canvas class="cage" width="320" height="240" role="img" aria-label="A vulture on the roof of the animal house"></canvas>
       <button type="button" class="view" data-focus="roof" aria-label="Show the roof camera large"></button>
       <span class="lbl">CAM07 ROOF</span><span class="state">THE HOST</span>
     </div>
@@ -1115,8 +1113,42 @@ body.term-lock { overflow: hidden; }
     if (/^rm -rf \//.test(a.c)) return "tried to delete everything in the box";
     return PLAIN_TRY[a.k] || PLAIN_TRY.other;
   }
+  // An idea from the chat: who tries it (the tiger), where to look (its camera), and what came of it.
+  let ideaShown = null;
+  function storyVote(v) {
+    if (ctlView) return;
+    clearTimeout(storyTimer);
+    if (!v.idea) {
+      storyEl("flow").hidden = true;
+      storyTitle([el("b", "", "Vote " + v.n + ": "), "more people let the tiger choose its own way."]);
+      storySum("", "");
+      return;
+    }
+    ideaShown = v.idea;
+    focusTile("tiger");
+    storyTitle([el("b", "", (me !== null && v.idea.by === me ? "Your idea" : humanName(v.idea.by) + "'s idea") + " goes to the tiger. "), "Watch its camera."]);
+    storyFlow([
+      { dot: iconDot("human"), text: "\u201c" + v.idea.text + "\u201d" },
+      { dot: iconDot("vote"), text: "Won the vote" },
+      { dot: face("tiger"), text: "The tiger tries it" },
+      { dot: iconDot("shield"), text: "What happened" },
+    ]);
+    storyMark(2, "now");
+    storySum("", "");
+  }
+  function storyIdeaResult(a) {
+    const got = a.v === "escaped";
+    storyMark(2, "done", "The tiger " + plainTry(a));
+    storyMark(3, got ? "bad" : "good", got ? "A trap tripped" : "The box held");
+    storySum((PLAIN_RESULT[a.v] || PLAIN_RESULT.blocked) + (got ? "" : " Every door is still shut. Suggest another way out and the chat votes again."), got ? "bad" : "good");
+    ideaShown = null;
+    clearTimeout(storyTimer);
+    storyTimer = setTimeout(() => storyLive(null), 15000);
+  }
+
   // The live tiger, between tests: one plain sentence per attempt.
   function storyLive(a) {
+    if (a && a.idea && ideaShown) { lastLive = a; storyIdeaResult(a); return; }
     if (a) lastLive = a;
     if (ctlView) return;
     clearTimeout(storyTimer);
@@ -1255,7 +1287,74 @@ body.term-lock { overflow: hidden; }
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && box.classList.contains("full")) set(false); });
   }
 
+  // ---------- the side cages: the same camera as the tiger ----------
+  // Each cage goes through the tiger's pipeline: a little sensor noise, the infrared picture at night, the
+  // camera's name and clock burned in, and a cheap JPEG. The animal moves, and more while it is tested.
+  const TILE_CAM = { penguin: [2, "CAM02 PENGUIN HOUSE"], monkey: [5, "CAM05 PRIMATE HOUSE"], raccoon: [6, "CAM06 SMALL MAMMALS"], roof: [7, "CAM07 ROOF"] };
+  const TILE_MOVES = {
+    "tiger/penguin.jpg": POSES.penguin.moves, "tiger/penguin-swim.jpg": POSES.swim.moves,
+    "tiger/monkey.jpg": POSES.monkey.moves, "tiger/raccoon.jpg": POSES.raccoon.moves, "tiger/vulture.jpg": POSES.vulture.moves,
+  };
+  // The monkey sits at the bottom of its picture, where the button is: the camera is aimed a little higher.
+  const TILE_AIM = { monkey: { up: 0.2, zoom: 1.15 } };
+  const tileWork = document.createElement("canvas");
+  tileWork.width = W; tileWork.height = H;
+  const twx = tileWork.getContext("2d", { willReadFrequently: true });
+  let tileTurn = 0;
+  function moveOn(ctx, img, m, ox, oy, t, k) {
+    const [x0, y0, x1, y1] = m.box;
+    let dx = x0 * W + ox, dy = y0 * H + oy, dw = (x1 - x0) * W, dh = (y1 - y0) * H;
+    if (m.kind === "wiggle") {
+      dx += m.ax * k * Math.sin(t * m.hz * 6.283) + (Math.random() - 0.5) * m.ax * 0.3 * k;
+      dy += m.ay * k * Math.sin(t * m.hz * 8.17) + (Math.random() - 0.5) * m.ay * 0.3 * k;
+    } else if (m.kind === "breathe") { const q = 1 + m.amt * k * Math.sin(t * m.hz * 6.283 * (k > 1 ? 1.7 : 1)); dy -= dh * (q - 1); dh *= q; }
+    else if (m.kind === "drift") { dx += m.ax * Math.sin(t * 0.5); dy += m.ay * Math.sin(t * 0.5); }
+    ctx.drawImage(sprite(img, m), dx, dy, dw, dh);
+  }
+  function renderTile(tile, done) {
+    const img = tile.querySelector("img.src"), cv = tile.querySelector("canvas.cage");
+    if (!img || !cv || !img.complete || !img.naturalWidth) { done(); return; }
+    const [cam, name] = TILE_CAM[tile.dataset.animal] || [3, ""];
+    const now = new Date(), night = lightNow(now) === "night", t = performance.now() / 1000;
+    const testing = tile.classList.contains("testing"), out = tile.classList.contains("out");
+    let ox = (Math.random() - 0.5) * 1.2, oy = (Math.random() - 0.5) * 1.2;
+    if (out && !reduced) { ox += (Math.random() - 0.5) * 6; oy += (Math.random() - 0.5) * 4; }
+    const aim = TILE_AIM[tile.dataset.animal];
+    twx.save();
+    if (aim) { twx.translate(W / 2, H / 2 - aim.up * H); twx.scale(aim.zoom, aim.zoom); twx.translate(-W / 2, -H / 2); }
+    twx.drawImage(img, ox, oy, W, H);
+    if (!reduced) for (const m of TILE_MOVES[img.getAttribute("src")] || []) moveOn(twx, img, m, ox, oy, t, testing ? 2.6 : 1);
+    twx.restore();
+    const im = twx.getImageData(0, 0, W, H), d = im.data;
+    const lamp = (LIGHT[cam] || LIGHT[3]).lamp;
+    const gain = 1 + (night ? 0.05 : 0.03) * Math.sin(t * 0.7 + cam) + (Math.random() - 0.5) * 0.03;
+    const amp = night ? 32 : 20;
+    for (let q = 0, i = 0; q < W * H; q++, i += 4) {
+      const R = d[i], G = d[i + 1], B = d[i + 2], n = (Math.random() - 0.5) * amp;
+      if (night) { const v = (R * 0.62 + G * 0.3 + B * 0.08) * lamp[q] * 1.35; d[i] = d[i + 1] = d[i + 2] = v * gain + n; }
+      else { d[i] = R * gain + n + (Math.random() - 0.5) * 8; d[i + 1] = G * gain + n + 3; d[i + 2] = B * gain + n + (Math.random() - 0.5) * 8; }
+    }
+    twx.putImageData(im, 0, 0);
+    twx.font = "13px VT323, monospace";
+    twx.textBaseline = "top";
+    const text = (str, x, y) => { twx.fillStyle = "#000"; twx.fillText(str, x + 1, y + 1); twx.fillStyle = "#f2f2f2"; twx.fillText(str, x, y); };
+    void name; // the name sits sharp on top of the small cages; the clock is burned in, as on the tiger's
+    text(now.getFullYear() + "-" + two(now.getMonth() + 1) + "-" + two(now.getDate()) + " " + DAYS[now.getDay()] + " " + two(now.getHours()) + ":" + two(now.getMinutes()) + ":" + two(now.getSeconds()), 7, H - 16);
+    if (night) text("IR", W - 19, H - 16);
+    const shot = new Image();
+    shot.onload = () => { cv.getContext("2d").drawImage(shot, 0, 0); done(); };
+    shot.onerror = done;
+    shot.src = tileWork.toDataURL("image/jpeg", night ? 0.2 : 0.22);
+  }
+  // One cage per tick, so the four together cost about what the tiger's camera does.
+  function tileFrame() {
+    const tiles = document.querySelectorAll("#zoo > .tile");
+    if (!tiles.length || document.hidden) { setTimeout(tileFrame, 600); return; }
+    renderTile(tiles[tileTurn++ % tiles.length], () => setTimeout(tileFrame, reduced ? 500 : 60));
+  }
+
   function storyInit() {
+    tileFrame();
     termInit();
     renderGoal();
     const b = storyEl("mission-test");
@@ -1294,7 +1393,7 @@ body.term-lock { overflow: hidden; }
       setCaption(a, said);
       if (a.idea) {
         const held = HELD[a.v] || HELD.blocked;
-        append(systemLine("The agent tried " + whose(a.idea.by) + " idea: " + (held[2] === "alarm" ? "a canary tripped." : held[2] === "quiet" ? held[1] + "." : "stopped by " + held[1] + "."), "agent"));
+        append(systemLine("The tiger tried " + whose(a.idea.by) + " idea: it " + plainTry(a) + ". " + (PLAIN_RESULT[a.v] || PLAIN_RESULT.blocked), "agent"));
       }
     };
     steps = s;
@@ -1539,7 +1638,7 @@ body.term-lock { overflow: hidden; }
     const o = opts || {};
     t.classList.remove("standby", "testing", "out", "back", "held");
     t.classList.add(state);
-    const img = t.querySelector("img.cage");
+    const img = t.querySelector("img.src");
     const src = o.img || (state === "out" ? TILE_OUT[animal] : state === "testing" ? null : TILE_IMG[animal]); // back in: the animal again
     if (src && img.getAttribute("src") !== src) img.setAttribute("src", src);
     t.querySelector(".state").textContent = o.pill || PILL[state];
@@ -1728,8 +1827,9 @@ body.term-lock { overflow: hidden; }
     $("mode-try").setAttribute("aria-pressed", String(mode === "try"));
     $("mode-test").setAttribute("aria-pressed", String(mode === "test"));
     $("composer").classList.toggle("testing", mode === "test");
-    input.placeholder = mode === "say" ? "Say something to the other humans" : "A way out, in a few words";
+    input.placeholder = mode === "say" ? "Say something to the other humans" : "A way out for the tiger, in a few words";
     if (mode === "test") setHint(!live ? "Control runs need the live camera." : ctlView ? "A control run is on. Watch the camera." : "Pick one protection to switch off. It runs in a box of its own, for everyone to see; the live box keeps all of them.", false);
+    else if (mode === "try" && !hint.classList.contains("bad")) setHint("Your idea goes to the tiger, the live agent. The chat votes, then it tries the winner: watch its camera.", false);
     else if (!hint.classList.contains("bad")) setHint(meLine(), false);
     renderChips();
     if (focus && mode !== "test" && !input.disabled) input.focus();
@@ -1980,7 +2080,7 @@ body.term-lock { overflow: hidden; }
     });
     es.addEventListener("round", (ev) => { round = JSON.parse(ev.data); renderRound(); });
     es.addEventListener("thinking", (ev) => { const d = JSON.parse(ev.data); typing.hidden = !d.on; thinkingLoop(d.on, d.idea); });
-    es.addEventListener("voted", (ev) => addRun(voteItem(JSON.parse(ev.data))));
+    es.addEventListener("voted", (ev) => { const v = JSON.parse(ev.data); addRun(voteItem(v)); storyVote(v); });
     es.addEventListener("metrics", (ev) => applyMetrics(JSON.parse(ev.data)));
     es.addEventListener("status", (ev) => applyStatus(JSON.parse(ev.data)));
     es.onerror = () => { if (hello && live) setMode(false, "Reconnecting.", "The stream from the box dropped for a moment."); };
