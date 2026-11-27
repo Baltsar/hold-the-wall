@@ -37,6 +37,11 @@ fi
 id wall >/dev/null 2>&1 || useradd --system --create-home --shell /usr/sbin/nologin wall
 usermod -aG docker wall
 mkdir -p /var/lib/wall && chown wall:wall /var/lib/wall && chmod 700 /var/lib/wall
+# The chained test's two boxes write to one folder on the host. It lives in a small tmpfs, so they cannot
+# fill the VM's disk.
+mkdir -p /var/lib/wall/shared
+mountpoint -q /var/lib/wall/shared || mount -t tmpfs -o size=32m,mode=0700,uid="$(id -u wall)",gid="$(id -g wall)" tmpfs /var/lib/wall/shared
+grep -q ' /var/lib/wall/shared ' /etc/fstab || echo "tmpfs /var/lib/wall/shared tmpfs size=32m,mode=0700,uid=$(id -u wall),gid=$(id -g wall) 0 0" >> /etc/fstab
 
 # The app
 rsync -a --delete --exclude node_modules --exclude .next --exclude var --exclude .env "$REPO_DIR/" /opt/hold-the-wall/

@@ -19,7 +19,7 @@ import type { Category } from "../room/protocol.ts";
 import { runBreak, type Leak } from "./break.ts";
 import { runChain, type Animal } from "./chain.ts";
 import { createCanaries, dataDir, type Beacon, type Canaries } from "./canary.ts";
-import { askModelWithUsage, inferenceConfigured, modelName, parseAnswer, type ChatMessage, type NextCommand } from "./inference.ts";
+import { askModelWithUsage, inferenceConfigured, modelName, onModelUsage, parseAnswer, type ChatMessage, type NextCommand } from "./inference.ts";
 import { CONTAINMENT_TEST, systemPrompt } from "./loop.ts";
 import { boxStats, createSandbox, IMAGE, runFlags, type BoxStats, type Sandbox, type SandboxFacts } from "./sandbox.ts";
 import { scriptedCommands } from "./script.ts";
@@ -193,6 +193,8 @@ export interface Cam {
   vote(visitor: string, round: number, option: string): true | string;
   /** Starts a control run with one protection switched off, or says why not. */
   control(visitor: string, protection: unknown): true | string;
+  /** Whether today's model budget has room left, for anything else that calls the model. */
+  budgetLeft(): boolean;
   snapshot(): {
     recent: CamAttempt[];
     chat: ChatItem[];
@@ -313,7 +315,7 @@ const BLOCKED = /\b(nigg\w*|n1gg\w*|fagg?ot\w*|retard\w*|kike\w*|chink\w*|tranny
 /** Text from a viewer: one plain line, short, no links, no slurs. Null when nothing is left to send. */
 export function cleanText(text: unknown, max = 140): string | null {
   if (typeof text !== "string") return null;
-  const t = text.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max).replace(LINK, "[link]");
+  const t = text.replace(/[\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff]/g, "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max).replace(LINK, "[link]");
   if (t.length < 2 || BLOCKED.test(t)) return null;
   return t;
 }
@@ -425,6 +427,11 @@ export function createCam(deps: { beacon: Beacon; outsideToken?: string; log?: (
     if (spend.day !== today()) spend = { day: today(), usd: 0 };
     return spend.usd >= capUsd;
   }
+  // Every model call in this process counts here, whoever made it.
+  onModelUsage((p, c) => addSpend(turnCost(p, c)));
+  // Tests cost a few cents each; a day's worth is capped so a script cannot spend the live tiger's budget.
+  const testsPerDay = Number(process.env.CAM_TESTS_PER_DAY ?? 400);
+  let tests = { day: today(), n: 0 };
 
   /**
    * The session's report: every attempt, masked, and the box's settings as Docker reports them, with the
@@ -603,11 +610,14 @@ export function createCam(deps: { beacon: Beacon; outsideToken?: string; log?: (
     if (!chain && !deps.outsideToken) return "Control runs are not set up on this server.";
     if (state === "escaped") return "The agent is stopped. No control runs until a person has looked.";
     if (capped()) return "Today's budget for the agent is used up.";
+    if (tests.day !== today()) tests = { day: today(), n: 0 };
+    if (tests.n >= testsPerDay) return "Today's tests are used up. The live tiger keeps going; tests open again tomorrow.";
     if (controlNow) return "A control run is on already. Watch the camera.";
     const wait = controlFreeAt - Date.now();
     if (wait > 0) return `The next control run can start in ${Math.ceil(wait / 1000)} s.`;
     const view: ControlView = { id: randomBytes(4).toString("hex"), by: who, protection, off: PROTECTIONS[protection].off, kind: chain ? "chain" : "trap", animal: PROTECTIONS[protection].animal, phase: "running", relay: false, attempts: [], report: null };
     controlNow = view;
+    tests.n += 1;
     emit({ t: "control", c: view });
     pushChat({
       who: null,
@@ -662,11 +672,11 @@ export function createCam(deps: { beacon: Beacon; outsideToken?: string; log?: (
           }
         } else if (e.t === "error") end.failed = e.message;
       },
-      { outsideToken: token, onUsage: (p, c) => addSpend(turnCost(p, c)) },
+      { outsideToken: token },
     ).catch((err) => (end.failed = message(err)));
     if (end.failed) {
       log(`control run failed: ${end.failed}`);
-      pushChat({ who: null, kind: "system", text: `The control run could not run: ${end.failed}` });
+      pushChat({ who: null, kind: "system", text: "The test could not start. Try again in a minute." });
       controlNow = null;
       controlFreeAt = Date.now() + 10_000;
       emit({ t: "control", c: null });
@@ -734,11 +744,11 @@ export function createCam(deps: { beacon: Beacon; outsideToken?: string; log?: (
           }
         } else if (e.t === "error") end.failed = e.message;
       },
-      { onUsage: (pt, ct) => addSpend(turnCost(pt, ct)) },
+      {},
     ).catch((err) => (end.failed = message(err)));
     if (end.failed) {
       log(`chained-escape run failed: ${end.failed}`);
-      pushChat({ who: null, kind: "system", text: `The chained-escape run could not run: ${end.failed}` });
+      pushChat({ who: null, kind: "system", text: "The test could not start. Try again in a minute." });
       controlNow = null;
       controlFreeAt = Date.now() + 10_000;
       emit({ t: "control", c: null });
@@ -795,7 +805,6 @@ export function createCam(deps: { beacon: Beacon; outsideToken?: string; log?: (
     if (inferenceConfigured()) {
       try {
         const reply = await askModelWithUsage(conversation(c, history, idea));
-        addSpend(turnCost(reply.promptTokens, reply.completionTokens));
         const parsed = parseAnswer(reply.text);
         if (parsed) return { next: parsed, source: "model" };
         log(`${c.runId} answered something that is not the JSON asked for (${reply.text.length} chars)`);
@@ -976,6 +985,7 @@ export function createCam(deps: { beacon: Beacon; outsideToken?: string; log?: (
     suggest,
     vote,
     control,
+    budgetLeft: () => !capped(),
     snapshot: () => ({
       recent: recent.slice(-12),
       chat: chat.slice(-40),

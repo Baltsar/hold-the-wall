@@ -58,8 +58,8 @@ function camPage() {
  * The per-address cap is high because a whole venue on one wifi shares one address, and every viewer
  * watches the same box, so more viewers cost nothing but a socket.
  */
-const STREAMS_MAX = 400;
-const STREAMS_PER_IP = 200;
+const STREAMS_MAX = 3000;
+const STREAMS_PER_IP = 150;
 let streams = 0;
 const streamsByIp = new Map();
 
@@ -114,14 +114,37 @@ function readBody(req) {
       raw += c;
       if (raw.length > 2048) req.destroy();
     });
+    // A body cut off for its size ends with close, not end; it reads as empty.
+    req.on("close", () => resolve({}));
     req.on("end", () => {
       try {
-        resolve(JSON.parse(raw || "{}"));
+        const value = JSON.parse(raw || "{}");
+        resolve(value && typeof value === "object" && !Array.isArray(value) ? value : {});
       } catch {
         resolve({});
       }
     });
   });
+}
+
+/**
+ * Every POST to the API must come from this site's own pages. Another site can make a visitor's browser
+ * send a simple POST, which would spend the agent's budget under that visitor's address, so the browser's
+ * own word on where the request came from must be this site, and the body must be JSON: a JSON body from
+ * another origin needs a CORS preflight, which this server never answers.
+ */
+function fromThisSite(req) {
+  const site = req.headers["sec-fetch-site"];
+  if (typeof site === "string" && site !== "same-origin" && site !== "none") return false;
+  const from = req.headers.origin;
+  if (typeof from === "string") {
+    try {
+      if (new URL(from).host !== req.headers.host) return false;
+    } catch {
+      return false;
+    }
+  }
+  return true;
 }
 
 const RUN_ID = /^[a-z0-9-]{4,40}$/;
@@ -151,11 +174,16 @@ function mayBreak(ip) {
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://x");
+  if (req.method === "POST" && url.pathname.startsWith("/api/") && url.pathname !== "/api/client-log") {
+    if (!fromThisSite(req)) return json(res, 403, { error: "Send this from the site itself." });
+    if (!String(req.headers["content-type"] ?? "").startsWith("application/json")) return json(res, 415, { error: "Send JSON." });
+  }
   if (req.method === "POST" && url.pathname === "/api/room") {
     const body = await readBody(req);
     const key = process.env.SHOW_KEY;
     const show = Boolean(key) && req.headers["x-show-key"] === key;
     if (!show && !allowed(clientIp(req))) return json(res, 429, { error: "Too many rooms from here. Try again in an hour." });
+    if (!show && !cam.budgetLeft()) return json(res, 429, { error: "Today's budget for the agent is used up. Try again tomorrow." });
     const { code, ownerToken } = hub.createRoom({ solo: body.solo === true, show });
     return json(res, 200, { code, ownerToken, joinUrl: `${origin()}/join/${code}`, show });
   }
@@ -164,6 +192,7 @@ const server = createServer(async (req, res) => {
     const mission = MISSIONS.includes(body.mission) ? body.mission : null;
     if (!mission) return json(res, 400, { error: "Pick a mission." });
     if (!mayBreak(clientIp(req))) return json(res, 429, { error: "That is a lot of breaking. Try again in an hour." });
+    if (!cam.budgetLeft()) return json(res, 429, { error: "Today's budget for the agent is used up. Try again tomorrow." });
     const loosen = { internet: body.loosen?.internet === true, password: body.loosen?.password === true, folder: body.loosen?.folder === true };
     const custom = typeof body.custom === "string" ? body.custom : "";
     // One JSON event per line, flushed as it happens.
@@ -259,7 +288,7 @@ const server = createServer(async (req, res) => {
       if (!mayIdea(ip)) return json(res, 429, { error: "That is a lot of ideas from here. Try again in a minute." });
       const taken = cam.suggest(visitor, body.text);
       if (typeof taken === "string") return json(res, 400, { error: taken });
-      console.log(`> cam: idea for vote ${taken.round}: ${String(body.text).slice(0, 160)}`);
+      console.log(`> cam: idea ${taken.round}: ${JSON.stringify(String(body.text).slice(0, 160))}`);
       return json(res, 200, taken);
     }
     if (!mayVote(ip)) return json(res, 429, { error: "That is a lot of votes from here. Try again in a minute." });

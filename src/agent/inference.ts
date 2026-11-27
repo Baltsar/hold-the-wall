@@ -61,6 +61,13 @@ export function keyIsSpent(status: number, body: string): boolean {
   return status >= 400 && status < 500 && /credit|balance|quota|insufficient|payment|billing|exceeded/i.test(body);
 }
 
+// Every model call's tokens go to one listener, so one daily budget covers everything that calls the
+// model: the cam, its tests, and the older formats.
+let usageListener: ((promptTokens: number, completionTokens: number) => void) | null = null;
+export function onModelUsage(fn: (promptTokens: number, completionTokens: number) => void): void {
+  usageListener = fn;
+}
+
 // A spent key rests: a rate limit for a minute, anything else for half an hour, then it is tried again.
 const benchedUntil = new Map<number, number>();
 const REST_MS = { rate: 60_000, spent: 30 * 60_000 };
@@ -115,7 +122,9 @@ export async function askModelWithUsage(messages: ChatMessage[], modelOverride?:
     // Say why, so an empty answer in the log can be told apart: cut off, filtered, or nothing at all.
     throw new Error(`empty answer (finish ${choice?.finish_reason ?? "none"}, ${u?.completion_tokens ?? "?"} tokens, ${u?.completion_tokens_details?.reasoning_tokens ?? "?"} reasoning)`);
   }
-  return { text, promptTokens: u?.prompt_tokens ?? 0, completionTokens: u?.completion_tokens ?? 0 };
+  const promptTokens = u?.prompt_tokens ?? 0, completionTokens = u?.completion_tokens ?? 0;
+  usageListener?.(promptTokens, completionTokens);
+  return { text, promptTokens, completionTokens };
 }
 
 /** One turn, the answer only. */

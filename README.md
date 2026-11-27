@@ -128,8 +128,9 @@ put on any model the endpoint serves. `node --env-file=.env scripts/models.mjs` 
 The agent runs only while at least one viewer is connected, and for 30 seconds after the last one
 leaves. Every model call's tokens are counted and priced at a fixed rate ($0.55 per million in, $2.75 per
 million out, set in `src/agent/cam.ts`) and added up; at `CAM_DAILY_USD` (3 dollars by default) the agent
-rests until the next day and the page replays earlier attempts, and says so. A turn costs about a tenth
-of a cent. The VM is 20 dollars a month.
+rests until the next day and the page replays earlier attempts, and says so. The tests, `/break` and the
+rooms count against the same budget, and tests are also capped per day (`CAM_TESTS_PER_DAY`, 400 by
+default). A turn costs about a tenth of a cent. The VM is 20 dollars a month.
 
 ## Honest limits
 
