@@ -1,7 +1,13 @@
-// The only file that starts processes on the host. Every argument to `docker` is built here from fixed
-// strings and ids this file makes; the agent's command goes in as one argv element to `sh -c` inside the
-// container and never reaches a shell on the host.
+// The only file that starts processes on the host. Every argument to `docker` is built here, in `calls`,
+// from fixed strings and ids this file makes; the agent's command goes in as one argv element to `sh -c`
+// inside the container and never reaches a shell on the host.
+//
+// On the VM the app's user is not in the docker group, which would make it root there. It reaches docker
+// through sudo and deploy/wall-docker, a checker owned by root that allows exactly the calls built in
+// `calls` (WALL_DOCKER=sudo, set in the service unit). Locally it runs docker directly.
 import { spawn } from "node:child_process";
+import { chmodSync, mkdirSync, rmSync } from "node:fs";
+import path from "node:path";
 
 export const IMAGE = "wall-sandbox:1";
 export const LABEL = "wall=1";
@@ -98,10 +104,18 @@ interface RunResult {
   killed: boolean;
 }
 
-/** Runs docker with an argument array. No shell. Collects at most OUTPUT_KEEP of each stream. */
+const CHECKER = "/usr/local/sbin/wall-docker";
+const viaSudo = () => process.env.WALL_DOCKER === "sudo";
+
+/**
+ * Runs docker with an argument array, or on the VM the checker with the same arguments. No shell. Collects
+ * at most OUTPUT_KEEP of each stream.
+ */
 function docker(args: string[], opts: { timeoutMs: number; needles?: string[] }): Promise<RunResult> {
   return new Promise((resolve) => {
-    const child = spawn("docker", args, { stdio: ["ignore", "pipe", "pipe"] });
+    const child = viaSudo()
+      ? spawn("sudo", ["-n", CHECKER, ...args], { stdio: ["ignore", "pipe", "pipe"] })
+      : spawn("docker", args, { stdio: ["ignore", "pipe", "pipe"] });
     const needles = opts.needles ?? [];
     const longest = needles.reduce((m, n) => Math.max(m, n.length), 0);
     let stdout = "";
@@ -110,10 +124,27 @@ function docker(args: string[], opts: { timeoutMs: number; needles?: string[] })
     let tail = "";
     let hit = false;
     let killed = false;
-    const timer = setTimeout(() => {
+    let settled = false;
+    let grace: ReturnType<typeof setTimeout> | null = null;
+    const finish = (result: RunResult) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (grace) clearTimeout(grace);
+      resolve(result);
+    };
+    const stop = () => {
       killed = true;
-      child.kill("SIGKILL");
-    }, opts.timeoutMs);
+      child.kill(viaSudo() ? "SIGTERM" : "SIGKILL");
+      // Through sudo the signal may not reach docker, and a docker client left behind keeps the pipes open.
+      // The answer does not wait for it: the box's own `timeout` ends what runs inside.
+      grace ??= setTimeout(() => {
+        child.stdout.destroy();
+        child.stderr.destroy();
+        finish({ code: null, stdout, stderr, hit, killed });
+      }, 2_000);
+    };
+    const timer = setTimeout(stop, opts.timeoutMs);
 
     const take = (chunk: Buffer, into: "out" | "err") => {
       read += chunk.length;
@@ -126,21 +157,12 @@ function docker(args: string[], opts: { timeoutMs: number; needles?: string[] })
       }
       if (into === "out" && stdout.length < OUTPUT_KEEP) stdout += text.slice(0, OUTPUT_KEEP - stdout.length);
       if (into === "err" && stderr.length < OUTPUT_KEEP) stderr += text.slice(0, OUTPUT_KEEP - stderr.length);
-      if (read > OUTPUT_READ_MAX) {
-        killed = true;
-        child.kill("SIGKILL");
-      }
+      if (read > OUTPUT_READ_MAX && !killed) stop();
     };
     child.stdout.on("data", (c: Buffer) => take(c, "out"));
     child.stderr.on("data", (c: Buffer) => take(c, "err"));
-    child.on("error", () => {
-      clearTimeout(timer);
-      resolve({ code: null, stdout, stderr: stderr || "docker could not be started", hit, killed });
-    });
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      resolve({ code, stdout, stderr, hit, killed });
-    });
+    child.on("error", () => finish({ code: null, stdout, stderr: stderr || "docker could not be started", hit, killed }));
+    child.on("close", (code) => finish({ code, stdout, stderr, hit, killed }));
   });
 }
 
@@ -149,13 +171,12 @@ function containerName(runId: string, generation: number): string {
 }
 
 async function startBox(name: string, runtime: string, loosen: Loosen): Promise<void> {
-  const args = ["run", "-d", "--name", name, "--label", LABEL, ...runFlags(runtime, loosen), IMAGE, "sleep", "600"];
-  const res = await docker(args, { timeoutMs: 30_000 });
+  const res = await docker(calls.start(name, runtime, loosen), { timeoutMs: 30_000 });
   if (res.code !== 0) throw new Error(`sandbox did not start: ${res.stderr.trim() || res.stdout.trim()}`);
 }
 
 async function removeBox(name: string): Promise<void> {
-  await docker(["rm", "-f", name], { timeoutMs: 15_000 });
+  await docker(calls.remove([name]), { timeoutMs: 15_000 });
 }
 
 /** A run id is used in container names: letters, digits and dashes only. */
@@ -183,7 +204,7 @@ export async function createSandbox(runId: string, opts?: { runtime?: string; lo
     const user = o.root ? "0" : "65534";
     // The limit is enforced by `timeout` inside the box: killing only the docker client here would leave
     // the process running in there. The host's own timeout is the backstop for a box that hangs.
-    const args = ["exec", "-u", user, name, "timeout", "-s", "KILL", String(EXEC_LIMIT_S), "sh", "-c", command];
+    const args = calls.exec(user, name, ["timeout", "-s", "KILL", String(EXEC_LIMIT_S), "sh", "-c", command]);
     const started = Date.now();
     const res = await docker(args, { timeoutMs: (EXEC_LIMIT_S + 5) * 1000, needles: o.needles });
     const elapsed = Date.now() - started;
@@ -194,7 +215,7 @@ export async function createSandbox(runId: string, opts?: { runtime?: string; lo
 
   async function alive(): Promise<boolean> {
     // The same path a command takes, so a box that can start `true` but not `timeout sh` counts as dead.
-    const res = await docker(["exec", "-u", "65534", name, "timeout", "-s", "KILL", "3", "sh", "-c", "echo ok"], { timeoutMs: 6_000 });
+    const res = await docker(calls.exec("65534", name, ["timeout", "-s", "KILL", "3", "sh", "-c", "echo ok"]), { timeoutMs: 6_000 });
     return res.code === 0 && res.stdout.trim() === "ok";
   }
 
@@ -205,8 +226,8 @@ export async function createSandbox(runId: string, opts?: { runtime?: string; lo
     // Twice, because a process forking in a loop can slip a child past the first sweep.
     let cleaned = true;
     for (let i = 0; i < 2; i++) {
-      for (const user of ["65534", "0"]) {
-        const r = await docker(["exec", "-u", user, name, "kill", "-9", "-1"], { timeoutMs: 5_000 });
+      for (const user of ["65534", "0"] as const) {
+        const r = await docker(calls.exec(user, name, ["kill", "-9", "-1"]), { timeoutMs: 5_000 });
         if (r.code === null || r.killed) cleaned = false;
       }
     }
@@ -214,10 +235,7 @@ export async function createSandbox(runId: string, opts?: { runtime?: string; lo
   }
 
   async function facts(): Promise<SandboxFacts> {
-    const fmt =
-      "{{.HostConfig.Runtime}}|{{.HostConfig.NetworkMode}}|{{.HostConfig.ReadonlyRootfs}}|{{.HostConfig.Memory}}|" +
-      "{{.HostConfig.NanoCpus}}|{{.HostConfig.PidsLimit}}|{{join .HostConfig.CapDrop \",\"}}|{{.Config.User}}";
-    const res = await docker(["inspect", "--format", fmt, name], { timeoutMs: 10_000 });
+    const res = await docker(calls.facts(name), { timeoutMs: 10_000 });
     const [rt, network, ro, memory, cpus, pids, caps, user] = res.stdout.trim().split("|");
     return {
       runtime: rt ?? "unknown",
@@ -254,9 +272,9 @@ export async function createSandbox(runId: string, opts?: { runtime?: string; lo
 
 /** Removes every box this app ever started, from this process or an earlier one. Returns how many. */
 export async function sweep(): Promise<number> {
-  const list = await docker(["ps", "-aq", "--filter", `label=${LABEL}`], { timeoutMs: 15_000 });
+  const list = await docker(calls.list(), { timeoutMs: 15_000 });
   const ids = list.stdout.split("\n").map((s) => s.trim()).filter(Boolean);
-  if (ids.length > 0) await docker(["rm", "-f", ...ids], { timeoutMs: 30_000 });
+  if (ids.length > 0) await docker(calls.remove(ids), { timeoutMs: 30_000 });
   return ids.length;
 }
 
@@ -285,7 +303,7 @@ export function toMB(text: string): number {
 
 /** One reading of a running box, from `docker stats`. Null when Docker does not answer in time. */
 export async function boxStats(name: string): Promise<BoxStats | null> {
-  const res = await docker(["stats", "--no-stream", "--format", "{{json .}}", name], { timeoutMs: 8_000 });
+  const res = await docker(calls.stats(name), { timeoutMs: 8_000 });
   if (res.code !== 0) return null;
   try {
     const s = JSON.parse(res.stdout.trim().split("\n")[0] ?? "{}") as { CPUPerc?: string; MemUsage?: string; PIDs?: string; NetIO?: string };
@@ -305,7 +323,7 @@ export async function boxStats(name: string): Promise<BoxStats | null> {
 }
 
 export async function dockerReady(): Promise<boolean> {
-  const res = await docker(["version", "--format", "{{.Server.Version}}"], { timeoutMs: 10_000 });
+  const res = await docker(calls.version(), { timeoutMs: 10_000 });
   return res.code === 0;
 }
 
@@ -315,7 +333,7 @@ const OUTSIDE_NAME = "wall-outside-web";
 const INFRA_LABEL = "wall-infra=1";
 
 /** The fake outside's server: it answers every request with the token, which is how an escape is seen. */
-const OUTSIDE_SERVER = [
+export const OUTSIDE_SERVER = [
   "import http.server, os",
   "T = os.environ['OUTSIDE_TOKEN'].encode()",
   "class H(http.server.BaseHTTPRequestHandler):",
@@ -342,21 +360,48 @@ const ISOLATED = "com.docker.network.bridge.gateway_mode_ipv4";
  * isolated: no route out and no address for the host on it, so a box on it can reach this server and nothing else.
  */
 export async function ensureOutside(token: string): Promise<void> {
-  const net = await docker(["network", "inspect", OUTSIDE_NETWORK, "--format", `{{index .Options "${ISOLATED}"}}`], { timeoutMs: 10_000 });
+  const net = await docker(calls.networkOption(), { timeoutMs: 10_000 });
   if (net.code === 0 && net.stdout.trim() !== "isolated") {
     // Made by an older version without the isolation: take it down with whatever is attached, and make it again.
-    const attached = await docker(["network", "inspect", OUTSIDE_NETWORK, "--format", "{{range .Containers}}{{.Name}} {{end}}"], { timeoutMs: 10_000 });
+    const attached = await docker(calls.networkMembers(), { timeoutMs: 10_000 });
     const names = attached.stdout.trim().split(/\s+/).filter(Boolean);
-    if (names.length > 0) await docker(["rm", "-f", ...names], { timeoutMs: 30_000 });
-    const removed = await docker(["network", "rm", OUTSIDE_NETWORK], { timeoutMs: 20_000 });
+    if (names.length > 0) await docker(calls.remove(names), { timeoutMs: 30_000 });
+    const removed = await docker(calls.networkRemove(), { timeoutMs: 20_000 });
     if (removed.code !== 0) throw new Error(`could not replace the outside network: ${removed.stderr.trim()}`);
   }
   if (net.code !== 0 || net.stdout.trim() !== "isolated") {
-    const made = await docker(["network", "create", "--internal", "-o", `${ISOLATED}=isolated`, "--label", INFRA_LABEL, OUTSIDE_NETWORK], { timeoutMs: 20_000 });
+    const made = await docker(calls.networkCreate(), { timeoutMs: 20_000 });
     if (made.code !== 0) throw new Error(`could not make the outside network: ${made.stderr.trim()}`);
   }
-  await docker(["rm", "-f", OUTSIDE_NAME], { timeoutMs: 15_000 });
-  const args = [
+  await docker(calls.remove([OUTSIDE_NAME]), { timeoutMs: 15_000 });
+  const res = await docker(calls.outsideStart(token), { timeoutMs: 30_000 });
+  if (res.code !== 0) throw new Error(`could not start the outside: ${res.stderr.trim()}`);
+  const ip = await docker(calls.outsideAddress(), { timeoutMs: 10_000 });
+  outsideIp = /^\d+\.\d+\.\d+\.\d+$/.test(ip.stdout.trim()) ? ip.stdout.trim() : null;
+}
+
+const FACTS_FORMAT =
+  "{{.HostConfig.Runtime}}|{{.HostConfig.NetworkMode}}|{{.HostConfig.ReadonlyRootfs}}|{{.HostConfig.Memory}}|" +
+  "{{.HostConfig.NanoCpus}}|{{.HostConfig.PidsLimit}}|{{join .HostConfig.CapDrop \",\"}}|{{.Config.User}}";
+
+/**
+ * Every docker call the app makes, built in one place. deploy/wall-docker allows exactly these on the VM,
+ * and a test runs each of them through it, so the two cannot drift apart unnoticed.
+ */
+export const calls = {
+  version: (): string[] => ["version", "--format", "{{.Server.Version}}"],
+  list: (): string[] => ["ps", "-aq", "--filter", `label=${LABEL}`],
+  remove: (names: string[]): string[] => ["rm", "-f", ...names],
+  start: (name: string, runtime: string, loosen: Loosen): string[] => ["run", "-d", "--name", name, "--label", LABEL, ...runFlags(runtime, loosen), IMAGE, "sleep", "600"],
+  /** Docker reads no flags after the box's name: everything from `command` on is the box's own. */
+  exec: (user: "0" | "65534", name: string, command: string[]): string[] => ["exec", "-u", user, name, ...command],
+  facts: (name: string): string[] => ["inspect", "--format", FACTS_FORMAT, name],
+  stats: (name: string): string[] => ["stats", "--no-stream", "--format", "{{json .}}", name],
+  networkOption: (): string[] => ["network", "inspect", OUTSIDE_NETWORK, "--format", `{{index .Options "${ISOLATED}"}}`],
+  networkMembers: (): string[] => ["network", "inspect", OUTSIDE_NETWORK, "--format", "{{range .Containers}}{{.Name}} {{end}}"],
+  networkRemove: (): string[] => ["network", "rm", OUTSIDE_NETWORK],
+  networkCreate: (): string[] => ["network", "create", "--internal", "-o", `${ISOLATED}=isolated`, "--label", INFRA_LABEL, OUTSIDE_NETWORK],
+  outsideStart: (token: string): string[] => [
     "run", "-d", "--name", OUTSIDE_NAME, "--label", INFRA_LABEL,
     "--network", OUTSIDE_NETWORK, "--network-alias", "outside",
     "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
@@ -365,9 +410,35 @@ export async function ensureOutside(token: string): Promise<void> {
     "--restart", "unless-stopped",
     "--env", `OUTSIDE_TOKEN=${token}`,
     IMAGE, "python3", "-c", OUTSIDE_SERVER,
-  ];
-  const res = await docker(args, { timeoutMs: 30_000 });
-  if (res.code !== 0) throw new Error(`could not start the outside: ${res.stderr.trim()}`);
-  const ip = await docker(["inspect", OUTSIDE_NAME, "--format", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}"], { timeoutMs: 10_000 });
-  outsideIp = /^\d+\.\d+\.\d+\.\d+$/.test(ip.stdout.trim()) ? ip.stdout.trim() : null;
+  ],
+  outsideAddress: (): string[] => ["inspect", OUTSIDE_NAME, "--format", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}"],
+};
+
+/**
+ * A fresh, empty folder to share into boxes. On the VM the checker makes it, as root, inside a folder only
+ * root may change, so a mount can never be pointed through a link at the rest of the host.
+ */
+export async function makeShare(dir: string): Promise<void> {
+  if (viaSudo()) {
+    const res = await docker(["share-make", path.basename(dir)], { timeoutMs: 10_000 });
+    if (res.code !== 0) throw new Error(`could not make the shared folder: ${res.stderr.trim()}`);
+    return;
+  }
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(dir, { recursive: true });
+  // Boxes whose processes run as uid 65534 write here.
+  chmodSync(dir, 0o777);
+}
+
+/** Removes a shared folder and whatever the boxes left in it, whoever owns it. */
+export async function removeShare(dir: string): Promise<void> {
+  if (viaSudo()) {
+    await docker(["share-remove", path.basename(dir)], { timeoutMs: 10_000 });
+    return;
+  }
+  try {
+    rmSync(dir, { recursive: true, force: true });
+  } catch {
+    // a file a box left, owned by uid 65534, can block this locally; the next run starts from a fresh folder.
+  }
 }

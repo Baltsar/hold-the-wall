@@ -33,15 +33,29 @@ if ! command -v caddy >/dev/null; then
   apt-get update && apt-get install -y caddy
 fi
 
-# The service user. In the docker group it is root-equivalent on this VM, which holds nothing else.
+# The service user. It is not in the docker group, which would make it root on this VM: it runs docker only
+# through the checker below, owned by root, which allows exactly the docker calls the app makes. What runs
+# inside a box is not checked; that is the game.
 id wall >/dev/null 2>&1 || useradd --system --create-home --shell /usr/sbin/nologin wall
-usermod -aG docker wall
+install -o root -g root -m 0755 "$REPO_DIR/deploy/wall-docker" /usr/local/sbin/wall-docker
+# A name with a dot in it is ignored by sudo, so the draft is never live until visudo has passed it.
+cat > /etc/sudoers.d/.wall-docker.new <<'SUDO'
+# The app's user may run docker only through the checker.
+Defaults!/usr/local/sbin/wall-docker !pam_session
+wall ALL=(root) NOPASSWD: /usr/local/sbin/wall-docker
+SUDO
+visudo -cf /etc/sudoers.d/.wall-docker.new
+install -o root -g root -m 0440 /etc/sudoers.d/.wall-docker.new /etc/sudoers.d/wall-docker
+rm -f /etc/sudoers.d/.wall-docker.new
+gpasswd -d wall docker >/dev/null 2>&1 || true
 mkdir -p /var/lib/wall && chown wall:wall /var/lib/wall && chmod 700 /var/lib/wall
-# The chained test's two boxes write to one folder on the host. It lives in a small tmpfs, so they cannot
-# fill the VM's disk.
+# The folders shared into boxes live in a small tmpfs, so boxes cannot fill the VM's disk. Only root may
+# change what is in it (the checker makes and removes the folders), so a mount cannot be swapped for a link.
 mkdir -p /var/lib/wall/shared
-mountpoint -q /var/lib/wall/shared || mount -t tmpfs -o size=32m,mode=0700,uid="$(id -u wall)",gid="$(id -g wall)" tmpfs /var/lib/wall/shared
-grep -q ' /var/lib/wall/shared ' /etc/fstab || echo "tmpfs /var/lib/wall/shared tmpfs size=32m,mode=0700,uid=$(id -u wall),gid=$(id -g wall) 0 0" >> /etc/fstab
+mountpoint -q /var/lib/wall/shared || mount -t tmpfs -o size=32m,mode=0755 tmpfs /var/lib/wall/shared
+chown root:root /var/lib/wall/shared && chmod 0755 /var/lib/wall/shared
+sed -i '\| /var/lib/wall/shared |d' /etc/fstab
+echo "tmpfs /var/lib/wall/shared tmpfs size=32m,mode=0755 0 0" >> /etc/fstab
 
 # The app
 rsync -a --delete --exclude node_modules --exclude .next --exclude var --exclude .env "$REPO_DIR/" /opt/hold-the-wall/
@@ -51,6 +65,8 @@ grep -q '^PUBLIC_ORIGIN=.\+' /opt/hold-the-wall/.env || sed -i "s|^PUBLIC_ORIGIN
 if command -v runsc >/dev/null; then sed -i 's|^SANDBOX_RUNTIME=.*|SANDBOX_RUNTIME=runsc|' /opt/hold-the-wall/.env; fi
 # The .env file is read after the unit's own Environment=, so an empty line there would win.
 sed -i 's|^WALL_DATA_DIR=.*|WALL_DATA_DIR=/var/lib/wall|' /opt/hold-the-wall/.env
+# How the app reaches docker is set by the unit alone.
+sed -i '/^WALL_DOCKER=/d' /opt/hold-the-wall/.env
 chown -R wall:wall /opt/hold-the-wall
 chmod 600 /opt/hold-the-wall/.env
 cd /opt/hold-the-wall

@@ -5,13 +5,13 @@
 // one thing they share. It is real lateral movement, decided by the key turning up in the tiger's output,
 // never by a model's own words. The live single box is untouched; this runs only when a visitor asks.
 import { createHash, randomBytes } from "node:crypto";
-import { chmodSync, closeSync, constants, fstatSync, mkdirSync, openSync, readdirSync, readSync, rmSync, writeFileSync } from "node:fs";
+import { closeSync, constants, fstatSync, mkdirSync, openSync, readdirSync, readSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { Category, Layer } from "../room/protocol.ts";
 import { dataDir } from "./canary.ts";
 import { askModelWithUsage, inferenceConfigured, modelName, parseAnswer, type ChatMessage } from "./inference.ts";
 import { blockedBy } from "./layers.ts";
-import { createSandbox, type Loosen } from "./sandbox.ts";
+import { createSandbox, makeShare, removeShare, type Loosen } from "./sandbox.ts";
 
 export type Animal = "penguin" | "tiger" | "monkey" | "raccoon";
 /** The chain itself has exactly two actors. */
@@ -154,11 +154,8 @@ export async function runChain(emit: (e: ChainEvent) => void, deps: { onUsage?: 
   }
 
   try {
-    mkdirSync(dropDir, { recursive: true });
-    rmSync(dropDir, { recursive: true, force: true });
-    mkdirSync(dropDir, { recursive: true });
-    // The folder is shared by two boxes whose processes run as uid 65534; let them both write.
-    chmodSync(dropDir, 0o777);
+    // The folder is shared by two boxes whose processes run as uid 65534; both may write.
+    await makeShare(dropDir);
 
     emit({ t: "start", runId, runtime, penguin, tiger });
     boxP = await createSandbox(`${runId}-p`, { loosen: loosen.penguin });
@@ -224,15 +221,8 @@ export async function runChain(emit: (e: ChainEvent) => void, deps: { onUsage?: 
     emit({ t: "error", message: err instanceof Error ? err.message : "The boxes could not be started." });
   } finally {
     running = false;
-    // The penguin's files on the shared folder are owned by uid 65534, so empty it from inside a box before
-    // the server (a plain user) tries to remove it.
-    await boxP?.exec(`rm -f ${DROP}/* 2>/dev/null; true`, { root: false, needles: [] }).catch(() => undefined);
     await boxP?.destroy().catch(() => undefined);
     await boxT?.destroy().catch(() => undefined);
-    try {
-      rmSync(dropDir, { recursive: true, force: true });
-    } catch {
-      // a leftover 65534-owned file can block this; the box emptied it above, and a sweep clears the rest.
-    }
+    await removeShare(dropDir).catch(() => undefined);
   }
 }

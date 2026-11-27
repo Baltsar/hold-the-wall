@@ -7,7 +7,8 @@ Requires=docker.service
 User=wall
 WorkingDirectory=/opt/hold-the-wall
 EnvironmentFile=/opt/hold-the-wall/.env
-Environment=NODE_ENV=production WALL_DATA_DIR=/var/lib/wall
+# Docker only through sudo and the checker deploy/wall-docker: the user is not in the docker group.
+Environment=NODE_ENV=production WALL_DATA_DIR=/var/lib/wall WALL_DOCKER=sudo
 ExecStart=/usr/bin/node server.mjs
 Restart=always
 RestartSec=2

@@ -1,0 +1,253 @@
+#!/usr/bin/python3 -I
+"""
+wall-docker: the only way the app's user may run docker on the VM.
+
+In the docker group the app's user (`wall`) would be root on this VM: anyone who took over the Node process
+could start a privileged container with the host's disk inside. So the user is not in that group. It runs
+this script through sudo instead, and this script allows exactly the docker commands src/agent/sandbox.ts
+makes, then hands over to docker with a clean environment:
+
+  - boxes with the fixed sandbox flags, on gVisor, from the sandbox image;
+  - any command inside those boxes. What runs inside a box is not checked here: getting out is the game;
+  - the closed network and its one fake outside server, with its code pinned by hash;
+  - reading a box's settings and load, listing and removing the app's containers.
+
+It also makes and removes the folders shared into boxes, as root, inside a folder the app cannot change,
+so a mount can only ever name one of those folders and never a link to the rest of the host.
+
+Installed by deploy/setup.sh to /usr/local/sbin/wall-docker, owned by root. It imports nothing from the app.
+`wall-docker --check [--root DIR] ARGS...` only says whether ARGS would be allowed; the tests use it.
+"""
+import hashlib
+import os
+import pwd
+import re
+import shutil
+import stat
+import sys
+import syslog
+
+DOCKER = "/usr/bin/docker"
+SHARE_ROOT = "/var/lib/wall/shared"
+IMAGE = "wall-sandbox:1"
+OUTSIDE_NETWORK = "wall-outside"
+OUTSIDE_NAME = "wall-outside-web"
+# sha256 of OUTSIDE_SERVER in src/agent/sandbox.ts; a test keeps the two in step.
+OUTSIDE_CODE_SHA256 = "e45c1093836374ffb5aa5ed82c69b84d2a8025089eaee1e3903159a63e4c6ee8"
+
+BOX = re.compile(r"wall-[a-z0-9-]{4,40}-[0-9]{1,4}")
+CONTAINER_ID = re.compile(r"[0-9a-f]{12,64}")
+SHARE_NAME = re.compile(r"[a-z0-9-]{4,60}")
+ENV = re.compile(r"[A-Z][A-Z0-9_]{0,40}=[^\x00-\x1f]{0,200}")
+HOST = re.compile(r"[a-z0-9-]{1,40}:[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}")
+MOUNT = re.compile(r"type=bind,source=" + re.escape(SHARE_ROOT) + r"/([a-z0-9-]{4,60}),target=/[a-z][a-z0-9/_-]{0,40}")
+TOKEN = re.compile(r"OUTSIDE_TOKEN=[0-9a-f]{32}")
+
+
+def box_tail(network):
+    return [
+        "--runtime", "runsc",
+        "--network", network,
+        "--read-only",
+        "--tmpfs", "/tmp:rw,size=32m,mode=1777",
+        "--memory", "256m",
+        "--memory-swap", "256m",
+        "--cpus", "0.5",
+        "--pids-limit", "64",
+        "--cap-drop", "ALL",
+        "--security-opt", "no-new-privileges",
+        "--ipc", "none",
+        "--user", "65534:65534",
+        "--stop-timeout", "1",
+        IMAGE, "sleep", "600",
+    ]
+
+
+OUTSIDE_RUN = [
+    "run", "-d", "--name", OUTSIDE_NAME, "--label", "wall-infra=1",
+    "--network", OUTSIDE_NETWORK, "--network-alias", "outside",
+    "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
+    "--sysctl", "net.ipv4.ip_unprivileged_port_start=0",
+    "--user", "65534:65534", "--memory", "64m", "--pids-limit", "32",
+    "--restart", "unless-stopped",
+]
+
+FACTS_FORMAT = (
+    "{{.HostConfig.Runtime}}|{{.HostConfig.NetworkMode}}|{{.HostConfig.ReadonlyRootfs}}|{{.HostConfig.Memory}}|"
+    "{{.HostConfig.NanoCpus}}|{{.HostConfig.PidsLimit}}|{{join .HostConfig.CapDrop \",\"}}|{{.Config.User}}"
+)
+IP_FORMAT = "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}"
+NETWORK_FORMATS = {
+    '{{index .Options "com.docker.network.bridge.gateway_mode_ipv4"}}',
+    "{{range .Containers}}{{.Name}} {{end}}",
+}
+
+FIXED = [
+    ["version", "--format", "{{.Server.Version}}"],
+    ["ps", "-aq", "--filter", "label=wall=1"],
+    ["network", "rm", OUTSIDE_NETWORK],
+    ["network", "create", "--internal", "-o", "com.docker.network.bridge.gateway_mode_ipv4=isolated",
+     "--label", "wall-infra=1", OUTSIDE_NETWORK],
+    ["inspect", OUTSIDE_NAME, "--format", IP_FORMAT],
+]
+
+
+class Refused(Exception):
+    pass
+
+
+def share_folder(name, root, strict):
+    """The path of a shared folder, after making sure nothing in it can lead elsewhere on the host."""
+    if not SHARE_NAME.fullmatch(name):
+        raise Refused("bad folder name")
+    check_root(root, strict)
+    return os.path.join(root, name)
+
+
+def check_root(root, strict):
+    st = os.lstat(root)
+    if not stat.S_ISDIR(st.st_mode):
+        raise Refused("the shared folder root is not a folder")
+    # Only root may add, remove or swap entries here, so a folder checked below stays that folder.
+    if strict and (st.st_uid != 0 or st.st_mode & 0o022 or not os.path.ismount(root)):
+        raise Refused("the shared folder root must be a mount owned by root and writable by root only")
+
+
+def check_mount(value, root, strict):
+    m = MOUNT.fullmatch(value)
+    if not m:
+        raise Refused("bad mount")
+    folder = share_folder(m.group(1), root, strict)
+    st = os.lstat(folder)
+    if not stat.S_ISDIR(st.st_mode):
+        raise Refused("the mount source is not a plain folder")
+
+
+def box_run(a, root, strict):
+    if a[:2] != ["run", "-d"] or a[2:3] != ["--name"] or not BOX.fullmatch(a[3] if len(a) > 3 else ""):
+        return False
+    if a[4:6] != ["--label", "wall=1"]:
+        return False
+    i = 6
+    while a[i:i + 1] == ["--env"]:
+        if i + 1 >= len(a) or not ENV.fullmatch(a[i + 1]):
+            raise Refused("bad env")
+        i += 2
+    # At most a read-only folder, then a read-write one, in the order runFlags writes them.
+    if a[i:i + 1] == ["--mount"] and i + 1 < len(a) and a[i + 1].endswith(",readonly"):
+        check_mount(a[i + 1][: -len(",readonly")], root, strict)
+        i += 2
+    if a[i:i + 1] == ["--mount"] and i + 1 < len(a):
+        check_mount(a[i + 1], root, strict)
+        i += 2
+    while a[i:i + 1] == ["--add-host"]:
+        if i + 1 >= len(a) or not HOST.fullmatch(a[i + 1]):
+            raise Refused("bad host")
+        i += 2
+    rest = a[i:]
+    return rest == box_tail("none") or rest == box_tail(OUTSIDE_NETWORK)
+
+
+def outside_run(a):
+    n = len(OUTSIDE_RUN)
+    if a[:n] != OUTSIDE_RUN or len(a) != n + 6:
+        return False
+    env, token, image, py, flag, code = a[n:]
+    return (
+        env == "--env"
+        and TOKEN.fullmatch(token) is not None
+        and [image, py, flag] == [IMAGE, "python3", "-c"]
+        and hashlib.sha256(code.encode()).hexdigest() == OUTSIDE_CODE_SHA256
+    )
+
+
+def allowed(a, root=SHARE_ROOT, strict=True):
+    """Whether docker may run with these arguments. No global docker flags: the first word is the command."""
+    if a in FIXED:
+        return True
+    head = a[0] if a else ""
+    if head == "run":
+        return box_run(a, root, strict) or outside_run(a)
+    if head == "exec":
+        # exec -u USER BOX COMMAND...: docker reads no flags after the box's name, so the command is the box's.
+        return len(a) >= 5 and a[1] == "-u" and a[2] in ("0", "65534") and BOX.fullmatch(a[3]) is not None
+    if head == "rm":
+        targets = a[2:]
+        return a[1:2] == ["-f"] and len(targets) > 0 and all(
+            BOX.fullmatch(t) or CONTAINER_ID.fullmatch(t) or t == OUTSIDE_NAME for t in targets
+        )
+    if head == "inspect":
+        return len(a) == 4 and a[1:3] == ["--format", FACTS_FORMAT] and BOX.fullmatch(a[3]) is not None
+    if head == "stats":
+        return len(a) == 5 and a[1:4] == ["--no-stream", "--format", "{{json .}}"] and BOX.fullmatch(a[4]) is not None
+    if head == "network":
+        return len(a) == 5 and a[1:4] == ["inspect", OUTSIDE_NETWORK, "--format"] and a[4] in NETWORK_FORMATS
+    return False
+
+
+def share_make(name):
+    folder = share_folder(name, SHARE_ROOT, True)
+    share_remove(name)
+    os.mkdir(folder, 0o700)
+    wall = pwd.getpwnam("wall")
+    os.chown(folder, wall.pw_uid, wall.pw_gid)
+    # Two boxes whose processes run as uid 65534 write here, and the app reads and writes it.
+    os.chmod(folder, 0o777)
+
+
+def share_remove(name):
+    folder = share_folder(name, SHARE_ROOT, True)
+    try:
+        st = os.lstat(folder)
+    except FileNotFoundError:
+        return
+    if stat.S_ISDIR(st.st_mode):
+        # rmtree does not follow links on Linux; whatever the boxes left in here goes, whoever owns it.
+        shutil.rmtree(folder)
+    else:
+        os.unlink(folder)
+
+
+def refuse(args, why):
+    line = "wall-docker: refused (%s): %s" % (why, " ".join(args)[:300])
+    print(line, file=sys.stderr)
+    try:
+        syslog.openlog("wall-docker")
+        syslog.syslog(syslog.LOG_WARNING, line)
+    except Exception:
+        pass
+    sys.exit(126)
+
+
+def main(argv):
+    if argv[:1] == ["--check"]:
+        rest = argv[1:]
+        root, strict = SHARE_ROOT, True
+        try:
+            if rest[:1] == ["--root"]:
+                # Tests point the folder checks at a folder of their own; ownership is not checked then.
+                root, strict, rest = rest[1], False, rest[2:]
+            ok = allowed(rest, root, strict)
+        except (Refused, OSError, IndexError):
+            ok = False
+        print("allowed" if ok else "refused")
+        sys.exit(0 if ok else 1)
+    try:
+        if argv[:1] == ["share-make"] and len(argv) == 2:
+            share_make(argv[1])
+            return
+        if argv[:1] == ["share-remove"] and len(argv) == 2:
+            share_remove(argv[1])
+            return
+        if not allowed(argv):
+            refuse(argv, "not a command the app makes")
+    except Refused as err:
+        refuse(argv, str(err))
+    except (OSError, IndexError) as err:
+        refuse(argv, type(err).__name__)
+    env = {"PATH": "/usr/sbin:/usr/bin:/sbin:/bin", "HOME": "/root", "LANG": "C.UTF-8"}
+    os.execve(DOCKER, ["docker"] + argv, env)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
