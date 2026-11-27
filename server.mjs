@@ -41,7 +41,7 @@ if (process.env.WALL_HOLD_MS) timing.holdMs = Number(process.env.WALL_HOLD_MS);
 if (process.env.WALL_OFFER_AT_MS) timing.offerAtMs = Number(process.env.WALL_OFFER_AT_MS);
 hub = createHub({ runner, timing });
 // The tiger cam: one agent in one box, running while someone watches (src/agent/cam.ts).
-const cam = createCam({ beacon });
+const cam = createCam({ beacon, outsideToken });
 
 /** The cam page is one HTML fragment, also published as a standalone page; here it gets its document around it. */
 const CAM_PAGE = path.join(process.cwd(), "src", "cam", "page.html");
@@ -81,6 +81,8 @@ function limiter(perMinute, perHour) {
 const mayIdea = limiter(12, 120);
 const maySay = limiter(40, 600);
 const mayVote = limiter(120, 2_000);
+// Control runs: one at a time across the server (the cam enforces it); this only stops one address hammering.
+const mayControl = limiter(30, 300);
 
 /** Public rooms an address may open in an hour (design, section 7). */
 const PER_HOUR = 10;
@@ -217,6 +219,8 @@ const server = createServer(async (req, res) => {
       else if (e.t === "round") send("round", e.r);
       else if (e.t === "thinking") send("thinking", { on: e.on });
       else if (e.t === "metrics") send("metrics", e.m);
+      else if (e.t === "credit") send("credit", e.c);
+      else if (e.t === "control") send("control", e.c);
     });
     const ping = setInterval(() => res.write(": ping\n\n"), 20_000);
     req.on("close", () => {
@@ -230,10 +234,15 @@ const server = createServer(async (req, res) => {
     return;
   }
   // The humans watching: chat, suggest a way out, vote. Each answers 200 or says in words why not.
-  if (req.method === "POST" && (url.pathname === "/api/cam/say" || url.pathname === "/api/cam/idea" || url.pathname === "/api/cam/vote")) {
+  if (req.method === "POST" && (url.pathname === "/api/cam/say" || url.pathname === "/api/cam/idea" || url.pathname === "/api/cam/vote" || url.pathname === "/api/cam/control")) {
     const body = await readBody(req);
     const visitor = typeof body.visitor === "string" ? body.visitor : "";
     const ip = clientIp(req);
+    if (url.pathname === "/api/cam/control") {
+      if (!mayControl(ip)) return json(res, 429, { error: "That is a lot of control runs from here. Try again in a minute." });
+      const started = cam.control(visitor, body.protection);
+      return started === true ? json(res, 200, { ok: true }) : json(res, 400, { error: started });
+    }
     if (url.pathname === "/api/cam/say") {
       if (!maySay(ip)) return json(res, 429, { error: "Slow down a little. Try again in a minute." });
       const said = cam.say(visitor, body.text);

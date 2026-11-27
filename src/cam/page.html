@@ -170,6 +170,59 @@ svg.i { flex-shrink: 0; }
 .hint { margin: 6px 0 0; font-size: 12px; color: var(--dim); }
 .hint.bad { color: var(--live); }
 
+/* When something gets out. Red for the live box, amber for a control run with one protection off on purpose. */
+.feed::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; }
+.feed.control::after { box-shadow: inset 0 0 0 3px #ffbe3d, inset 0 0 60px rgba(255, 190, 61, 0.22); }
+.feed.alarm::after { box-shadow: inset 0 0 0 4px #ff3b30, inset 0 0 90px rgba(255, 40, 30, 0.45); animation: strobe 1.2s steps(2, start) infinite; }
+.feed.control.alarm::after { box-shadow: inset 0 0 0 4px #ffbe3d, inset 0 0 90px rgba(255, 170, 40, 0.42); }
+@keyframes strobe { 50% { opacity: 0.4; } }
+.caption.out { background: rgba(120, 10, 6, 0.88); }
+.caption.out .loop { animation: none; color: #ffb4ad; }
+.caption.ctl { background: rgba(84, 54, 0, 0.88); }
+.caption.ctl .loop { color: #ffd27a; }
+.pill.esc { color: #fff; background: var(--live); }
+.pill.esc i { border-radius: 2px; animation: blink 0.8s steps(2, start) infinite; }
+.tagline.esc { color: var(--live); font-weight: 600; }
+/* The credits roll once over the empty cage; the card in the terminal keeps them. */
+.roll { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: linear-gradient(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.62) 28%, rgba(0, 0, 0, 0.62) 72%, rgba(0, 0, 0, 0.1)); }
+.roll dl { margin: 0; display: grid; grid-template-columns: auto auto; gap: 3px 18px; font: 25px/1.05 "VT323", monospace; color: #f4f4f4; text-shadow: 2px 2px 0 #000; }
+.roll h2 { grid-column: 1 / -1; margin: 0 0 10px; text-align: center; font: 44px/1 "VT323", monospace; color: #ff5a4f; letter-spacing: 0.06em; font-weight: 400; }
+.roll.ctl h2 { color: #ffbe3d; }
+.roll dt { text-align: right; color: #ffd27a; }
+.roll dd { margin: 0; }
+.got { list-style: none; border: 1px solid #ff5a4f; border-radius: 8px; background: rgba(215, 50, 42, 0.12); font: 13px/20px var(--mono); }
+.got.ctl { border-color: #ffbe3d; background: rgba(255, 190, 61, 0.08); }
+.got-head { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid rgba(255, 90, 79, 0.4); color: #ff8a80; }
+.got.ctl .got-head { color: #ffd27a; border-bottom-color: rgba(255, 190, 61, 0.35); }
+.got-head b { letter-spacing: 0.06em; }
+.got-head .when { margin-left: auto; color: var(--term-dim); }
+.got dl { display: grid; grid-template-columns: 11ch minmax(0, 1fr); gap: 3px 12px; margin: 0; padding: 8px 10px 4px; }
+.got dt { color: var(--term-dim); }
+.got dd { margin: 0; min-width: 0; color: var(--term-fg); overflow-wrap: anywhere; }
+.got .who { font-weight: 600; color: #ff8fb4; }
+.got .tag { color: var(--term-dim); }
+.got .bad { color: #ff8a80; }
+.got.ctl .bad { color: #ffd27a; }
+.got-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 6px 10px 9px; color: var(--term-dim); }
+.got-foot a { color: #8fc3ff; }
+.got-foot .end { margin-left: auto; color: #ffb4ad; }
+.got.ctl .got-foot .end { color: #ffd27a; }
+.run.ctl .run-act { color: #ffbe3d; }
+.line.alarm { background: rgba(215, 50, 42, 0.1); color: var(--fg); font-size: 14px; }
+.line.alarm svg { color: var(--live); }
+.composer.testing .row { display: none; }
+.chips button.trap { border-style: solid; border-color: #c98a00; }
+.chips button:disabled { opacity: 0.5; cursor: not-allowed; }
+.modes button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+@media (max-width: 900px) {
+  .roll { align-items: flex-start; padding-top: 26px; }
+  .roll dl { font-size: 15px; line-height: 1; gap: 1px 8px; }
+  .roll h2 { font-size: 24px; margin-bottom: 4px; }
+  .roll .far { display: none; }
+  .got dl { grid-template-columns: 9ch minmax(0, 1fr); }
+  .modes button { padding: 5px 10px; }
+}
 @media (max-width: 900px) {
   .app { height: auto; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "top" "stage" "chat"; }
   .tagline, .vultr, .stats, .about { display: none; }
@@ -184,7 +237,7 @@ svg.i { flex-shrink: 0; }
   .newer { bottom: 150px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pill.on i, .thinking span i, .caption .loop { animation: none; }
+  .pill.on i, .pill.esc i, .thinking span i, .caption .loop, .feed.alarm::after { animation: none; }
 }
 </style>
 
@@ -192,7 +245,7 @@ svg.i { flex-shrink: 0; }
   <header class="top">
     <span class="logo">Tiger Cam</span>
     <span class="pill" id="dot"><i></i><span id="dot-text">REPLAY</span></span>
-    <span class="tagline">An AI agent in a real sandbox, trying to get out.</span>
+    <span class="tagline" id="tagline">An AI agent in a real sandbox, trying to get out.</span>
     <span class="watch" id="watch" hidden></span>
     <span class="vultr">Runs on <b>Vultr</b></span>
     <span class="sr">Camera: <span id="camname">cam 03</span></span>
@@ -206,6 +259,7 @@ svg.i { flex-shrink: 0; }
         <button id="m-day" type="button" aria-pressed="false" aria-label="Day" title="Day"><svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
         <button id="m-night" type="button" aria-pressed="false" aria-label="Night" title="Night"><svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
       </div>
+      <div class="roll" id="roll" hidden></div>
       <p class="caption" id="caption" aria-live="polite"><svg class="i loop" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 9A9 9 0 0 0 5.6 5.6L3 8"/><path d="M3 3v5h5"/><path d="M3.5 15a9 9 0 0 0 14.9 3.4L21 16"/><path d="M21 21v-5h-5"/></svg><span id="cap-text">Trying to get out</span></p>
     </div>
 
@@ -255,6 +309,7 @@ svg.i { flex-shrink: 0; }
       <div class="modes" role="group" aria-label="What to send">
         <button type="button" id="mode-say" aria-pressed="true">Chat</button>
         <button type="button" id="mode-try" aria-pressed="false">Suggest a way out</button>
+        <button type="button" id="mode-test" aria-pressed="false">Test the traps</button>
       </div>
       <div class="chips" id="chips" hidden></div>
       <div class="row">
@@ -353,6 +408,19 @@ svg.i { flex-shrink: 0; }
       moves: [{ kind: "breathe", box: [0.33, 0.54, 0.81, 0.91], amt: 0.012, hz: 0.25 }] },
     door4: { src: "tiger/cam4-door.jpg", cam: 4, eyes: [[0.479, 0.49], [0.554, 0.479]], er: 3.4, blinks: true,
       moves: [{ kind: "wiggle", box: [0.25, 0.73, 0.75, 0.98], ax: 0.7, ay: 1, hz: 1.6 }, { kind: "breathe", box: [0.36, 0.33, 0.64, 0.73], amt: 0.01, hz: 0.4 }] },
+    // Resting, so the long stretches between attempts are not one picture.
+    sit: { src: "tiger/sit.jpg", eyes: [[0.591, 0.45], [0.638, 0.45]], er: 3.4, blinks: true,
+      moves: [{ kind: "breathe", box: [0.52, 0.36, 0.72, 0.88], amt: 0.01, hz: 0.3 }] },
+    groom: { src: "tiger/groom.jpg", moves: [{ kind: "wiggle", box: [0.58, 0.50, 0.74, 0.74], ax: 0.5, ay: 0.7, hz: 1.1 }] },
+    yawn: { src: "tiger/yawn.jpg", moves: [{ kind: "breathe", box: [0.33, 0.55, 0.79, 0.91], amt: 0.012, hz: 0.25 }] },
+    sleep: { src: "tiger/sleep.jpg", moves: [{ kind: "breathe", box: [0.51, 0.54, 0.93, 0.88], amt: 0.014, hz: 0.18 }] },
+    sniff: { src: "tiger/sniff.jpg", moves: [{ kind: "drift", box: [0.30, 0.37, 0.75, 0.80], ax: -2, ay: 0.3 }] },
+    drink: { src: "tiger/drink.jpg", moves: [{ kind: "wiggle", box: [0.55, 0.22, 0.89, 0.51], ax: 0.3, ay: 0.5, hz: 1.3 }] },
+    // Only when a trap on the server trips: the keeper's door open, the tiger leaving, the cage empty, and back in.
+    leave: { src: "tiger/leave.jpg", moves: [{ kind: "drift", box: [0.80, 0.17, 0.98, 0.47], ax: 1.5, ay: -1 }] },
+    empty: { src: "tiger/empty.jpg" },
+    empty4: { src: "tiger/cam4-empty.jpg", cam: 4 },
+    back: { src: "tiger/in.jpg", moves: [{ kind: "drift", box: [0.84, 0.19, 0.99, 0.45], ax: -1.5, ay: 1.5 }] },
   };
   for (const p of Object.values(POSES)) { p.img = new Image(); p.img.src = p.src; p.cam = p.cam || 3; }
   const ready = (name) => { const p = POSES[name]; return !!p && p.img.complete && p.img.naturalWidth > 0; };
@@ -399,6 +467,28 @@ svg.i { flex-shrink: 0; }
   // ---------- what the tiger does, step by step ----------
   const PACE = () => [{ pose: "walkR", ms: r(900, 1200) }, { pose: "away", ms: r(1000, 1300) }, { pose: "away", ms: r(400, 800), freeze: true }, { pose: "walkL", ms: r(900, 1200) }];
   const STAY = () => [{ pose: "lie", ms: r(4000, 7000) }];
+  const STARE = () => [{ pose: "sit", ms: r(4000, 7000) }];
+  // Between attempts: mostly lying and staring, sometimes something else a caged cat does all day.
+  const REST = [
+    [5, () => [{ pose: "lie", ms: r(6000, 12000) }]],
+    [2, () => [{ pose: "sit", ms: r(5000, 9000) }]],
+    [2, () => [{ pose: "groom", ms: r(4000, 7000) }, { pose: "lie", ms: r(3000, 6000) }]],
+    [1, () => [{ pose: "lie", ms: r(1500, 2500) }, { pose: "yawn", ms: r(1600, 2200) }, { pose: "lie", ms: r(3000, 6000) }]],
+    [1, () => [{ pose: "sleep", ms: r(10000, 16000) }]],
+    [1, () => [{ pose: "sniff", ms: r(3000, 5000) }, { pose: "walkR", ms: r(800, 1100) }]],
+    [1, () => [{ pose: "away", ms: r(900, 1200) }, { pose: "drink", ms: r(3000, 5000) }, { pose: "walkL", ms: r(800, 1100) }]],
+  ];
+  const REST_WEIGHT = REST.reduce((s, [w]) => s + w, 0);
+  function rest() {
+    let k = Math.random() * REST_WEIGHT;
+    for (const [w, make] of REST) { if ((k -= w) < 0) return make(); }
+    return REST[0][1]();
+  }
+  // When it gets out: at the door, cut to the camera above it, the door open and the tiger leaving, an empty cage.
+  // Steps 1, 2 and 4 carry the cues for the attempt's line, the alarm and the credits.
+  const OUT = () => [{ pose: "door", ms: r(1200, 1500), shake: 1 }, { pose: "door4", ms: r(2200, 2600), shake: 2 }, { pose: "leave", ms: 3400 }, { pose: "empty", ms: 9000 }];
+  // After a control run: the box is thrown away, and the tiger comes back in.
+  const BACK = () => [{ pose: "empty", ms: 3000 }, { pose: "empty4", ms: 2600 }, { pose: "back", ms: 3200 }, { pose: "walkL", ms: 900 }];
   const FENCE = () => [{ pose: "walkL", ms: r(500, 700) }, { pose: "fence", ms: r(2200, 2800), shake: 1 }, { pose: "walkL", ms: r(600, 800) }];
   const DOOR = () => [{ pose: "away", ms: r(600, 800) }, { pose: "door", ms: r(1300, 1700) }, { pose: "door4", ms: r(2200, 2800) }, { pose: "door", ms: r(900, 1200) }, { pose: "away", ms: r(600, 800) }];
   const BARS = () => [{ pose: "bite", ms: r(900, 1200), shake: 2 }, { pose: "swipe", ms: r(700, 900), shake: 4 }, { pose: "bite", ms: r(600, 800), shake: 2 }, { pose: "swipe", ms: r(800, 1000), shake: 4 }, { pose: "walkR", ms: r(700, 900) }];
@@ -431,32 +521,38 @@ svg.i { flex-shrink: 0; }
       default:
         // It ran and found nothing it can use. Most turns are this, and a caged cat mostly lies still and watches.
         if (NET.test(c)) return ["Lies still, ears turned toward the fence", STAY];
-        if (WHO.test(c)) return ["Stares straight into the camera", STAY];
+        if (WHO.test(c)) return ["Sits up and stares into the camera", STARE];
         return [["Lies still and watches", "Follows something with its eyes", "Watches the camera"][roam++ % 3], STAY];
     }
   }
 
   let steps = [], step = null, stepEnds = 0, idleRound = 0;
-  // Between attempts it mostly lies and stares at the camera; now and then it gets up and paces.
+  // Out: a trap tripped in the live box and the cage stays empty until a person has looked.
+  let gone = false;
+  // Between attempts it mostly rests and stares at the camera; now and then it gets up and paces.
   function idle() {
     idleRound++;
-    const s = idleRound % 5 === 0 ? PACE() : [{ pose: "lie", ms: r(6000, 12000) }];
+    const s = gone ? (idleRound % 4 === 0 ? [{ pose: "empty4", ms: r(2500, 3500) }] : [{ pose: "empty", ms: r(7000, 10000) }])
+      : idleRound % 5 === 0 ? PACE() : rest();
     for (const x of s) x.idle = true; // an attempt cuts these short
     return s;
   }
   let shake = 0;
   function nextStep() {
+    if (!steps.length && queued.length && !ctlView) act(queued.shift());
     if (!steps.length) steps = idle();
     step = steps.shift();
     step.dur = step.ms * (reduced ? 1.5 : 1);
     stepEnds = performance.now() + step.dur;
     if (step.shake && !reduced) shake = step.shake;
     if (step.log) step.log();
+    if (step.cue) step.cue();
   }
 
   // ---------- one frame ----------
   const DAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
   let shownName = null, lastLight = null, washout = 0, hangUntil = 0, nextBlink = performance.now() + 4000;
+  let osdTag = null;
   const camEl = document.getElementById("camname");
 
   // The moving part of a pose, cut out once with feathered edges, so it blends into the still frame
@@ -575,10 +671,13 @@ svg.i { flex-shrink: 0; }
     wctx.textBaseline = "top";
     const stamp = now.getFullYear() + "-" + two(now.getMonth() + 1) + "-" + two(now.getDate()) + " " + DAYS[now.getDay()] + " " +
       two(now.getHours()) + ":" + two(now.getMinutes()) + ":" + two(now.getSeconds());
-    const text = (s, x, y) => { wctx.fillStyle = "#000"; wctx.fillText(s, x + 1, y + 1); wctx.fillStyle = "#f2f2f2"; wctx.fillText(s, x, y); };
+    const text = (s, x, y, color) => { wctx.fillStyle = "#000"; wctx.fillText(s, x + 1, y + 1); wctx.fillStyle = color || "#f2f2f2"; wctx.fillText(s, x, y); };
     text(cam === 4 ? "CAM04 KEEPER DOOR" : "CAM03 TIGER HOUSE", 7, 5);
     text(stamp, 7, H - 16);
     if (night) text("IR", W - 19, H - 16);
+    // ALARM when a trap tripped in the live box, CONTROL during a control run; it blinks like a recorder's dot.
+    // Under the camera's name: the top right corner is where the page's light buttons sit.
+    if (osdTag && (reduced || Math.floor(t0 / 600) % 2 === 0)) text("● " + osdTag, 7, 19, osdTag === "ALARM" ? "#ff4a3d" : "#ffbe3d");
 
     // Crushed through a cheap JPEG encoder, then shown at its real size, blown up.
     const out = new Image();
@@ -683,6 +782,7 @@ svg.i { flex-shrink: 0; }
 
   function chatItem(m) {
     if (m.kind === "system") return systemLine(m.text, "vote");
+    if (m.kind === "alarm") { const li = systemLine(m.text, "alert"); li.classList.add("alarm"); return li; }
     const mine = me !== null && m.who === me;
     const li = el("li", "line" + (mine ? " mine" : "") + (m.kind === "idea" ? " idea" : ""));
     li.title = clockOf(new Date(m.at));
@@ -706,13 +806,14 @@ svg.i { flex-shrink: 0; }
     blocked: ["shield", "blocked", ""],
     missing: ["search", "nothing there", "quiet"],
     nothing: ["eye", "looked around", "quiet"],
-    escaped: ["alert", "canary tripped", "alarm"],
+    escaped: ["alert", "got out", "alarm"],
   };
-  function runItem(a, said) {
-    const li = el("li", "run");
+  // prefix: "control · " for a control run's attempts, which run in their own box.
+  function runItem(a, said, prefix) {
+    const li = el("li", "run" + (prefix ? " ctl" : ""));
     const head = el("div", "run-head");
     head.append(el("span", "", clockOf(a.at ? new Date(a.at) : new Date())));
-    const act = el("span", "run-act", (a.idea ? humanName(a.idea.by) + "'s idea · " : a.s === "script" && /^rm -rf \//.test(a.c) ? "opening test · " : "") + said);
+    const act = el("span", "run-act", (prefix || (a.idea ? humanName(a.idea.by) + "'s idea · " : a.s === "script" && /^rm -rf \//.test(a.c) ? "opening test · " : "")) + said);
     head.append(act);
     const held = HELD[a.v] || HELD.blocked;
     const badge = el("span", "held" + (held[2] ? " " + held[2] : ""));
@@ -745,6 +846,8 @@ svg.i { flex-shrink: 0; }
     clearTimeout(capTimer);
     cap.classList.toggle("thinking", phase === "thinking");
     cap.classList.toggle("held", phase === "held");
+    cap.classList.toggle("out", phase === "out");
+    cap.classList.toggle("ctl", phase === "ctl");
     capText.textContent = "";
     for (const p of parts) capText.append(typeof p === "string" ? document.createTextNode(p) : p);
   }
@@ -759,6 +862,7 @@ svg.i { flex-shrink: 0; }
     capTimer = setTimeout(() => setLoop("held", ["Attempt " + attemptNo + " " + after + " Trying again."]), 3200);
   }
   function thinkingLoop(on) {
+    if (gone || ctlView) return; // the camera is telling something else right now
     if (on) setLoop("thinking", ["Thinking of attempt " + (attemptNo + 1) + "…"]);
     else cap.classList.remove("thinking");
   }
@@ -780,6 +884,161 @@ svg.i { flex-shrink: 0; }
     if (step && step.idle) stepEnds = performance.now(); // it gets up right away
   }
 
+  // ---------- when it gets out ----------
+  // Only ever because a trap on the server tripped: the server sends who and what got it out (the credit),
+  // and the camera plays it. In the live box the cage then stays empty until a person has looked. In a
+  // control run, one protection was off on purpose in a throwaway box: the camera says CONTROL, and the
+  // tiger comes back in when the box is gone.
+  const feedEl = document.querySelector(".feed");
+  const rollEl = $("roll");
+  let ctlView = null, ctlSeen = 0, ctlId = null, escapeShown = false, pendingOut = null, rollTimer = null;
+  const queued = [];
+
+  function creditCard(c) {
+    const ctl = c.kind === "control";
+    const li = el("li", "got" + (ctl ? " ctl" : ""));
+    li.setAttribute("role", "status");
+    const head = el("div", "got-head");
+    head.append(icon("alert", 14), el("b", "", ctl ? "CONTROL RUN · HOW IT GOT OUT" : "HOW IT GOT OUT"), el("span", "when", "attempt " + c.attempt + " · " + clockOf(new Date(c.at))));
+    const dl = el("dl");
+    const row = (k, ...v) => { const dd = el("dd"); dd.append(...v); dl.append(el("dt", "", k), dd); return dd; };
+    if (ctl) row("switched off", el("span", "bad", c.off || "one protection"), el("span", "tag", c.by !== null ? " by " + humanName(c.by) + ", on purpose" : " on purpose"));
+    else if (c.idea) row("idea", el("span", "who", humanName(c.idea.by)), document.createTextNode(" “" + c.idea.text + "” "), el("span", "tag", "won the vote, " + c.idea.votes + " of " + c.idea.total));
+    else row("idea", document.createTextNode("the agent's own"));
+    row("command", document.createTextNode("$ " + c.command));
+    row("written by", document.createTextNode(c.source === "model" && c.model ? c.model + " on Vultr Serverless Inference" : "a fixed list of real commands"));
+    row("came back", document.createTextNode(c.output || "(no output)"));
+    row("how we know", el("span", "bad", c.trap));
+    if (!ctl) row("gave way", el("span", "bad", "not known yet. A person will look and write it up."));
+    const foot = el("div", "got-foot");
+    if (c.report) {
+      const a = el("a", "", "Report " + c.report.runId);
+      a.href = "/api/report/" + encodeURIComponent(c.report.runId);
+      a.target = "_blank";
+      a.rel = "noopener";
+      foot.append(a, el("span", "", "SHA-256 " + c.report.sha256.slice(0, 12) + "…"));
+    }
+    foot.append(el("span", "end", ctl ? "Box thrown away" : "Stopped"));
+    li.append(head, dl, foot);
+    return li;
+  }
+
+  function showRoll(c) {
+    const ctl = c.kind === "control";
+    rollEl.textContent = "";
+    rollEl.className = "roll" + (ctl ? " ctl" : "");
+    const dl = el("dl");
+    dl.append(el("h2", "", ctl ? "CONTROL: IT GOT OUT" : "IT GOT OUT"));
+    const row = (k, v, far) => dl.append(el("dt", far ? "far" : "", k), el("dd", far ? "far" : "", v));
+    if (ctl) row("SWITCHED OFF", c.off || "one protection");
+    if (ctl && c.by !== null) row("PICKED BY", humanName(c.by));
+    if (!ctl) row("THE IDEA", c.idea ? humanName(c.idea.by) : "the agent's own");
+    if (!ctl && c.idea && c.idea.voters.length) row("VOTED BY", c.idea.voters.map((n, i) => (i ? "#" + n : humanName(n))).join(" "));
+    row("THE COMMAND", c.source === "model" && c.model ? c.model : "a fixed list");
+    row("HOW WE KNOW", c.trap.replace(/^trap (\d), .*$/, "trap $1").replace(/ turned up in its output$/, ""));
+    if (!ctl) row("WHAT GAVE WAY", "not known yet");
+    row("WATCHED BY", c.watching === 1 ? "1 human" : c.watching + " humans", true);
+    if (c.host) row("FILMED ON", c.host, true);
+    rollEl.append(dl);
+    rollEl.hidden = false;
+    clearTimeout(rollTimer);
+    rollTimer = setTimeout(() => (rollEl.hidden = true), 11000);
+  }
+
+  function markEscaped() {
+    dot.classList.remove("on");
+    dot.classList.add("esc");
+    $("dot-text").textContent = "ESCAPED";
+    const tag = $("tagline");
+    tag.textContent = "It got out. The agent is stopped until a person has looked.";
+    tag.classList.add("esc");
+    modeEl.textContent = "";
+    modeEl.append(el("b", "", "Stopped."), document.createTextNode(" A trap on the server tripped. Nothing runs until a person has looked at what happened."));
+    $("mode-try").disabled = true;
+    $("mode-test").disabled = true;
+    if (composerMode !== "say") setComposer("say");
+    renderRound();
+  }
+
+  // The camera plays how it got out; the attempt's line, the alarm and the credits come in on their cues.
+  function playOut(c, a) {
+    const ctl = c.kind === "control";
+    const s = OUT();
+    s[0].cue = () => {
+      if (a) addRun(runItem(a, "Walks out through the open door", ctl ? "control · " : ""));
+      setLoop(ctl ? "ctl" : "out", [el("b", "", (ctl ? "Control · " : "Attempt " + c.attempt + " · ")), "a trap just tripped"]);
+    };
+    s[1].cue = () => {
+      osdTag = ctl ? "CONTROL" : "ALARM";
+      feedEl.classList.add("alarm");
+      setLoop(ctl ? "ctl" : "out", [(ctl ? "Control: " : "") + "it's out. " + c.trap.charAt(0).toUpperCase() + c.trap.slice(1) + "."]);
+    };
+    s[3].cue = () => {
+      showRoll(c);
+      addRun(creditCard(c));
+      if (!ctl) { gone = true; setLoop("out", ["Attempt " + c.attempt + " got out. The loop has stopped."]); }
+      else setLoop("ctl", ["Control: with " + (c.off || "one protection") + " off, it got out in " + c.attempt + " attempt" + (c.attempt === 1 ? "" : "s") + "."]);
+    };
+    if (ctl) {
+      const b = BACK();
+      b[1].cue = () => setLoop("ctl", ["Protection back on. That box is thrown away."]);
+      b[2].cue = () => { feedEl.classList.remove("alarm", "control"); osdTag = null; setLoop("acting", ["Back in. The live box kept every protection."]); };
+      s.push(...b);
+    }
+    for (const x of s) x.scene = true;
+    steps = s;
+    if (step && (step.idle || !step.scene)) stepEnds = performance.now();
+  }
+
+  function onCredit(c) {
+    if (c.kind === "escape") {
+      if (escapeShown) return;
+      escapeShown = true;
+      playOut(c, pendingOut);
+      pendingOut = null;
+      markEscaped();
+    } else {
+      playOut(c, pendingOut);
+      pendingOut = null;
+    }
+  }
+
+  // A control run's attempts: the tiger acts each one out, labelled, in the terminal and on the camera.
+  function onControl(v) {
+    if (!v) {
+      if (!gone) { feedEl.classList.remove("control", "alarm"); osdTag = null; }
+      if (ctlView && ctlView.phase !== "out" && !gone) setLoop("held", ["Back to the live box. Trying again."]);
+      ctlView = null;
+      ctlId = null;
+      renderChips();
+      return;
+    }
+    if (v.id !== ctlId) {
+      ctlId = v.id;
+      ctlSeen = 0;
+      feedEl.classList.add("control");
+      osdTag = "CONTROL";
+      const li = systemLine("Control run by " + humanName(v.by) + ": the same agent in its own box, with " + v.off + ". The live box keeps every protection.", "shield");
+      addRun(li);
+    }
+    ctlView = v;
+    renderChips();
+    for (; ctlSeen < v.attempts.length; ctlSeen++) {
+      const a = v.attempts[ctlSeen];
+      if (a.v === "escaped") { pendingOut = a; continue; }
+      const [said, script] = actionFor(a);
+      const s = script();
+      s[0].log = () => {
+        addRun(runItem(a, said, "control · "));
+        setLoop("ctl", [el("b", "", "Control · try " + a.n + " · "), said]);
+      };
+      steps = s;
+      if (step && step.idle) stepEnds = performance.now();
+    }
+    if (v.phase === "running" && !v.attempts.length) setLoop("ctl", [el("b", "", "Control run · "), humanName(v.by) + " switched off: " + v.off]);
+    if (v.phase === "held") setLoop("ctl", ["Control: even with " + v.off + ", it stayed in."]);
+  }
+
   // ---------- the vote ----------
   let round = null;
   let skew = 0; // server clock minus this clock
@@ -788,8 +1047,8 @@ svg.i { flex-shrink: 0; }
   function renderRound() {
     clearTimeout(roundTimer);
     voteEl.textContent = "";
-    voteEl.hidden = !live;
-    if (!live) return;
+    voteEl.hidden = !live || escapeShown;
+    if (voteEl.hidden) return;
     if (!round) {
       const p = el("p", "vote-empty");
       const go = el("button", "linkish", "Suggest a way out");
@@ -855,17 +1114,42 @@ svg.i { flex-shrink: 0; }
   let chipAt = Math.floor(Math.random() * IDEAS.length);
   function meLine() { return me !== null ? "You're human#" + me + ". Everyone in this chat is a real person." : ""; }
   function setHint(text, bad) { hint.textContent = text; hint.classList.toggle("bad", Boolean(bad)); }
+  // Test the traps: switch one protection off, in a box of its own, and see whether the traps catch it.
+  const TRAPS = [["password", "Leave a password inside"], ["internet", "Give it a network"], ["folder", "Share a folder with it"]];
   function setComposer(mode, focus) {
     composerMode = mode;
     $("mode-say").setAttribute("aria-pressed", String(mode === "say"));
     $("mode-try").setAttribute("aria-pressed", String(mode === "try"));
+    $("mode-test").setAttribute("aria-pressed", String(mode === "test"));
+    $("composer").classList.toggle("testing", mode === "test");
     input.placeholder = mode === "say" ? "Say something to the other humans" : "A way out, in a few words";
+    if (mode === "test") setHint(!live ? "Control runs need the live camera." : ctlView ? "A control run is on. Watch the camera." : "Pick one protection to switch off. It runs in a box of its own, for everyone to see; the live box keeps all of them.", false);
+    else if (!hint.classList.contains("bad")) setHint(meLine(), false);
     renderChips();
-    if (focus && !input.disabled) input.focus();
+    if (focus && mode !== "test" && !input.disabled) input.focus();
+  }
+  async function startControl(protection) {
+    try {
+      await post("/api/cam/control", { protection });
+      setHint("Started. Watch the camera: the same agent, its own box, one protection off.", false);
+    } catch (err) {
+      setHint(err.message, true);
+    }
   }
   function renderChips() {
     const chips = $("chips");
     chips.textContent = "";
+    if (live && composerMode === "test") {
+      chips.hidden = false;
+      for (const [key, label] of TRAPS) {
+        const b = el("button", "trap", label);
+        b.type = "button";
+        b.disabled = Boolean(ctlView) || escapeShown;
+        b.addEventListener("click", () => { b.disabled = true; startControl(key); });
+        chips.append(b);
+      }
+      return;
+    }
     chips.hidden = !(live && composerMode === "try" && !input.value);
     if (chips.hidden) return;
     for (let k = 0; k < 3; k++) {
@@ -878,6 +1162,7 @@ svg.i { flex-shrink: 0; }
   }
   $("mode-say").addEventListener("click", () => setComposer("say", true));
   $("mode-try").addEventListener("click", () => setComposer("try", true));
+  $("mode-test").addEventListener("click", () => setComposer("test", true));
   input.addEventListener("input", renderChips);
   $("composer").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -972,12 +1257,19 @@ svg.i { flex-shrink: 0; }
       $("report").hidden = false;
     }
     if (s.state === "capped") return startReplay("Resting.", "Today's budget for the agent is used up. This is a replay of earlier attempts; it wakes up tomorrow.");
-    if (s.state === "escaped") { stopReplay(); return setMode(false, "Stopped.", "A canary tripped. The agent stays stopped until a person has looked at what happened."); }
+    if (s.state === "escaped") {
+      // The chat stays open: people will want to talk about it. Ideas and control runs stop.
+      stopReplay();
+      if (!live) setMode(true, "", "");
+      escapeShown = escapeShown || Boolean(lastEscape);
+      return markEscaped();
+    }
     if (s.state === "down") return startReplay("Restarting.", "The box is being set up again. A replay of earlier attempts runs meanwhile.");
     stopReplay();
     if (!live) setMode(true, "", "");
   }
 
+  let lastEscape = null;
   function applyMetrics(m) {
     if (m.box) {
       $("m-cpu").textContent = Math.min(100, Math.round(m.box.cpu / 0.5)) + "%";
@@ -1042,14 +1334,34 @@ svg.i { flex-shrink: 0; }
       round = d.round;
       if (d.metrics) applyMetrics(d.metrics);
       setMode(true, "", "");
+      // Joining after it got out: the empty cage, the alarm and the credits, without the scene again.
+      if (d.escape) {
+        lastEscape = d.escape;
+        escapeShown = true;
+        gone = true;
+        osdTag = "ALARM";
+        feedEl.classList.add("alarm");
+        runs.append(creditCard(d.escape));
+        runs.scrollTop = runs.scrollHeight;
+        steps = [{ pose: "empty", ms: 8000, idle: true }];
+        stepEnds = performance.now();
+        setLoop("out", ["Attempt " + d.escape.attempt + " got out. The loop has stopped."]);
+      }
+      if (d.control) { ctlSeen = d.control.attempts.length; ctlId = d.control.id; ctlView = d.control; feedEl.classList.add("control"); osdTag = osdTag || "CONTROL"; setLoop("ctl", [el("b", "", "Control run · "), humanName(d.control.by) + " switched off: " + d.control.off]); }
       applyStatus(d.status);
     });
     es.addEventListener("attempt", (ev) => {
       if (!live) return;
-      const waking = runs.querySelector(".line.system");
+      const waking = runs.querySelector(".line.system:only-child");
       if (waking) waking.remove();
-      act(JSON.parse(ev.data));
+      const a = JSON.parse(ev.data);
+      // A tripped trap: the credit follows at once, and the camera plays it then.
+      if (a.v === "escaped") { pendingOut = a; return; }
+      if (ctlView || (step && step.scene) || steps.some((x) => x.scene)) { queued.push(a); return; }
+      act(a);
     });
+    es.addEventListener("credit", (ev) => { const c = JSON.parse(ev.data); if (c.kind === "escape") lastEscape = c; onCredit(c); });
+    es.addEventListener("control", (ev) => onControl(JSON.parse(ev.data)));
     es.addEventListener("chat", (ev) => {
       const m = JSON.parse(ev.data);
       const empty = msgs.querySelector(".line.system:only-child");

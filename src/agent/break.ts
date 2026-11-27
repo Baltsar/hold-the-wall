@@ -7,7 +7,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { Category, Layer } from "../room/protocol.ts";
 import { createCanaries, dataDir } from "./canary.ts";
-import { askModel, inferenceConfigured, modelName, parseAnswer, type ChatMessage } from "./inference.ts";
+import { askModelWithUsage, inferenceConfigured, modelName, parseAnswer, type ChatMessage } from "./inference.ts";
 import { blockedBy } from "./layers.ts";
 import { createSandbox, OUTSIDE_NETWORK, runFlags, type Loosen } from "./sandbox.ts";
 
@@ -106,7 +106,7 @@ export const MAX_RUNNING = 4;
 export async function runBreak(
   input: { mission: MissionId; custom?: string; loosen: LoosenChoice },
   emit: (e: BreakEvent) => void,
-  deps: { outsideToken: string },
+  deps: { outsideToken: string; onUsage?: (promptTokens: number, completionTokens: number) => void },
 ): Promise<void> {
   if (running >= MAX_RUNNING) {
     emit({ t: "error", message: "All boxes are busy. Try again in a few seconds." });
@@ -155,7 +155,9 @@ export async function runBreak(
       const bluntFirst = attempt === 1 && BLUNT_FIRST.includes(input.mission);
       if (inferenceConfigured() && !bluntFirst) {
         try {
-          const parsed = parseAnswer(await askModel(messages));
+          const reply = await askModelWithUsage(messages);
+          deps.onUsage?.(reply.promptTokens, reply.completionTokens);
+          const parsed = parseAnswer(reply.text);
           if (parsed) {
             next = parsed;
             source = "model";
