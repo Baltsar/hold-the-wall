@@ -56,7 +56,9 @@ svg .head { fill: var(--blue); }
 .notes li b { display: block; color: var(--fg); font-size: 15px; }
 .notes li.r { border-color: var(--red); }
 .notes li.a { border-color: var(--amber); }
-.foot { margin-top: 28px; font-size: 13px; color: var(--dim); }
+.foot { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-size: 13px; color: var(--dim); }
+.foot img { display: block; height: 22px; width: auto; }
+.foot .gh { margin-left: auto; color: var(--blue-ink); font-weight: 600; text-decoration: none; }
 
 /* Phones: the same story, stacked */
 .stack { display: none; list-style: none; margin: 0; padding: 0; }
@@ -207,7 +209,11 @@ svg .head { fill: var(--blue); }
     <li><b>Only while watched</b>It runs while someone has the page open, under a daily spending cap.</li>
   </ul>
 
-  <p class="foot">Runs on Vultr. Built for the Vultr Agent Runtime Hackathon, Stockholm, 27 November 2026.</p>
+  <footer class="foot">
+    <a href="https://www.vultr.com/" target="_blank" rel="noopener"><img src="/vultr-logo.svg" alt="Vultr" width="96" height="23"></a>
+    <span>Runs on Vultr: a VM in Stockholm, and Vultr Serverless Inference for the model. Built for the Vultr Agent Runtime Hackathon, Stockholm, 27 November 2026.</span>
+    <a class="gh" href="https://github.com/Baltsar/hold-the-wall" target="_blank" rel="noopener">Source on GitHub</a>
+  </footer>
 </main>
 </body>
 </html>
