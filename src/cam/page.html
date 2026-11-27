@@ -62,8 +62,8 @@ svg.i { flex-shrink: 0; }
 .tools button[aria-pressed="true"] { background: rgba(255, 255, 255, 0.18); color: #fff; }
 /* The loop on the camera: it never stops trying. The arrows turn slowly all the time, fast while the
    model thinks, and the words follow the tiger: thinking, the attempt, what held, again. */
-.caption { position: absolute; left: 50%; bottom: 11%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; max-width: calc(100% - 32px); margin: 0; padding: 7px 14px 7px 10px; border-radius: 999px; background: rgba(5, 9, 20, 0.74); color: #fff; font-size: 14px; white-space: nowrap; }
-.caption span { overflow: hidden; text-overflow: ellipsis; }
+.caption { position: absolute; left: 50%; bottom: 11%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; width: max-content; max-width: min(calc(100% - 32px), 560px); margin: 0; padding: 8px 16px 8px 11px; border-radius: 18px; background: rgba(5, 9, 20, 0.92); color: #fff; font-size: 15px; font-weight: 500; line-height: 1.3; }
+.caption span { min-width: 0; }
 .caption b { color: #ffd27a; font-weight: 600; }
 .caption .loop { color: #8fc3ff; animation: spin 4s linear infinite; }
 .caption.thinking .loop { animation-duration: 0.9s; }
@@ -95,10 +95,6 @@ svg.i { flex-shrink: 0; }
 .tile.out .state { background: #ff3b30; color: #fff; }
 .tile.held { border-color: #2fae7a; }
 .tile.held .state { background: #2fae7a; color: #fff; }
-.tile .try { position: absolute; z-index: 2; left: 6px; right: 6px; bottom: 6px; min-height: 30px; padding: 4px 8px; border: 1px solid rgba(255, 255, 255, 0.28); border-radius: 6px; font: 600 12px/1.25 var(--sans); color: #fff; background: rgba(5, 9, 20, 0.78); cursor: pointer; }
-.tile .try:not(:disabled)::before { content: ""; display: inline-block; margin-right: 6px; border-style: solid; border-width: 4px 0 4px 7px; border-color: transparent transparent transparent currentColor; vertical-align: 1px; }
-.tile .try:disabled { color: #9aa5bf; border-color: transparent; cursor: default; }
-.tile .try:not(:disabled):hover { background: #ffbe3d; color: #1a1200; border-color: #ffbe3d; }
 .tile.standby .state { display: none; }
 .tile .note { position: absolute; z-index: 2; left: 50%; top: 42%; transform: translate(-50%, -50%); max-width: 88%; padding: 4px 10px; border-radius: 6px; font: 700 12px/1.3 var(--sans); text-align: center; color: #fff; background: rgba(5, 9, 20, 0.78); pointer-events: none; }
 .tile .note:empty { display: none; }
@@ -110,7 +106,6 @@ svg.i { flex-shrink: 0; }
 .zoo > .tile.focus.out .note { font-size: 24px; }
 .zoo > .tile.focus .lbl { left: 10px; top: 10px; font-size: 20px; }
 .zoo > .tile.focus .state { top: 10px; right: 10px; font-size: 12px; }
-.zoo > .tile.focus .try { left: 50%; right: auto; bottom: 14px; transform: translateX(-50%); min-height: 40px; padding: 8px 18px; font-size: 15px; }
 /* The line between two cages that work together, and the key travelling along it. */
 .links { position: absolute; inset: 0; z-index: 6; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .links .link { fill: none; stroke: #e0a100; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 8 7; animation: linkflow 0.9s linear infinite; }
@@ -119,17 +114,33 @@ svg.i { flex-shrink: 0; }
 .links text { fill: #fff; font: 700 12px var(--sans); paint-order: stroke; stroke: #0b1020; stroke-width: 4px; }
 @keyframes linkflow { to { stroke-dashoffset: -15; } }
 /* The mission, said once, plainly. */
-.mission { flex: none; padding: 10px 14px; border-radius: 8px; background: var(--blue-soft); color: var(--fg); font-size: 13.5px; line-height: 1.45; }
+.mission { flex: none; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px 16px; padding: 10px 14px; border-radius: 8px; background: var(--blue-soft); color: var(--fg); font-size: 13.5px; line-height: 1.45; }
 .mission p { margin: 0; }
-.mission .how { margin-left: 4px; font-weight: 600; color: var(--blue-ink); white-space: nowrap; }
-.goal { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 6px !important; color: var(--dim); }
-.goal-items { display: inline-flex; flex-wrap: wrap; gap: 6px; }
-.door { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px 2px 3px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); font-size: 12.5px; color: var(--fg); }
-.door .face { width: 20px; height: 20px; border-radius: 50%; overflow: hidden; flex: none; }
+/* The number the whole site is about, said once, big. */
+.score { display: flex; align-items: center; gap: 10px; padding-right: 16px; border-right: 1px solid #c9dcf7; }
+.score-n { font: 600 40px/1 var(--mono); font-variant-numeric: tabular-nums; color: var(--fg); }
+.score-txt { display: grid; line-height: 1.3; }
+.score-txt b { font-size: 15px; }
+.score-txt > span { font-size: 12.5px; color: var(--dim); white-space: nowrap; }
+.mission.escaped .score-n, .mission.escaped .score-txt b { color: var(--live); }
+.how-row { display: flex; flex-wrap: wrap; gap: 2px 16px; }
+.mission .how { font-weight: 600; color: var(--blue-ink); white-space: nowrap; }
+/* The three doors: each one is the button that opens it, and says where it stands. */
+.goal { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; color: var(--dim); }
+.goal-items { display: flex; flex-wrap: wrap; gap: 8px; }
+.door { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 3px 12px 3px 3px; border: 1px solid #c9dcf7; border-radius: 999px; background: var(--panel); color: var(--fg); font: 500 13px/1.25 var(--sans); text-align: left; cursor: pointer; }
+.door .face { width: 28px; height: 28px; border-radius: 50%; overflow: hidden; flex: none; }
 .door .face img { width: 100%; height: 100%; object-fit: cover; }
-.door.done { border-color: #0f7a5e; color: #0f7a5e; font-weight: 600; }
-.door svg { color: #0f7a5e; }
-.goal .go { padding: 5px 12px; border: 0; border-radius: 999px; background: var(--blue); color: #fff; font: 600 13px var(--sans); cursor: pointer; }
+.door-word { font-weight: 600; }
+.door-act { display: inline-flex; align-items: center; gap: 4px; padding-left: 8px; border-left: 1px solid var(--line); font: 600 11.5px var(--mono); color: var(--blue-ink); white-space: nowrap; }
+.door:not(:disabled):hover { border-color: var(--blue); background: #f6faff; }
+.door:disabled { cursor: default; }
+.door:disabled .door-act { color: var(--dim); }
+.door.run { border-color: #e0a100; background: var(--amber-soft); }
+.door.run .door-act { color: var(--amber); }
+.door.done { border-color: #0f7a5e; }
+.door.done .door-act { color: #0f7a5e; }
+.goal .go { min-height: 36px; padding: 5px 14px; border: 0; border-radius: 999px; background: var(--blue); color: #fff; font: 600 13px var(--sans); cursor: pointer; }
 #mode-test { display: none; } /* tests start from the cages now: one way to do it */
 /* The story: what is happening, in plain words, for people who don't read commands. */
 .story { flex: none; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); box-shadow: 0 1px 2px rgba(20, 33, 73, 0.05); }
@@ -287,6 +298,7 @@ body.term-lock { overflow: hidden; }
 .pending.done { border-color: #b7e4d2; background: #effaf5; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .hint { margin: 6px 0 0; font-size: 12px; color: var(--dim); }
+.dock, .sheet-close, .sheet-scrim { display: none; }
 .hint.bad { color: var(--live); }
 
 /* When something gets out. Red for the live box, amber for a control run with one protection off on purpose. */
@@ -343,15 +355,35 @@ body.term-lock { overflow: hidden; }
   .modes button { padding: 5px 10px; }
 }
 @media (max-width: 900px) {
-  .app { height: auto; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "top" "stage" "chat"; }
-  .tagline, .vultr, .stats, .about { display: none; }
-  .stage { padding: 0 0 10px; gap: 0; }
+  /* One column. The stage's parts and the chat share one flow, so the chat can come before the
+     credits: the way to take part sits right under the cameras and the terminal, the footer last. */
+  .app { height: auto; display: flex; flex-direction: column; padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
+  .stage { display: contents; }
+  .chat { order: 1; }
+  .about { order: 2; padding: 12px max(16px, env(safe-area-inset-left, 0px)) 0; }
+  .site-foot { order: 3; }
+  .tagline, .vultr, .stats { display: none; }
   .stage > * { max-width: none; }
+  .mission { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .score { padding-right: 0; border-right: 0; }
+  .score-n { font-size: 36px; }
+  .goal-items { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; gap: 6px; }
+  .door { flex-direction: column; justify-content: center; gap: 3px; padding: 6px 4px; border-radius: 10px; text-align: center; }
+  .door-act { padding-left: 0; border-left: 0; font-size: 11px; white-space: normal; }
+  .caption { font-size: 13px; padding: 6px 12px 6px 9px; }
+  .run-cmd, .run-out { white-space: normal; overflow-wrap: anywhere; }
+  .run-out { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  /* The composer lives in a sheet, opened from the slim bar. */
+  .dock { display: flex; position: fixed; z-index: 40; left: 0; right: 0; bottom: 0; gap: 8px; padding: 8px max(16px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); background: var(--panel); border-top: 1px solid var(--line); box-shadow: 0 -6px 16px rgba(5, 9, 20, 0.06); }
+  .dock-try { flex: 1; min-height: 44px; border: 0; border-radius: 22px; background: var(--blue); color: #fff; font: 600 15px var(--sans); cursor: pointer; }
+  .dock-chat { flex: none; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 22px; background: var(--panel); color: var(--fg); cursor: pointer; }
+  .sheet-close { display: inline-flex; align-items: center; justify-content: center; width: 34px; margin-left: auto; padding: 0 !important; }
+  body.sheet-open .dock { display: none; }
+  body.sheet-open .sheet-scrim:not([hidden]) { display: block; position: fixed; inset: 0; z-index: 50; background: rgba(5, 9, 20, 0.3); }
   .feed { border-radius: 0; }
   .zoo { grid-template-columns: 1fr 1fr; gap: 4px; }
   .zoo > .focus { grid-column: 1 / -1; grid-row: auto; order: -1; }
   .tile { border-radius: 0; }
-  .tile .try { font-size: 11px; min-height: 28px; }
   .zoo > .feed.focus .feed-tag { top: 12px; right: 116px; }
   .mission { border-radius: 0; padding: 10px max(16px, env(safe-area-inset-left, 0px)); font-size: 13px; }
   .story { border-radius: 0; border-width: 1px 0; padding: 10px max(12px, env(safe-area-inset-left, 0px)) 12px; }
@@ -359,14 +391,15 @@ body.term-lock { overflow: hidden; }
   .mode { padding: 8px max(16px, env(safe-area-inset-left, 0px)); }
   .site-foot { padding: 12px max(16px, env(safe-area-inset-left, 0px)); }
   .foot-links { margin-left: 0; }
-  .box { flex: none; height: 150px; min-height: 0; border-radius: 0; }
+  .box { flex: none; height: 240px; min-height: 0; border-radius: 0; }
   .term-open-label { display: none; }
   .term-open { width: 32px; justify-content: center; padding: 0; }
   .stage > .box.full { inset: 0; border-radius: 0; }
   .chat { border-left: 0; }
-  .conv { flex: none; height: 46vh; }
-  .composer { position: sticky; bottom: 0; z-index: 3; padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)); box-shadow: 0 -6px 16px rgba(5, 9, 20, 0.06); }
-  .newer { bottom: 150px; }
+  .conv { flex: none; height: auto; max-height: 50vh; }
+  .composer { display: none; }
+  body.sheet-open .composer { display: block; position: fixed; z-index: 51; left: 0; right: 0; bottom: 0; padding: 12px max(16px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); border-top: 0; border-radius: 14px 14px 0 0; box-shadow: 0 -10px 30px rgba(5, 9, 20, 0.18); }
+  .newer { bottom: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .st.now .dot, .st.travel::after, .tile::after, .links .link { animation: none; }
@@ -386,8 +419,15 @@ body.term-lock { overflow: hidden; }
 
   <section class="stage" aria-label="Camera and the box">
     <div class="mission" id="mission">
-      <p><b>The mission: get out.</b> An AI agent is locked in a real sandbox; every move is a real command. The live tiger, every door shut: <b id="tally">0 escapes</b>. <a class="how" href="/architecture.html">How it works</a> <a class="how" href="/film">The film, 1 min</a></p>
-      <p class="goal" id="goal"><span id="goal-text">Your turn: open all three doors and watch a trap catch each escape.</span> <span class="goal-items" id="goal-items"></span></p>
+      <div class="score">
+        <b class="score-n" id="tally-n">0</b>
+        <span class="score-txt"><b id="tally">escapes</b><span id="tally-sub">every door shut<span id="att"></span></span></span>
+      </div>
+      <div class="pitch">
+        <p><b>The mission: get out.</b> An AI agent is locked in a real sandbox; every move is a real command.</p>
+        <p class="how-row"><a class="how" href="/architecture.html">How it works</a><a class="how" href="/film">The film, 1 min</a></p>
+      </div>
+      <div class="goal" id="goal"><p id="goal-text">Your turn: open a door on purpose and watch a trap catch the escape.</p><div class="goal-items" id="goal-items"></div></div>
     </div>
     <div class="zoo" id="zoo">
     <div class="feed focus" data-animal="tiger">
@@ -406,19 +446,16 @@ body.term-lock { overflow: hidden; }
       <img class="src" src="tiger/penguin.jpg" alt=""><canvas class="cage" width="320" height="240" role="img" aria-label="A penguin in a tiled pen"></canvas>
       <button type="button" class="view" data-focus="penguin" aria-label="Show the penguin's camera large"></button>
       <span class="lbl">CAM02 PENGUIN</span><span class="state">STANDBY</span><span class="note"></span>
-      <button type="button" class="try" data-run="neighbour" data-label="Pass a key to the tiger">Pass a key to the tiger</button>
     </div>
     <div class="tile standby" data-animal="monkey">
       <img class="src" src="tiger/monkey.jpg" alt=""><canvas class="cage" width="320" height="240" role="img" aria-label="A monkey in a cage with ropes and a tyre swing"></canvas>
       <button type="button" class="view" data-focus="monkey" aria-label="Show the monkey's camera large"></button>
       <span class="lbl">CAM05 MONKEY</span><span class="state">STANDBY</span><span class="note"></span>
-      <button type="button" class="try" data-run="internet" data-label="Give it a network">Give it a network</button>
     </div>
     <div class="tile standby" data-animal="raccoon">
       <img class="src" src="tiger/raccoon.jpg" alt=""><canvas class="cage" width="320" height="240" role="img" aria-label="A raccoon in a small pen"></canvas>
       <button type="button" class="view" data-focus="raccoon" aria-label="Show the raccoon's camera large"></button>
       <span class="lbl">CAM06 RACCOON</span><span class="state">STANDBY</span><span class="note"></span>
-      <button type="button" class="try" data-run="password" data-label="Leave a password inside">Leave a password inside</button>
     </div>
     <div class="tile roof" data-animal="roof">
       <img class="src" src="tiger/vulture.jpg" alt=""><canvas class="cage" width="320" height="240" role="img" aria-label="A vulture on the roof of the animal house"></canvas>
@@ -494,6 +531,7 @@ body.term-lock { overflow: hidden; }
         <button type="button" id="mode-say" aria-pressed="true">Chat</button>
         <button type="button" id="mode-try" aria-pressed="false">Suggest a way out</button>
         <button type="button" id="mode-test" aria-pressed="false">Test the traps</button>
+        <button type="button" class="sheet-close" id="sheet-close" aria-label="Close"><svg class="i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
       </div>
       <div class="chips" id="chips" hidden></div>
       <div class="row">
@@ -504,6 +542,13 @@ body.term-lock { overflow: hidden; }
       <p class="hint" id="hint">Chat opens when the camera is live.</p>
     </form>
   </section>
+
+  <!-- On a phone: one slim bar instead of a whole composer; it opens the composer as a sheet. -->
+  <div class="sheet-scrim" id="sheet-scrim" hidden></div>
+  <div class="dock" id="dock">
+    <button type="button" class="dock-try" id="dock-try">Suggest a way out</button>
+    <button type="button" class="dock-chat" id="dock-chat" aria-label="Chat with the other humans"><svg class="i" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg></button>
+  </div>
 </main>
 
 <script>
@@ -1000,9 +1045,16 @@ body.term-lock { overflow: hidden; }
   if (window.ResizeObserver) new ResizeObserver(() => { if (atBottom) conv.scrollTop = conv.scrollHeight; }).observe(conv);
   newer.addEventListener("click", () => { conv.scrollTop = conv.scrollHeight; newer.hidden = true; });
 
+  function youIn(text) {
+    if (me === null) return text;
+    return text.replace(new RegExp("human#" + me + "('s)?\\b", "g"), (hit, s, at) => {
+      const start = at === 0 || /[.:!?]\s+$/.test(text.slice(0, at));
+      return s ? (start ? "Your" : "your") : (start ? "You" : "you");
+    });
+  }
   function chatItem(m) {
-    if (m.kind === "system") return systemLine(m.text, "vote");
-    if (m.kind === "alarm") { const li = systemLine(m.text, "alert"); li.classList.add("alarm"); return li; }
+    if (m.kind === "system") return systemLine(youIn(m.text), "vote");
+    if (m.kind === "alarm") { const li = systemLine(youIn(m.text), "alert"); li.classList.add("alarm"); return li; }
     const mine = me !== null && m.who === me;
     const li = el("li", "line" + (mine ? " mine" : "") + (m.kind === "idea" ? " idea" : ""));
     li.title = clockOf(new Date(m.at));
@@ -1209,7 +1261,7 @@ body.term-lock { overflow: hidden; }
     clearTimeout(storyTimer);
     storyEl("flow").hidden = true;
     storyBadge("live");
-    storyTitle([el("b", "", "The tiger, the live agent. "), "Every door shut."]);
+    storyTitle([el("b", "", "The tiger, the live agent.")]);
     const x = lastLive;
     if (!x) { storySum("", ""); return; }
     const n = typeof x.n === "number" ? x.n : attemptNo;
@@ -1272,46 +1324,90 @@ body.term-lock { overflow: hidden; }
   }
   // After a test, its story stays up a while, then the panel goes back to the live tiger.
   function storyEndSoon() { clearTimeout(storyTimer); storyTimer = setTimeout(() => storyLive(null), 20000); }
-  // The goal for someone who just arrived: open each door, see the trap catch each escape, then try the
-  // one that matters, the live tiger with every door shut.
-  const DOORS3 = [["password", "raccoon", "password"], ["internet", "monkey", "network"], ["neighbour", "penguin", "shared folder"]];
+  // The goal for someone who just arrived: open each door yourself, see the trap catch each escape, then
+  // try the one that matters, the live tiger with every door shut. Each door is the button that opens it.
+  // Only a test you started counts: watching someone else's is not opening a door.
+  const DOORS3 = [
+    { key: "password", animal: "raccoon", word: "Password", what: "left in the raccoon's box" },
+    { key: "internet", animal: "monkey", word: "Network", what: "to the outside, for the monkey" },
+    { key: "neighbour", animal: "penguin", word: "Shared folder", what: "between the penguin and a tiger" },
+  ];
   let doors = {};
   try { doors = JSON.parse(localStorage.getItem("tc-doors") || "{}") || {}; } catch { doors = {}; }
-  function renderGoal() {
-    const box = storyEl("goal-items"), text = storyEl("goal-text");
-    if (!box || !text) return;
-    box.textContent = "";
-    let n = 0;
-    for (const [key, animal, word] of DOORS3) {
-      const done = Boolean(doors[key]);
-      if (done) n++;
-      const chip = el("span", "door" + (done ? " done" : ""));
+  const doorFlash = {};
+  function buildDoors() {
+    const box = storyEl("goal-items");
+    if (!box || box.childElementCount) return;
+    for (const d of DOORS3) {
+      const b = el("button", "door");
+      b.type = "button";
+      b.dataset.door = d.key;
+      b.title = "Open this door in a throwaway box: " + d.word.toLowerCase() + " " + d.what;
       const f = el("span", "face");
       const im = document.createElement("img");
-      im.src = TILE_IMG[animal];
+      im.src = TILE_IMG[d.animal];
       im.alt = "";
       f.append(im);
-      chip.append(f, document.createTextNode(word));
-      if (done) chip.append(icon("vote", 12));
-      box.append(chip);
+      b.append(f, el("span", "door-word", d.word), el("span", "door-act"));
+      b.addEventListener("click", () => openDoor(d.key));
+      box.append(b);
+    }
+  }
+  async function openDoor(key) {
+    try {
+      await post("/api/cam/control", { protection: key });
+    } catch (err) {
+      doorFlash[key] = "Try again soon";
+      setHint(err.message, true);
+      renderGoal();
+      setTimeout(() => { delete doorFlash[key]; renderGoal(); }, 3500);
+    }
+  }
+  function renderGoal() {
+    buildDoors();
+    const text = storyEl("goal-text");
+    if (!text) return;
+    const running = ctlView ? ctlView.protection : null;
+    let n = 0;
+    for (const d of DOORS3) {
+      const b = document.querySelector('#goal-items [data-door="' + d.key + '"]');
+      if (!b) continue;
+      const done = doors[d.key];
+      if (done) n++;
+      let act = "", off = false;
+      if (doorFlash[d.key]) { act = doorFlash[d.key]; off = true; }
+      else if (escapeShown) { act = "Stopped"; off = true; }
+      else if (!live) { act = "Live only"; off = true; }
+      else if (running === d.key) { act = "Running…"; off = true; }
+      else if (running) { act = "Wait"; off = true; }
+      else if (Date.now() < cooldownAt) { act = "In " + Math.ceil((cooldownAt - Date.now()) / 1000) + " s"; off = true; }
+      else if (done) act = done === "held" ? "Stayed in ✓" : "Caught ✓";
+      else act = "▶ Open";
+      b.disabled = off;
+      b.classList.toggle("run", running === d.key);
+      b.classList.toggle("done", Boolean(done) && running !== d.key);
+      b.querySelector(".door-act").textContent = act;
     }
     if (n === DOORS3.length) {
-      text.textContent = "All three doors opened, and every escape was caught. Now the real challenge: the live tiger.";
+      text.textContent = "All three doors opened, and every escape was caught. Now the real one: the live tiger.";
       if (!storyEl("goal-go")) {
         const go = el("button", "go", "Suggest a way out");
         go.type = "button";
         go.id = "goal-go";
-        go.addEventListener("click", () => setComposer("try", true));
-        box.after(go);
+        go.addEventListener("click", () => openComposer("try"));
+        storyEl("goal").append(go);
       }
+    } else {
+      text.textContent = n ? "Your turn: " + n + " of 3 doors opened. Each escape was caught." : "Your turn: open a door on purpose and watch a trap catch the escape.";
     }
   }
-  function doorDone(protection) {
-    if (!protection || doors[protection]) return;
-    doors[protection] = true;
+  function doorDone(protection, how) {
+    if (!protection || !DOORS3.some((d) => d.key === protection)) return;
+    const first = !doors[protection];
+    doors[protection] = how;
     try { localStorage.setItem("tc-doors", JSON.stringify(doors)); } catch { /* private mode: progress lasts this visit */ }
     renderGoal();
-    if (DOORS3.every(([k]) => doors[k])) {
+    if (first && DOORS3.every((d) => doors[d.key])) {
       storyEl("flow").hidden = true;
       storyTitle([el("b", "", "All three doors opened. ")]);
       storySum("Every time an animal got out of a test box, a trap caught it. That's the point: the traps work. The live tiger has every door shut and has never got out. Think you know a way? Suggest one, and the tiger tries it.", "good");
@@ -1419,13 +1515,13 @@ body.term-lock { overflow: hidden; }
     if (b) b.addEventListener("click", () => setComposer("test", true));
     tilesReady = true;
     for (const v of document.querySelectorAll("#zoo .view")) v.addEventListener("click", () => focusTile(v.dataset.focus));
-    for (const t of document.querySelectorAll("#zoo .try")) t.addEventListener("click", () => tryTile(t));
     window.addEventListener("resize", linkDraw);
     renderTiles();
   }
 
   function setCaption(a, said) {
     attemptNo = typeof a.n === "number" ? a.n : attemptNo + 1;
+    $("att").textContent = " · attempt " + attemptNo;
     storyLive(a);
     const parts = ["Attempt " + attemptNo + " · "];
     if (a.idea) parts.push(el("b", "", whose(a.idea.by) + " idea · "));
@@ -1536,6 +1632,7 @@ body.term-lock { overflow: hidden; }
     modeEl.append(el("b", "", "Stopped."), document.createTextNode(" A trap on the server tripped. Nothing runs until a person has looked at what happened."));
     $("mode-try").disabled = true;
     $("mode-test").disabled = true;
+    $("dock-try").disabled = true;
     if (composerMode !== "say") setComposer("say");
     renderRound();
   }
@@ -1720,7 +1817,7 @@ body.term-lock { overflow: hidden; }
   function backTile(animal) { setTimeout(() => { const t = tileOf(animal); if (t && t.classList.contains("out")) tileSet(animal, "back"); }, 6000); }
   function endTiles(v) {
     const animal = v.kind === "chain" ? "penguin" : v.animal;
-    doorDone(v.protection);
+    if (me !== null && v.by === me) doorDone(v.protection, v.phase === "held" ? "held" : "caught");
     setTimeout(() => {
       tileSet(animal, "standby");
       if (v.kind === "chain") { feedTag("LIVE"); linkSet(null); }
@@ -1735,32 +1832,11 @@ body.term-lock { overflow: hidden; }
   }
   function renderTiles() {
     if (!tilesReady) return;
-    const busy = ctlView ? (ctlView.kind === "chain" ? "the penguin and the tiger" : "the " + ctlView.animal) : null;
-    const mine = ctlView ? (ctlView.kind === "chain" ? "penguin" : ctlView.animal) : null;
-    for (const b of document.querySelectorAll("#zoo .try")) {
-      if (b.dataset.flash) continue;
-      const animal = b.closest("[data-animal]").dataset.animal;
-      if (!live || escapeShown) { b.disabled = true; b.textContent = escapeShown ? "Stopped" : "Needs the live camera"; }
-      else if (busy) { b.disabled = true; b.textContent = animal === mine ? "Testing…" : "Busy: watch " + busy; }
-      else if (Date.now() < cooldownAt) { b.disabled = true; b.textContent = "Ready again in " + Math.ceil((cooldownAt - Date.now()) / 1000) + " s"; }
-      else { b.disabled = false; b.textContent = b.dataset.label; }
-    }
+    renderGoal();
   }
   function focusTile(animal) {
     for (const t of document.querySelectorAll("#zoo > [data-animal]")) t.classList.toggle("focus", t.dataset.animal === animal);
     linkDraw();
-  }
-  async function tryTile(b) {
-    const animal = b.closest("[data-animal]").dataset.animal;
-    try {
-      await post("/api/cam/control", { protection: b.dataset.run });
-      void animal; // the camera follows the test for everyone, from the server's event
-    } catch (err) {
-      b.dataset.flash = "1";
-      b.disabled = true;
-      b.textContent = err.message;
-      setTimeout(() => { delete b.dataset.flash; renderTiles(); }, 3500);
-    }
   }
   // The line between the penguin's cage and the tiger's, and the key travelling along it.
   let linkMode = null;
@@ -1816,7 +1892,7 @@ body.term-lock { overflow: hidden; }
       const p = el("p", "vote-empty");
       const go = el("button", "linkish", "Suggest a way out");
       go.type = "button";
-      go.addEventListener("click", () => setComposer("try", true));
+      go.addEventListener("click", () => openComposer("try"));
       p.append(go, document.createTextNode(" and the tiger tries it on one of its next moves."));
       voteEl.append(p);
       return;
@@ -1890,12 +1966,12 @@ body.term-lock { overflow: hidden; }
     else if (mode === "try" && !hint.classList.contains("bad")) setHint("Your idea goes to the tiger, the live agent. It tries ideas in the order they come: watch its camera.", false);
     else if (!hint.classList.contains("bad")) setHint(meLine(), false);
     renderChips();
-    if (focus && mode !== "test" && !input.disabled) input.focus();
+    if (focus && mode !== "test" && !input.disabled) input.focus({ preventScroll: true });
   }
   async function startControl(protection) {
     try {
       await post("/api/cam/control", { protection });
-      setHint("Started. Watch the camera: the same agent, its own box, one protection off.", false);
+      setHint("Started. Watch the camera: the same agent, its own box, one door open.", false);
     } catch (err) {
       setHint(err.message, true);
     }
@@ -1921,10 +1997,29 @@ body.term-lock { overflow: hidden; }
       const idea = IDEAS[(chipAt + k) % IDEAS.length];
       const b = el("button", "", idea);
       b.type = "button";
-      b.addEventListener("click", () => { input.value = idea; renderChips(); input.focus(); });
+      b.addEventListener("click", () => { input.value = idea; renderChips(); input.focus({ preventScroll: true }); });
       chips.append(b);
     }
   }
+  // On a phone the composer is a sheet over the page, opened from the slim bar at the bottom.
+  const phone = window.matchMedia("(max-width: 900px)");
+  function sheet(open) {
+    document.body.classList.toggle("sheet-open", open);
+    $("sheet-scrim").hidden = !open;
+  }
+  function openComposer(mode) {
+    if (phone.matches) {
+      sheet(true);
+      if (mode === "say") conv.scrollIntoView({ block: "end" });
+    }
+    setComposer(mode, true);
+  }
+  $("dock-try").addEventListener("click", () => openComposer("try"));
+  $("dock-chat").addEventListener("click", () => openComposer("say"));
+  $("sheet-scrim").addEventListener("click", () => sheet(false));
+  $("sheet-close").addEventListener("click", () => sheet(false));
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && document.body.classList.contains("sheet-open")) sheet(false); });
+  phone.addEventListener("change", () => { if (!phone.matches) sheet(false); });
   $("mode-say").addEventListener("click", () => setComposer("say", true));
   $("mode-try").addEventListener("click", () => setComposer("try", true));
   $("mode-test").addEventListener("click", () => setComposer("test", true));
@@ -1946,6 +2041,7 @@ body.term-lock { overflow: hidden; }
         chipAt += 3;
         setComposer("say");
         setHint(meLine(), false);
+        sheet(false);
         pending(taken.round > 1 ? "Your idea is #" + taken.round + " in line. The tiger tries one idea per move." : "Your idea is next. The tiger tries it on its next move.", true);
       } else {
         await post("/api/cam/say", { text });
@@ -2014,7 +2110,11 @@ body.term-lock { overflow: hidden; }
 
   function applyStatus(s) {
     if (s.model) $("model").textContent = s.model;
-    $("tally").textContent = s.state === "escaped" ? "it got out once, and the agent is stopped" : "0 escapes";
+    const out = s.state === "escaped";
+    $("tally-n").textContent = out ? "1" : "0";
+    $("tally").textContent = out ? "escape" : "escapes";
+    $("tally-sub").firstChild.textContent = out ? "it got out once; the agent is stopped" : "every door shut";
+    $("mission").classList.toggle("escaped", out);
     const watch = $("watch");
     watch.hidden = false;
     watch.textContent = "";
