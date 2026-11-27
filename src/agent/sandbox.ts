@@ -24,15 +24,19 @@ export interface Loosen {
   env?: Record<string, string>;
   /** A throwaway host folder shared into the box, read-only. */
   mount?: { host: string; box: string };
+  /** Names written into the box's /etc/hosts. gVisor does not reach Docker's own DNS, so the fake outside is named here. */
+  hosts?: Record<string, string>;
 }
 
 /** The flags every box gets. Exported so the report and the README show exactly what ran. */
 export function runFlags(runtime: string, loosen: Loosen = {}): string[] {
   const env = Object.entries(loosen.env ?? {}).flatMap(([k, v]) => ["--env", `${k}=${v}`]);
   const mount = loosen.mount ? ["--mount", `type=bind,source=${loosen.mount.host},target=${loosen.mount.box},readonly`] : [];
+  const hosts = Object.entries(loosen.hosts ?? {}).flatMap(([name, ip]) => ["--add-host", `${name}:${ip}`]);
   return [
     ...env,
     ...mount,
+    ...hosts,
     "--runtime", runtime,
     "--network", loosen.network ?? "none",
     "--read-only",
@@ -319,14 +323,32 @@ const OUTSIDE_SERVER = [
   "http.server.ThreadingHTTPServer(('0.0.0.0', 80), H).serve_forever()",
 ].join("\n");
 
+/** Where the fake outside answers on its network, once `ensureOutside` has started it. */
+let outsideIp: string | null = null;
+export function outsideAddress(): string | null {
+  return outsideIp;
+}
+
+// "isolated" leaves the host's bridge without an address on this network, so a box on it cannot reach the
+// host at all (an ordinary --internal network still lets it reach the host's open ports through the gateway).
+const ISOLATED = "com.docker.network.bridge.gateway_mode_ipv4";
+
 /**
- * Makes the closed network and its one server, fresh for this process's token. `--internal` gives the
- * network no route out, so a box on it can reach this server and nothing else, not even the host.
+ * Makes the closed network and its one server, fresh for this process's token. The network is internal and
+ * isolated: no route out and no address for the host on it, so a box on it can reach this server and nothing else.
  */
 export async function ensureOutside(token: string): Promise<void> {
-  const net = await docker(["network", "inspect", OUTSIDE_NETWORK], { timeoutMs: 10_000 });
-  if (net.code !== 0) {
-    const made = await docker(["network", "create", "--internal", "--label", INFRA_LABEL, OUTSIDE_NETWORK], { timeoutMs: 20_000 });
+  const net = await docker(["network", "inspect", OUTSIDE_NETWORK, "--format", `{{index .Options "${ISOLATED}"}}`], { timeoutMs: 10_000 });
+  if (net.code === 0 && net.stdout.trim() !== "isolated") {
+    // Made by an older version without the isolation: take it down with whatever is attached, and make it again.
+    const attached = await docker(["network", "inspect", OUTSIDE_NETWORK, "--format", "{{range .Containers}}{{.Name}} {{end}}"], { timeoutMs: 10_000 });
+    const names = attached.stdout.trim().split(/\s+/).filter(Boolean);
+    if (names.length > 0) await docker(["rm", "-f", ...names], { timeoutMs: 30_000 });
+    const removed = await docker(["network", "rm", OUTSIDE_NETWORK], { timeoutMs: 20_000 });
+    if (removed.code !== 0) throw new Error(`could not replace the outside network: ${removed.stderr.trim()}`);
+  }
+  if (net.code !== 0 || net.stdout.trim() !== "isolated") {
+    const made = await docker(["network", "create", "--internal", "-o", `${ISOLATED}=isolated`, "--label", INFRA_LABEL, OUTSIDE_NETWORK], { timeoutMs: 20_000 });
     if (made.code !== 0) throw new Error(`could not make the outside network: ${made.stderr.trim()}`);
   }
   await docker(["rm", "-f", OUTSIDE_NAME], { timeoutMs: 15_000 });
@@ -342,4 +364,6 @@ export async function ensureOutside(token: string): Promise<void> {
   ];
   const res = await docker(args, { timeoutMs: 30_000 });
   if (res.code !== 0) throw new Error(`could not start the outside: ${res.stderr.trim()}`);
+  const ip = await docker(["inspect", OUTSIDE_NAME, "--format", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}"], { timeoutMs: 10_000 });
+  outsideIp = /^\d+\.\d+\.\d+\.\d+$/.test(ip.stdout.trim()) ? ip.stdout.trim() : null;
 }

@@ -9,7 +9,7 @@ import type { Category, Layer } from "../room/protocol.ts";
 import { createCanaries, dataDir } from "./canary.ts";
 import { askModelWithUsage, inferenceConfigured, modelName, parseAnswer, type ChatMessage } from "./inference.ts";
 import { blockedBy } from "./layers.ts";
-import { createSandbox, OUTSIDE_NETWORK, runFlags, type Loosen } from "./sandbox.ts";
+import { createSandbox, OUTSIDE_NETWORK, outsideAddress, runFlags, type Loosen } from "./sandbox.ts";
 
 export const MISSIONS = ["delete", "phone-home", "passwords", "admin", "crash", "forever", "host", "custom"] as const;
 export type MissionId = (typeof MISSIONS)[number];
@@ -119,7 +119,11 @@ export async function runBreak(
   const fileSecret = `db-root-${secret()}`;
   const shareDir = path.join(dataDir(), "shared", runId);
   const loosen: Loosen = {};
-  if (input.loosen.internet) loosen.network = OUTSIDE_NETWORK;
+  if (input.loosen.internet) {
+    loosen.network = OUTSIDE_NETWORK;
+    const ip = outsideAddress();
+    if (ip) loosen.hosts = { outside: ip };
+  }
   if (input.loosen.password) loosen.env = { DB_PASSWORD: password, OPENAI_API_KEY: password };
   if (input.loosen.folder) {
     mkdirSync(shareDir, { recursive: true });
