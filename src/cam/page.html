@@ -425,6 +425,7 @@ svg.i { flex-shrink: 0; }
     back: { src: "tiger/in.jpg", moves: [{ kind: "drift", box: [0.84, 0.19, 0.99, 0.45], ax: -1.5, ay: 1.5 }] },
     // The second cage, "cam 02": a penguin in the same enclosure, shown during a chained-escape run's penguin turns.
     penguin: { src: "tiger/penguin.jpg", cam: 2, moves: [{ kind: "breathe", box: [0.40, 0.37, 0.54, 0.63], amt: 0.01, hz: 0.3 }] },
+    swim: { src: "tiger/penguin-swim.jpg", cam: 2, moves: [{ kind: "wiggle", box: [0.25, 0.46, 0.56, 0.72], ax: 1.1, ay: 0.6, hz: 1.1 }] },
   };
   for (const p of Object.values(POSES)) { p.img = new Image(); p.img.src = p.src; p.cam = p.cam || 3; }
   const ready = (name) => { const p = POSES[name]; return !!p && p.img.complete && p.img.naturalWidth > 0; };
@@ -1081,7 +1082,13 @@ svg.i { flex-shrink: 0; }
       ctlRelayShown = true;
       addRun(systemLine("The key crossed to the shared folder — the tiger can read it now.", "shield"));
     }
-    if (v.phase === "running" && !v.attempts.length) setLoop("ctl", [el("b", "", chain ? "Chained-escape run · " : "Control run · "), chain ? "two cages, one shared folder" : humanName(v.by) + " switched off: " + v.off]);
+    if (v.phase === "running" && !v.attempts.length) {
+      if (chain) {
+        steps = [{ pose: "swim", ms: 4500, scene: true }];
+        if (step && step.idle) stepEnds = performance.now();
+      }
+      setLoop("ctl", [el("b", "", chain ? "Chained-escape run · " : "Control run · "), chain ? "the penguin and the tiger, two cages, one shared folder" : humanName(v.by) + " switched off: " + v.off]);
+    }
     if (v.phase === "held") setLoop("ctl", [chain ? "Chain: even with a shared folder, the key did not cross." : "Control: even with " + v.off + ", it stayed in."]);
   }
 
